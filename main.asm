@@ -22,7 +22,7 @@ Start:
     LoadBlockToVRAM BGTiles, $2000, $0020	; 2 tiles, 2bpp, = 32 bytes
 	LoadBlockToVRAM SpriteTiles, $6000, $2000 ;16x16, 4bpp=128 bytes
 	; LoadSprite 0,$15,$25,0,$30,0,0
-	LoadSprite 4,$9,$30,0,$30,0,0
+	LoadSprite 0,$9,$30,0,$30,0,0
 	jsr DMASpriteMirror
 	
     lda #$80 ;load bg tilemap
@@ -55,6 +55,8 @@ VBlank:
 	rep #$20
 	dec scrollX
 	sep #$20
+	dec spriteX
+	dec spriteX
 NOT_LEFT:
 
 	bit #JOY_RIGHT
@@ -62,6 +64,8 @@ NOT_LEFT:
 	rep #$20
 	inc scrollX
 	sep #$20
+	inc spriteX
+	inc spriteX
 NOT_RIGHT:
 
 	bit #JOY_UP
@@ -69,6 +73,8 @@ NOT_RIGHT:
 	rep #$20
 	dec scrollY
 	sep #$20
+	dec spriteY
+	dec spriteY
 NOT_UP:
 
 	bit #JOY_DOWN
@@ -76,6 +82,8 @@ NOT_UP:
 	rep #$20
 	inc scrollY
 	sep #$20
+	inc spriteY
+	inc spriteY
 NOT_DOWN:
 
 	bit #JOY_B
@@ -84,6 +92,8 @@ NOT_DOWN:
 NOT_B:
 	SetHScroll scrollX
 	SetVScroll scrollY
+	LoadSprite 0, spriteX,spriteY,0,$30,0,0
+	jsr DMASpriteMirror
 	SetMosaic mosaic
 	lda $4210 ;clear vblank flag
 	rti

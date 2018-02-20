@@ -1,10 +1,13 @@
+.define spriteNum $0
+.define oam2Data $1
+.define oam2WriteIndex $2
 
 .macro LoadSprite
 ;parameters: sprite num, x coord, y coord, tile num, attributes,first bit of x coordinate, big/small
 ;shoutout to nintendo for making me go through all this bullshit, can't have
 ; all the memory together or something sane
 	lda #\1
-	sta $0
+	sta spriteNum
 	rep #$20
 	lda #\1
 	clc
@@ -12,10 +15,10 @@
 	rol a ;multiply sprite num by 4 because each index in oam table is 4 bytes
 	tax
 	sep #$20 ;8 bit a
-	lda #\2
+	lda \2
 	sta OamMirror,x
 	inx
-	lda #\3
+	lda \3
 	sta OamMirror,x
 	inx
 	lda #\4
@@ -23,12 +26,21 @@
 	inx
 	lda #\5
 	sta OamMirror,x
+	
 	lda #\6
 	and #$1 ;make sure only 1 bit
-	sta $1 ;mess around with first bit of x coordinate b/c nintendo stored it separately
+	sta oam2Data ;mess around with first bit of x coordinate b/c nintendo stored it separately
 	lda #\7
-	and #$1
-	sta $2
+	and #$1 ;combine sprite size and msb of xpos
+	ror a
+	ora oam2Data
+	sta oam2Data
+	lda spriteNum
+	clc
+	ror a ;4 sprites per oam table byte
+	ror a
+	and #$7F
+	sta oam2WriteIndex
 	jsr SetOamMirror2
 .endm
 
@@ -63,28 +75,51 @@ SetOamMirror2:
 	beq Sprite3
 	
 Sprite0:
-	lda $2 ;combine sprite size and msb of xpos
-	clc
-	ror a
-	ora $1
-	sta $1
-	lda $0
-	clc
-	ror a ;4 sprites per oam table byte
-	ror a
-	and #$7F
-	tax
+	ldx oam2WriteIndex
 	lda OamMirror2,x
 	and #SPRITE0_MASK
-	ora $1
+	ora oam2Data
 	sta OamMirror2,x
 	jmp EndBitStuff
 	
 Sprite1:
+	clc
+	ror oam2Data
+	ror oam2Data
+	
+	ldx oam2WriteIndex
+	lda OamMirror2,x
+	and #SPRITE1_MASK
+	ora oam2Data
+	sta OamMirror2,x
 	jmp EndBitStuff
 Sprite2:
+	clc
+	ror oam2Data
+	ror oam2Data
+	ror oam2Data
+	ror oam2Data
+	
+	ldx oam2WriteIndex
+	lda OamMirror2,x
+	and #SPRITE2_MASK
+	ora oam2Data
+	sta OamMirror2,x
 	jmp EndBitStuff
 Sprite3:
+	clc
+	ror oam2Data
+	ror oam2Data
+	ror oam2Data
+	ror oam2Data
+	ror oam2Data
+	ror oam2Data
+	
+	ldx oam2WriteIndex
+	lda OamMirror2,x
+	and #SPRITE3_MASK
+	ora oam2Data
+	sta OamMirror2,x
 	jmp EndBitStuff
 	
 EndBitStuff:
