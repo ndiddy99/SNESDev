@@ -93,6 +93,11 @@ NOT_B:
 	SetHScroll scrollX
 	SetVScroll scrollY
 	LoadSprite 0, spriteX,spriteY,0,$30,0,0
+	clc
+	lda spriteY
+	adc #$10
+	sta sprite2Y
+	LoadSprite 1, spriteX,sprite2Y,2,$30,0,0
 	jsr DMASpriteMirror
 	SetMosaic mosaic
 	lda $4210 ;clear vblank flag
@@ -191,10 +196,10 @@ DMASpriteMirror:
 .section "TileData"
 BGPalette:
 	.INCBIN ".\art\bg.clr"
-	.INCBIN ".\art\ball.clr"
+	.INCBIN ".\art\char.clr"
 
 SpriteTiles:
-	.INCBIN ".\art\ball.pic"
+	.INCBIN ".\art\char.pic"
 BGTiles:
 	.incbin ".\art\bg.pic"
 
