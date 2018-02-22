@@ -51,13 +51,23 @@
 .section "SpriteStuff"
 InitSprites:
 	php
+	lda #$1
+	ldx #$0
+OamInitLoop: ;apparently just setting the sprites to $100 doesn't actually cause them to be removed from the scanline limit
+	sta OamMirror,x
+	inx
+	inx
+	inx
+	inx
+	cpx #$200
+	bne OamInitLoop
 	lda #$55
 	ldx #$0
-SpriteInitLoop:
+Oam2InitLoop:
 	sta OamMirror2,x
 	inx
 	cpx #$20 ;size of oam pt 2
-	bne SpriteInitLoop
+	bne Oam2InitLoop
 	plp
 	rts
 	

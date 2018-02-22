@@ -45,10 +45,7 @@ LoadLoop:
 	sta $4200 ;enable vblank interrupt and joypad read
 	
 	
-loop:
-	wai
-	jmp loop
-VBlank:
+MainLoop:
 	lda $4219 ;p1 joypad read address
 	bit #JOY_LEFT
 	beq NOT_LEFT
@@ -98,6 +95,11 @@ NOT_B:
 	adc #$10
 	sta sprite2Y
 	LoadSprite 1, spriteX,sprite2Y,2,$30,0,0
+	wai
+	jmp MainLoop
+	
+	
+VBlank:
 	jsr DMASpriteMirror
 	SetMosaic mosaic
 	lda $4210 ;clear vblank flag
@@ -196,10 +198,10 @@ DMASpriteMirror:
 .section "TileData"
 BGPalette:
 	.INCBIN ".\art\bg.clr"
-	.INCBIN ".\art\char.clr"
+	.INCBIN ".\art\larry.clr"
 
 SpriteTiles:
-	.INCBIN ".\art\char.pic"
+	.INCBIN ".\art\larry.pic"
 BGTiles:
 	.incbin ".\art\bg.pic"
 
