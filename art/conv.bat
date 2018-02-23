@@ -1,1 +1,0 @@
-..\tools\pcx2snes -n -s16 -c16 -o256 larry

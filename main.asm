@@ -14,8 +14,8 @@
 Start:
     InitSNES    ; Clear registers, etc.	
 	jsr InitSprites
-    LoadPalette BGPalette, 0, 4
     LoadPalette BGPalette, 0, $100
+    LoadPalette SpritePalette, $80, $F
     ; Load Palette for our tiles
 
     ; Load Tile data to VRAM
@@ -25,11 +25,11 @@ Start:
 	LoadSprite 0,$9,$30,0,$30,0,0
 	jsr DMASpriteMirror
 	
-    lda #$80 ;load bg tilemap
+    lda #$80 ;vram increment on
     sta $2115
     ldx #$0000
     stx $2116
-    lda #$01
+    lda #$00
     sta $2118
 LoadLoop:
 	inx
@@ -112,7 +112,7 @@ SetupVideo:
 	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
 	stz $2102 ;oam starts at $0 vram
 	stz $2103
-	lda 1
+	lda #$1
     sta $2105           ; Set Video mode 1, 8x8 tiles
 
     lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
@@ -165,7 +165,7 @@ LoadVRAM:
     sta $4304   ; Store data Bank into DMA source bank
     sty $4305   ; Store size of data block
 
-    lda #$01
+    lda #$1
     sta $4300   ; Set DMA mode (word, normal increment)
     lda #$18    ; Set the destination register (VRAM write register)
     sta $4301
@@ -198,11 +198,14 @@ DMASpriteMirror:
 .section "TileData"
 BGPalette:
 	.INCBIN ".\art\bg.clr"
+	
+SpritePalette:
 	.INCBIN ".\art\larry.clr"
 
 SpriteTiles:
 	.INCBIN ".\art\larry.pic"
 BGTiles:
+	.dsb 512,$0
 	.incbin ".\art\bg.pic"
 
 .ends
