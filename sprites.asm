@@ -3,7 +3,7 @@
 .define oam2WriteIndex $2
 
 .macro LoadSprite
-;parameters: sprite num, x coord, y coord, tile num, attributes,first bit of x coordinate, big/small
+;parameters: sprite num, pointer to x coord, pointer to y coord, pointer to tile num, attributes,first bit of x coordinate, big/small
 ;shoutout to nintendo for making me go through all this bullshit, can't have
 ; all the memory together or something sane
 	lda #\1
@@ -21,7 +21,7 @@
 	lda \3
 	sta OamMirror,x
 	inx
-	lda #\4
+	lda \4
 	sta OamMirror,x
 	inx
 	lda #\5

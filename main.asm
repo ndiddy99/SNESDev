@@ -4,6 +4,7 @@
 .include "variables.asm"
 .include "ppuMacros.asm"
 .include "sprites.asm"
+.include "art.asm"
 
 ;---start---
 
@@ -19,8 +20,8 @@ Start:
     ; Load Palette for our tiles
 
     ; Load Tile data to VRAM
-    LoadBlockToVRAM BGTiles, $2000, $0020	; 2 tiles, 2bpp, = 32 bytes
-	LoadBlockToVRAM SpriteTiles, $6000, $2000 ;16x16, 4bpp=128 bytes
+    LoadBlockToVRAM BGTiles, $2000, $0040	; 2 tiles, 2bpp, = 32 bytes
+	LoadBlockToVRAM LarryTiles, $6000, $2000 ;16x16, 4bpp=128 bytes
 	; LoadSprite 0,$15,$25,0,$30,0,0
 	LoadSprite 0,$9,$30,0,$30,0,0
 	jsr DMASpriteMirror
@@ -29,7 +30,7 @@ Start:
     sta $2115
     ldx #$0000
     stx $2116
-    lda #$00
+    lda #$01
     sta $2118
 LoadLoop:
 	inx
@@ -43,7 +44,7 @@ LoadLoop:
 
 	lda #$81
 	sta $4200 ;enable vblank interrupt and joypad read
-	
+	stz spriteTileNum
 	
 MainLoop:
 	lda $4219 ;p1 joypad read address
@@ -63,7 +64,15 @@ NOT_LEFT:
 	sep #$20
 	inc spriteX
 	inc spriteX
+	inc spriteTileNum
+	inc spriteTileNum
+	lda spriteTileNum
+	cmp #NUM_LARRY_TILES
+	bne NOT_RIGHT
+	lda #$2
+	sta spriteTileNum
 NOT_RIGHT:
+	lda $4219
 
 	bit #JOY_UP
 	beq NOT_UP
@@ -89,12 +98,16 @@ NOT_DOWN:
 NOT_B:
 	SetHScroll scrollX
 	SetVScroll scrollY
-	LoadSprite 0, spriteX,spriteY,0,$30,0,0
-	clc
+	LoadSprite 0, spriteX,spriteY,spriteTileNum,$30,0,0
 	lda spriteY
+	clc
 	adc #$10
 	sta sprite2Y
-	LoadSprite 1, spriteX,sprite2Y,2,$30,0,0
+	
+	lda spriteTileNum
+	adc #LARRY_OFFSET
+	sta sprite2TileNum
+	LoadSprite 1, spriteX,sprite2Y,sprite2TileNum,$30,0,0
 	wai
 	jmp MainLoop
 	
@@ -190,22 +203,5 @@ DMASpriteMirror:
 	LDA #$01
 	STA $420B		;start DMA transfer
 	rts
-
-.ends
-
-.bank 1 slot 0
-.org 0
-.section "TileData"
-BGPalette:
-	.INCBIN ".\art\bg.clr"
-	
-SpritePalette:
-	.INCBIN ".\art\larry.clr"
-
-SpriteTiles:
-	.INCBIN ".\art\larry.pic"
-BGTiles:
-	.dsb 512,$0
-	.incbin ".\art\bg.pic"
 
 .ends
