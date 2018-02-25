@@ -16,3 +16,6 @@
 .define SPRITE1_MASK %11110011
 .define SPRITE0_MASK %11111100
 
+;oam mirror defines
+.define OamMirror $400
+.define Oam2Mirror $600

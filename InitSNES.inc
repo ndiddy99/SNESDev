@@ -8,7 +8,7 @@
 ;----------------------------------------------------------------------------
 ; InitSNES -- my "standard" initialization of SNES memory and registers
 ;----------------------------------------------------------------------------
-.MACRO InitSNES
+.macro InitSNES
   sei                     ;disable interrupts
   clc                     ;switch to native mode
   xce
@@ -20,16 +20,14 @@
   TXS			;Transfer Index X to Stack Pointer Register
 
   ;do the rest of the initialization in a routine
-  JSL $008000
+  JSL InitializeSNES
 
   SEP #$20		; mem/A = 8 bit
-.ENDM
+.endmacro
 
 ;----------------------------------------------------------------------------
 
-.BANK 0 SLOT 0
-.ORG 0
-.SECTION "InitializeSNESCode" FORCE
+.segment "CODE"
 
 InitializeSNES:
   PHK			;set Data Bank = Program Bank
@@ -166,7 +164,6 @@ _Loop09:
   BNE _Loop09
 
   ;**** clear WRAM ********
-
   STZ $2181		;set WRAM address to $000000
   STZ $2182
   STZ $2183
@@ -175,7 +172,7 @@ _Loop09:
   STX $4300         ;Set DMA mode to fixed source, BYTE to $2180
   LDX #wram_fill_byte
   STX $4302         ;Set source offset
-  LDA #:wram_fill_byte
+  LDA #<.bank(wram_fill_byte)
   STA $4304         ;Set source bank
   LDX #$0000
   STX $4305         ;Set transfer size to 64k bytes
@@ -197,7 +194,7 @@ _Loop09:
   RTL
 
 wram_fill_byte:
-.db $00
+.byte $00
 
 ;----------------------------------------------------------------------------
 ; ClearVRAM -- Sets every byte of VRAM to zero
@@ -259,4 +256,3 @@ ClearPaletteLoop:
    PLX
    RTS
 
-.ENDS

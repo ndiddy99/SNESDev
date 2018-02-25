@@ -1,50 +1,50 @@
-.MACRO LoadPalette
+.macro LoadPalette source, colorIndex, numColors
 ;parameters:
 ;source, color to start on, number of colors to copy
-    lda #\2
+    lda #colorIndex
     sta $2121       ; Start at START color
-    lda #:\1        ; Using : before the parameter gets its bank.
-    ldx #\1         ; Not using : gets the offset address.
-    ldy #(\3 * 2)   ; 2 bytes for every color
+    lda #<.bank(source)        ; Using : before the parameter gets its bank.
+    ldx #source         ; Not using : gets the offset address.
+    ldy #(numColors * 2)   ; 2 bytes for every color
     jsr DMAPalette
-.ENDM
+.endmacro
 	
-.MACRO LoadBlockToVRAM
+.macro LoadBlockToVRAM source, destination, size
 ;parameters:
 ;source, destination, size
     lda #$80
     sta $2115       ; Set VRAM transfer mode to word-access, increment by 1
-    ldx #\2         ; DEST
+    ldx #destination         ; DEST
     stx $2116       ; $2116: Word address for accessing VRAM.
-    lda #:\1        ; SRCBANK
-    ldx #\1         ; SRCOFFSET
-    ldy #\3         ; SIZE
+    lda #<.bank(source)        ; SRCBANK
+    ldx #source         ; SRCOFFSET
+    ldy #size         ; SIZE
     jsr LoadVRAM
-.ENDM
+.endmacro
 
-.MACRO SetHScroll
+.macro SetHScroll hVal
 ;parameter: mem address of horizontal scroll val
 	rep #$20
-	lda \1
+	lda hVal
 	sep #$20
 	sta $210D	; BG1 horiz scroll
 	xba
 	sta $210D
-.endm
+.endmacro
 
-.MACRO SetVScroll
+.macro SetVScroll vVal
 ;parameter: mem address of vertical scroll val
 	rep #$20
-	lda \1
+	lda vVal
 	sep #$20
 	sta $210E	; BG1 vert scroll
 	xba
 	sta $210E
-.endm
+.endmacro
 
-.macro SetMosaic
+.macro SetMosaic level
 ;parameter: mosaic level (0-15 dec, 0-f hex)
-	lda \1
+	lda level
 	and #$F ;param %=15
 	clc
 	ror a
@@ -52,5 +52,47 @@
 	ror a
 	ora #$1
 	sta $2106
-.endm
+.endmacro
 
+.segment "CODE"
+DMAPalette: 
+;a- data bank
+;x- data offset
+;y- size of data
+
+;processor status onto stack
+	phb
+	php
+	stx $4302 ;address into dma 0 source register
+	sta $4304 ;bank into channel 0 bank register
+	sty $4305 ;number of bytes into channel 0 size
+	stz $4300 ;dma byte mode, increment by 1
+	lda #$22 ;$2122=color palette write
+	sta $4301
+	lda #$1
+	sta $420B ;start transfer
+	
+	plp
+	plb
+	rts
+	
+LoadVRAM:
+;a- data bank
+;x- data offset
+;y- num of bytes to copy
+    php         ; Preserve Registers
+
+    stx $4302   ; Store Data offset into DMA source offset
+    sta $4304   ; Store data Bank into DMA source bank
+    sty $4305   ; Store size of data block
+
+    lda #$1
+    sta $4300   ; Set DMA mode (word, normal increment)
+    lda #$18    ; Set the destination register (VRAM write register)
+    sta $4301
+    lda #$01    ; Initiate DMA transfer (channel 1)
+    sta $420B
+
+    plp         ; restore registers
+    rts         ; return
+	

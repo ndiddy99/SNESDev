@@ -1,32 +1,21 @@
-.include "header.asm"
-.include "InitSNES.asm"
+.include "header.inc"
+.include "initSNES.inc"
 .include "defines.asm"
 .include "variables.asm"
 .include "ppuMacros.asm"
 .include "sprites.asm"
 .include "art.asm"
 
-;---start---
-
-.bank 0 slot 0
-.org 0
-.section "Main"
-
-Start:
-    InitSNES    ; Clear registers, etc.	
-	jsr InitSprites
-    LoadPalette BGPalette, 0, $100
+.segment "CODE"
+Reset:
+	InitSNES
+	LoadPalette BGPalette, 0, $100
     LoadPalette SpritePalette, $80, $F
-    ; Load Palette for our tiles
-
-    ; Load Tile data to VRAM
+	; Load Tile data to VRAM
     LoadBlockToVRAM BGTiles, $2000, $0040	; 2 tiles, 2bpp, = 32 bytes
 	LoadBlockToVRAM LarryTiles, $6000, $2000 ;16x16, 4bpp=128 bytes
-	; LoadSprite 0,$15,$25,0,$30,0,0
-	LoadSprite 0,$9,$30,0,$30,0,0
-	jsr DMASpriteMirror
 	
-    lda #$80 ;vram increment on
+	lda #$80 ;vram increment on
     sta $2115
     ldx #$0000
     stx $2116
@@ -41,11 +30,9 @@ LoadLoop:
 	
     ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
-
+	jsr InitSprites
 	lda #$81
 	sta $4200 ;enable vblank interrupt and joypad read
-	stz spriteTileNum
-	
 MainLoop:
 	lda $4219 ;p1 joypad read address
 	bit #JOY_LEFT
@@ -53,8 +40,8 @@ MainLoop:
 	rep #$20
 	dec scrollX
 	sep #$20
-	dec spriteX
-	dec spriteX
+	; dec spriteX
+	; dec spriteX
 NOT_LEFT:
 
 	bit #JOY_RIGHT
@@ -98,19 +85,9 @@ NOT_DOWN:
 NOT_B:
 	SetHScroll scrollX
 	SetVScroll scrollY
-	LoadSprite 0, spriteX,spriteY,spriteTileNum,$30,0,0
-	lda spriteY
-	clc
-	adc #$10
-	sta sprite2Y
-	
-	lda spriteTileNum
-	adc #LARRY_OFFSET
-	sta sprite2TileNum
-	LoadSprite 1, spriteX,sprite2Y,sprite2TileNum,$30,0,0
+	;HandleLarry spriteX,spriteY,spriteTileNum
 	wai
 	jmp MainLoop
-	
 	
 VBlank:
 	jsr DMASpriteMirror
@@ -146,47 +123,6 @@ SetupVideo:
 
     plp
     rts
-
-DMAPalette: 
-;a- data bank
-;x- data offset
-;y- size of data
-
-;processor status onto stack
-	phb
-	php
-	stx $4302 ;address into dma 0 source register
-	sta $4304 ;bank into channel 0 bank register
-	sty $4305 ;number of bytes into channel 0 size
-	stz $4300 ;dma byte mode, increment by 1
-	lda #$22 ;$2122=color palette write
-	sta $4301
-	lda #$1
-	sta $420B ;start transfer
-	
-	plp
-	plb
-	rts
-	
-LoadVRAM:
-;a- data bank
-;x- data offset
-;y- num of bytes to copy
-    php         ; Preserve Registers
-
-    stx $4302   ; Store Data offset into DMA source offset
-    sta $4304   ; Store data Bank into DMA source bank
-    sty $4305   ; Store size of data block
-
-    lda #$1
-    sta $4300   ; Set DMA mode (word, normal increment)
-    lda #$18    ; Set the destination register (VRAM write register)
-    sta $4301
-    lda #$01    ; Initiate DMA transfer (channel 1)
-    sta $420B
-
-    plp         ; restore registers
-    rts         ; return
 	
 DMASpriteMirror:
 	stz $2102		; set OAM address to 0
@@ -203,5 +139,4 @@ DMASpriteMirror:
 	LDA #$01
 	STA $420B		;start DMA transfer
 	rts
-
-.ends
+	

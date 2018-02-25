@@ -1,11 +1,7 @@
-@echo off
 cd C:\snes
 path=%path;.\tools
-echo [objects] > temp.prj
-echo main.obj >> temp.prj
-wla-65816 -o main.asm main.obj
-wlalink -vr temp.prj main.smc
-del main.obj
-del temp.prj
+ca65 main.asm
+ld65 -C lorom.cfg -o out.smc main.o
+del main.o
 cd no$sns
-no$sns.exe ..\main.smc
+no$sns.exe ..\out.smc
