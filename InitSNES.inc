@@ -15,7 +15,7 @@
 
   REP #$38		; mem/A = 16 bit, X/Y = 16 bit
 			;decimal mode off
-
+  .i16
   LDX #$1FFF	;Setup the stack
   TXS			;Transfer Index X to Stack Pointer Register
 

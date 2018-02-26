@@ -86,8 +86,8 @@ NOT_DOWN:
 NOT_B:
 	SetHScroll scrollX
 	SetVScroll scrollY
-	LoadSprite #0, spriteX, spriteY, spriteTileNum, #$30, #0, #0
-	;HandleLarry spriteX,spriteY,spriteTileNum
+	;LoadSprite #0, spriteX, spriteY, spriteTileNum, #$30, #0, #0
+	HandleLarry spriteX,spriteY,spriteTileNum
 	wai
 	jmp MainLoop
 	
