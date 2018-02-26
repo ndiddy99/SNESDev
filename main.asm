@@ -40,8 +40,8 @@ MainLoop:
 	rep #$20
 	dec scrollX
 	sep #$20
-	; dec spriteX
-	; dec spriteX
+	dec spriteX
+	dec spriteX
 NOT_LEFT:
 
 	bit #JOY_RIGHT
@@ -51,6 +51,7 @@ NOT_LEFT:
 	sep #$20
 	inc spriteX
 	inc spriteX
+	
 	inc spriteTileNum
 	inc spriteTileNum
 	lda spriteTileNum
@@ -85,6 +86,7 @@ NOT_DOWN:
 NOT_B:
 	SetHScroll scrollX
 	SetVScroll scrollY
+	LoadSprite #0, spriteX, spriteY, spriteTileNum, #$30, #0, #0
 	;HandleLarry spriteX,spriteY,spriteTileNum
 	wai
 	jmp MainLoop
