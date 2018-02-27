@@ -14,19 +14,22 @@ Reset:
 	; Load Tile data to VRAM
     LoadBlockToVRAM BGTiles, $2000, $0040	; 2 tiles, 2bpp, = 32 bytes
 	LoadBlockToVRAM LarryTiles, $6000, $2000 ;16x16, 4bpp=128 bytes
+	LoadBlockToVRAM BGTilemap, $0000, $2000
 	
-	lda #$80 ;vram increment on
-    sta $2115
-    ldx #$0000
-    stx $2116
-    lda #$01
-    sta $2118
-LoadLoop:
-	inx
-	stx $2116 ;fill background w/ faces
-	sta $2118
-	cpx #$3FF
-	bne LoadLoop
+	; lda #$80 ;vram increment on
+    ; sta $2115
+    ; ldx #$0000
+    ; stx $2116
+    ; lda #$01
+    ; sta $2118
+	; stz $2119
+; LoadLoop:
+	; inx
+	; stx $2116 ;fill background w/ faces
+	; sta $2118
+	; stz $2119
+	; cpx #$3FF
+	; bne LoadLoop
 	
     ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
@@ -86,15 +89,20 @@ NOT_DOWN:
 NOT_B:
 	SetHScroll scrollX
 	SetVScroll scrollY
-	;LoadSprite #0, spriteX, spriteY, spriteTileNum, #$30, #0, #0
 	HandleLarry spriteX,spriteY,spriteTileNum
 	wai
 	jmp MainLoop
 	
 VBlank:
+	pha ;push regs to stack so if my main loop is ever too long it'll continue without
+	phx ;fucking up
+	phy
 	jsr DMASpriteMirror
 	SetMosaic mosaic
 	lda $4210 ;clear vblank flag
+	ply
+	plx
+	pla
 	rti
 	
 SetupVideo:
