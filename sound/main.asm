@@ -1,0 +1,1 @@
+architecture spc700

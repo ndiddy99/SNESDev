@@ -16,26 +16,18 @@ Reset:
 	LoadBlockToVRAM LarryTiles, $6000, $2000 ;16x16, 4bpp=128 bytes
 	LoadBlockToVRAM BGTilemap, $0000, $2000
 	
-	; lda #$80 ;vram increment on
-    ; sta $2115
-    ; ldx #$0000
-    ; stx $2116
-    ; lda #$01
-    ; sta $2118
-	; stz $2119
-; LoadLoop:
-	; inx
-	; stx $2116 ;fill background w/ faces
-	; sta $2118
-	; stz $2119
-	; cpx #$3FF
-	; bne LoadLoop
-	
     ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
 	jsr InitSprites
 	lda #$81
 	sta $4200 ;enable vblank interrupt and joypad read
+	
+	rep #$20
+	.a16
+	lda #$11B ;default scroll pos
+	sta scrollY
+	sep #$20
+	.a8
 MainLoop:
 	lda $4219 ;p1 joypad read address
 	bit #JOY_LEFT
@@ -115,7 +107,7 @@ SetupVideo:
 	lda #$1
     sta $2105           ; Set Video mode 1, 8x8 tiles
 
-    lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
+    lda #$02           ; Set BG1's Tile Map offset to $0000 (Word address)
     sta $2107           ; And the Tile Map size to 64x64
 
 	lda #$52
