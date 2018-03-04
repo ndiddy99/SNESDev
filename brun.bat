@@ -1,6 +1,6 @@
 cd C:\snes
 path=%path;.\tools
-ca65 main.asm
+ca65 -l main.lst main.asm
 ld65 -C lorom.cfg -o out.smc main.o
 del main.o
 cd no$sns

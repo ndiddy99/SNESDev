@@ -1,7 +1,7 @@
 architecture spc700
 
 	origin 0
-	base $200
+	base $200-2
 	dw end-start
 	
 start:

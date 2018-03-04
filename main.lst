@@ -1,0 +1,1282 @@
+ca65 V2.16 - Git f19651c
+Main file   : main.asm
+Current file: main.asm
+
+000000r 1               .include "header.inc"
+000000r 2               ; Sets up ROM headers/vectors
+000000r 2               
+000000r 2               .p816   ; 65816 processor
+000000r 2               .i16    ; X/Y are 16 bits
+000000r 2               .a8     ; A is 8 bits
+000000r 2               
+000000r 2               .define ROM_NAME "zoz"
+000000r 2               
+000000r 2               .segment "HEADER"     ; +$7FE0 in file
+000000r 2  7A 6F 7A         .byte ROM_NAME
+000003r 2               
+000003r 2               .segment "ROMINFO"    ; +$7FD5 in file
+000000r 2  30               .byte $30         ; LoROM, fast-capable
+000001r 2  00               .byte 0           ; no battery RAM
+000002r 2  07               .byte $07         ; 128K ROM
+000003r 2  00 00 00 00      .byte 0,0,0,0
+000007r 2  AA AA 55 55      .word $AAAA,$5555 ; dummy checksum and complement
+00000Br 2               
+00000Br 2               ;cop,brk,abort,nmi,reset,irq
+00000Br 2               ;cop,abort,nmi,res,brk,irqbrk
+00000Br 2               .segment "VECTORS"
+000000r 2  00 00 00 00      .word 0, 0, EmptyHandler, EmptyHandler, EmptyHandler, VBlank, Reset, EmptyHandler
+000004r 2  rr rr rr rr  
+000008r 2  rr rr rr rr  
+000010r 2  00 00 00 00      .word 0, 0, EmptyHandler, EmptyHandler, VBlank, EmptyHandler, Reset, EmptyHandler
+000014r 2  rr rr rr rr  
+000018r 2  rr rr rr rr  
+000020r 2               
+000020r 2               .segment "CODE"
+000000r 2               EmptyHandler:
+000000r 2  40           	rti
+000001r 2               
+000001r 2               
+000001r 1               .include "initSNES.inc"
+000001r 2               ;------------------------------------------------------------------------
+000001r 2               ;-  Written by: Neviksti
+000001r 2               ;-     If you use my code, please share your creations with me
+000001r 2               ;-     as I am always curious :)
+000001r 2               ;------------------------------------------------------------------------
+000001r 2               
+000001r 2               
+000001r 2               ;----------------------------------------------------------------------------
+000001r 2               ; InitSNES -- my "standard" initialization of SNES memory and registers
+000001r 2               ;----------------------------------------------------------------------------
+000001r 2               .macro InitSNES
+000001r 2                 sei                     ;disable interrupts
+000001r 2                 clc                     ;switch to native mode
+000001r 2                 xce
+000001r 2               
+000001r 2                 REP #$38		; mem/A = 16 bit, X/Y = 16 bit
+000001r 2               			;decimal mode off
+000001r 2                 .i16
+000001r 2                 LDX #$1FFF	;Setup the stack
+000001r 2                 TXS			;Transfer Index X to Stack Pointer Register
+000001r 2               
+000001r 2                 ;do the rest of the initialization in a routine
+000001r 2                 JSL InitializeSNES
+000001r 2               
+000001r 2                 SEP #$20		; mem/A = 8 bit
+000001r 2               .endmacro
+000001r 2               
+000001r 2               ;----------------------------------------------------------------------------
+000001r 2               
+000001r 2               .segment "CODE"
+000001r 2               
+000001r 2               InitializeSNES:
+000001r 2  4B             PHK			;set Data Bank = Program Bank
+000002r 2  AB             PLB
+000003r 2               
+000003r 2  A9 00          LDA #$0000	;set Direct Page = $0000
+000005r 2  5B             TCD			;Transfer Accumulator to Direct Register
+000006r 2               
+000006r 2  AE FD 1F       LDX $1FFD		;we clear all the mem at one point ...
+000009r 2  8E 72 43       STX $4372  	;so save the return address in a place that won't get overwritten
+00000Cr 2  AE FF 1F       LDX $1FFF
+00000Fr 2  8E 74 43       STX $4374
+000012r 2               
+000012r 2  E2 20          SEP #$20		; mem/A = 8 bit
+000014r 2  C2 10          REP #$10
+000016r 2               
+000016r 2  A9 8F          LDA #$8F
+000018r 2  8D 00 21       STA $2100		;turn screen off for now, set brightness to normal
+00001Br 2               
+00001Br 2  A2 01 21       LDX #$2101
+00001Er 2               _Loop00:		;regs $2101-$210C
+00001Er 2  74 00          STZ $00,X		;set Sprite,Character,Tile sizes to lowest, and set addresses to $0000
+000020r 2  E8             INX
+000021r 2  E0 0D 21       CPX #$210D
+000024r 2  D0 F8          BNE _Loop00
+000026r 2               
+000026r 2               _Loop01:		;regs $210D-$2114
+000026r 2  74 00          STZ $00,X		;Set all BG scroll values to $0000
+000028r 2  74 00          STZ $00,X
+00002Ar 2  E8             INX
+00002Br 2  E0 15 21       CPX #$2115
+00002Er 2  D0 F6          BNE _Loop01
+000030r 2               
+000030r 2  A9 80          LDA #$80		;reg $2115
+000032r 2  8D 15 21       STA $2115		; Initialize VRAM transfer mode to word-access, increment by 1
+000035r 2               
+000035r 2  9C 16 21       STZ $2116		;regs $2117-$2117
+000038r 2  9C 17 21       STZ $2117		;VRAM address = $0000
+00003Br 2               
+00003Br 2               			;reg $2118-$2119
+00003Br 2               			;VRAM write register... don't need to initialize
+00003Br 2               
+00003Br 2  9C 1A 21       STZ $211A		;clear Mode7 setting
+00003Er 2               
+00003Er 2  A2 1B 21       LDX #$211B
+000041r 2               _Loop02:		;regs $211B-$2120
+000041r 2  74 00          STZ $00,X		;clear out the Mode7 matrix values
+000043r 2  74 00          STZ $00,X
+000045r 2  E8             INX
+000046r 2  E0 21 21       CPX #$2121
+000049r 2  D0 F6          BNE _Loop02
+00004Br 2               
+00004Br 2               			;reg $2121 - Color address, doesn't need initilaizing
+00004Br 2               			;reg $2122 - Color data, is initialized later
+00004Br 2               
+00004Br 2  A2 23 21       LDX #$2123
+00004Er 2               _Loop03:		;regs $2123-$2133
+00004Er 2  74 00          STZ $00,X		;turn off windows, main screens, sub screens, color addition,
+000050r 2  E8             INX			;fixed color = $00, no super-impose (external synchronization),
+000051r 2  E0 34 21       CPX #$2134	;no interlaced mode, normal resolution
+000054r 2  D0 F8          BNE _Loop03
+000056r 2               
+000056r 2               			;regs $2134-$2136  - multiplication result, no initialization needed
+000056r 2               			;reg $2137 - software H/V latch, no initialization needed
+000056r 2               			;reg $2138 - Sprite data read, no initialization needed
+000056r 2               			;regs $2139-$213A  - VRAM data read, no initialization needed
+000056r 2               			;reg $213B - Color RAM data read, no initialization needed
+000056r 2               			;regs $213C-$213D  - H/V latched data read, no initialization needed
+000056r 2               
+000056r 2  9C 3E 21       STZ $213E		;reg $213E - might not be necesary, but selects PPU master/slave mode
+000059r 2               			;reg $213F - PPU status flag, no initialization needed
+000059r 2               
+000059r 2               			;reg $2140-$2143 - APU communication regs, no initialization required
+000059r 2               
+000059r 2               			;reg $2180  -  read/write WRAM register, no initialization required
+000059r 2               			;reg $2181-$2183  -  WRAM address, no initialization required
+000059r 2               
+000059r 2               			;reg $4016-$4017  - serial JoyPad read registers, no need to initialize
+000059r 2               
+000059r 2               
+000059r 2  9C 00 42       STZ $4200		;reg $4200  - disable timers, NMI,and auto-joyread
+00005Cr 2               
+00005Cr 2  A9 FF          LDA #$FF
+00005Er 2  8D 01 42       STA $4201		;reg $4201  - programmable I/O write port, initalize to allow reading at in-port
+000061r 2               
+000061r 2               			;regs $4202-$4203  - multiplication registers, no initialization required
+000061r 2               			;regs $4204-$4206  - division registers, no initialization required
+000061r 2               
+000061r 2               			;regs $4207-$4208  - Horizontal-IRQ timer setting, since we disabled this, it is OK to not init
+000061r 2               			;regs $4209-$420A  - Vertical-IRQ timer setting, since we disabled this, it is OK to not init
+000061r 2               
+000061r 2  9C 0B 42       STZ $420B		;reg $420B  - turn off all general DMA channels
+000064r 2  9C 0C 42       STZ $420C		;reg $420C  - turn off all H-MA channels
+000067r 2               
+000067r 2  9C 0D 42       STZ $420D		;reg $420D  - ROM access time to slow (2.68Mhz)
+00006Ar 2               
+00006Ar 2  AD 10 42       LDA $4210		;reg $4210  - NMI status, reading resets
+00006Dr 2               
+00006Dr 2               			;reg $4211  - IRQ status, no need to initialize
+00006Dr 2               			;reg $4212  - H/V blank and JoyRead status, no need to initialize
+00006Dr 2               			;reg $4213  - programmable I/O inport, no need to initialize
+00006Dr 2               
+00006Dr 2               			;reg $4214-$4215  - divide results, no need to initialize
+00006Dr 2               			;reg $4216-$4217  - multiplication or remainder results, no need to initialize
+00006Dr 2               
+00006Dr 2               			;regs $4218-$421f  - JoyPad read registers, no need to initialize
+00006Dr 2               
+00006Dr 2               			;regs $4300-$437F
+00006Dr 2               			;no need to intialize because DMA was disabled above
+00006Dr 2               			;also, we're not sure what all of the registers do, so it is better to leave them at
+00006Dr 2               			;their reset state value
+00006Dr 2               
+00006Dr 2               ;  JSR ClearVRAM      ;Reset VRAM
+00006Dr 2                ; JSR ClearPalette   ;Reset colors
+00006Dr 2               
+00006Dr 2                 ;**** clear Sprite tables ********
+00006Dr 2               
+00006Dr 2  9C 02 21       STZ $2102	;sprites initialized to be off the screen, palette 0, character 0
+000070r 2  9C 03 21       STZ $2103
+000073r 2  A2 80 00       LDX #$0080
+000076r 2  A9 F0          LDA #$F0
+000078r 2               _Loop08:
+000078r 2  8D 04 21       STA $2104	;set X = 240
+00007Br 2  8D 04 21       STA $2104	;set Y = 240
+00007Er 2  9C 04 21       STZ $2104	;set character = $00
+000081r 2  9C 04 21       STZ $2104	;set priority=0, no flips
+000084r 2  CA             DEX
+000085r 2  D0 F1          BNE _Loop08
+000087r 2               
+000087r 2  A2 20 00       LDX #$0020
+00008Ar 2               _Loop09:
+00008Ar 2  9C 04 21       STZ $2104		;set size bit=0, x MSB = 0
+00008Dr 2  CA             DEX
+00008Er 2  D0 FA          BNE _Loop09
+000090r 2               
+000090r 2                 ;**** clear WRAM ********
+000090r 2  9C 81 21       STZ $2181		;set WRAM address to $000000
+000093r 2  9C 82 21       STZ $2182
+000096r 2  9C 83 21       STZ $2183
+000099r 2               
+000099r 2  A2 08 80       LDX #$8008
+00009Cr 2  8E 00 43       STX $4300         ;Set DMA mode to fixed source, BYTE to $2180
+00009Fr 2  A2 rr rr       LDX #wram_fill_byte
+0000A2r 2  8E 02 43       STX $4302         ;Set source offset
+0000A5r 2  A9 rr          LDA #<.bank(wram_fill_byte)
+0000A7r 2  8D 04 43       STA $4304         ;Set source bank
+0000AAr 2  A2 00 00       LDX #$0000
+0000ADr 2  8E 05 43       STX $4305         ;Set transfer size to 64k bytes
+0000B0r 2  A9 01          LDA #$01
+0000B2r 2  8D 0B 42       STA $420B         ;Initiate transfer
+0000B5r 2               
+0000B5r 2  A9 01          LDA #$01          ;now set the next 64k bytes
+0000B7r 2  8D 0B 42       STA $420B         ;Initiate transfer
+0000BAr 2               
+0000BAr 2  4B             PHK			;make sure Data Bank = Program Bank
+0000BBr 2  AB             PLB
+0000BCr 2               
+0000BCr 2  58             CLI			;enable interrupts again
+0000BDr 2               
+0000BDr 2  AE 72 43       LDX $4372  	;get our return address...
+0000C0r 2  8E FD 1F       STX $1FFD
+0000C3r 2  AD 74 43       LDA $4374
+0000C6r 2  8D FF 1F       STA $1FFF
+0000C9r 2  6B             RTL
+0000CAr 2               
+0000CAr 2               wram_fill_byte:
+0000CAr 2  00           .byte $00
+0000CBr 2               
+0000CBr 2               ;----------------------------------------------------------------------------
+0000CBr 2               ; ClearVRAM -- Sets every byte of VRAM to zero
+0000CBr 2               ; In: None
+0000CBr 2               ; Out: None
+0000CBr 2               ; Modifies: flags
+0000CBr 2               ;----------------------------------------------------------------------------
+0000CBr 2               ClearVRAM:
+0000CBr 2  48              pha
+0000CCr 2  DA              phx
+0000CDr 2  08              php
+0000CEr 2               
+0000CEr 2  C2 30           REP #$30		; mem/A = 8 bit, X/Y = 16 bit
+0000D0r 2  E2 20           SEP #$20
+0000D2r 2               
+0000D2r 2  A9 80           LDA #$80
+0000D4r 2  8D 15 21        STA $2115         ;Set VRAM port to word access
+0000D7r 2  A2 09 18        LDX #$1809
+0000DAr 2  8E 00 43        STX $4300         ;Set DMA mode to fixed source, WORD to $2118/9
+0000DDr 2  A2 00 00        LDX #$0000
+0000E0r 2  8E 16 21        STX $2116         ;Set VRAM port address to $0000
+0000E3r 2  86 00           STX $0000         ;Set $00:0000 to $0000 (assumes scratchpad ram)
+0000E5r 2  8E 02 43        STX $4302         ;Set source address to $xx:0000
+0000E8r 2  A9 00           LDA #$00
+0000EAr 2  8D 04 43        STA $4304         ;Set source bank to $00
+0000EDr 2  A2 FF FF        LDX #$FFFF
+0000F0r 2  8E 05 43        STX $4305         ;Set transfer size to 64k-1 bytes
+0000F3r 2  A9 01           LDA #$01
+0000F5r 2  8D 0B 42        STA $420B         ;Initiate transfer
+0000F8r 2               
+0000F8r 2  9C 19 21        STZ $2119         ;clear the last byte of the VRAM
+0000FBr 2               
+0000FBr 2  28              plp
+0000FCr 2  FA              plx
+0000FDr 2  68              pla
+0000FEr 2  60              RTS
+0000FFr 2               
+0000FFr 2               ;----------------------------------------------------------------------------
+0000FFr 2               ; ClearPalette -- Reset all palette colors to zero
+0000FFr 2               ; In: None
+0000FFr 2               ; Out: None
+0000FFr 2               ; Modifies: flags
+0000FFr 2               ;----------------------------------------------------------------------------
+0000FFr 2               ClearPalette:
+0000FFr 2  DA              PHX
+000100r 2  08              PHP
+000101r 2  C2 30           REP #$30		; mem/A = 8 bit, X/Y = 16 bit
+000103r 2  E2 20           SEP #$20
+000105r 2               
+000105r 2  9C 21 21        STZ $2121
+000108r 2  A2 00 01        LDX #$0100
+00010Br 2               ClearPaletteLoop:
+00010Br 2  9C 22 21        STZ $2122
+00010Er 2  9C 22 21        STZ $2122
+000111r 2  CA              DEX
+000112r 2  D0 F7           BNE ClearPaletteLoop
+000114r 2               
+000114r 2  28              PLP
+000115r 2  FA              PLX
+000116r 2  60              RTS
+000117r 2               
+000117r 2               
+000117r 1               .include "defines.asm"
+000117r 2               ;---joypad---
+000117r 2               
+000117r 2               .define JOY_B $80
+000117r 2               .define JOY_Y $40
+000117r 2               .define JOY_SELECT $20
+000117r 2               .define JOY_START $10
+000117r 2               .define JOY_UP $8
+000117r 2               .define JOY_DOWN $4
+000117r 2               .define JOY_LEFT $2
+000117r 2               .define JOY_RIGHT $1
+000117r 2               
+000117r 2               ;---oam pt 2 write masks---
+000117r 2               
+000117r 2               .define SPRITE3_MASK %00111111
+000117r 2               .define SPRITE2_MASK %11001111
+000117r 2               .define SPRITE1_MASK %11110011
+000117r 2               .define SPRITE0_MASK %11111100
+000117r 2               
+000117r 2               ;oam mirror defines
+000117r 2               .define OamMirror $400
+000117r 2               .define Oam2Mirror $600
+000117r 2               
+000117r 1               .include "variables.asm"
+000117r 2               .enum ;start at $10 because first 15 bytes are "scratchpad"
+000117r 2               scrollX = $10
+000117r 2               scrollY = scrollX+2
+000117r 2               spriteX = scrollY+2
+000117r 2               spriteY
+000117r 2               spriteTileNum
+000117r 2               spriteAttrs
+000117r 2               mosaic
+000117r 2               .endenum
+000117r 2               
+000117r 1               .include "ppuMacros.asm"
+000117r 2               .macro LoadPalette source, colorIndex, numColors
+000117r 2               ;parameters:
+000117r 2               ;source, color to start on, number of colors to copy
+000117r 2                   lda #colorIndex
+000117r 2                   sta $2121       ; Start at START color
+000117r 2                   lda #<.bank(source)        ; Using : before the parameter gets its bank.
+000117r 2                   ldx #source         ; Not using : gets the offset address.
+000117r 2                   ldy #(numColors * 2)   ; 2 bytes for every color
+000117r 2                   jsr DMAPalette
+000117r 2               .endmacro
+000117r 2               
+000117r 2               .macro LoadBlockToVRAM source, destination, size
+000117r 2               ;parameters:
+000117r 2               ;source, destination, size
+000117r 2                   lda #$80
+000117r 2                   sta $2115       ; Set VRAM transfer mode to word-access, increment by 1
+000117r 2                   ldx #destination         ; DEST
+000117r 2                   stx $2116       ; $2116: Word address for accessing VRAM.
+000117r 2                   lda #<.bank(source)        ; SRCBANK
+000117r 2                   ldx #source         ; SRCOFFSET
+000117r 2                   ldy #size         ; SIZE
+000117r 2                   jsr LoadVRAM
+000117r 2               .endmacro
+000117r 2               
+000117r 2               .macro SetHScroll hVal
+000117r 2               ;parameter: mem address of horizontal scroll val
+000117r 2               	rep #$20
+000117r 2               	lda hVal
+000117r 2               	sep #$20
+000117r 2               	sta $210D	; BG1 horiz scroll
+000117r 2               	xba
+000117r 2               	sta $210D
+000117r 2               .endmacro
+000117r 2               
+000117r 2               .macro SetVScroll vVal
+000117r 2               ;parameter: mem address of vertical scroll val
+000117r 2               	rep #$20
+000117r 2               	lda vVal
+000117r 2               	sep #$20
+000117r 2               	sta $210E	; BG1 vert scroll
+000117r 2               	xba
+000117r 2               	sta $210E
+000117r 2               .endmacro
+000117r 2               
+000117r 2               .macro SetMosaic level
+000117r 2               ;parameter: mosaic level (0-15 dec, 0-f hex)
+000117r 2               	lda level
+000117r 2               	and #$F ;param %=15
+000117r 2               	clc
+000117r 2               	ror a
+000117r 2               	ror a
+000117r 2               	ror a
+000117r 2               	ora #$1
+000117r 2               	sta $2106
+000117r 2               .endmacro
+000117r 2               
+000117r 2               .segment "CODE"
+000117r 2               DMAPalette:
+000117r 2               ;a- data bank
+000117r 2               ;x- data offset
+000117r 2               ;y- size of data
+000117r 2               
+000117r 2               ;processor status onto stack
+000117r 2  8B           	phb
+000118r 2  08           	php
+000119r 2  8E 02 43     	stx $4302 ;address into dma 0 source register
+00011Cr 2  8D 04 43     	sta $4304 ;bank into channel 0 bank register
+00011Fr 2  8C 05 43     	sty $4305 ;number of bytes into channel 0 size
+000122r 2  9C 00 43     	stz $4300 ;dma byte mode, increment by 1
+000125r 2  A9 22        	lda #$22 ;$2122=color palette write
+000127r 2  8D 01 43     	sta $4301
+00012Ar 2  A9 01        	lda #$1
+00012Cr 2  8D 0B 42     	sta $420B ;start transfer
+00012Fr 2               
+00012Fr 2  28           	plp
+000130r 2  AB           	plb
+000131r 2  60           	rts
+000132r 2               
+000132r 2               LoadVRAM:
+000132r 2               ;a- data bank
+000132r 2               ;x- data offset
+000132r 2               ;y- num of bytes to copy
+000132r 2  08               php         ; Preserve Registers
+000133r 2               
+000133r 2  8E 02 43         stx $4302   ; Store Data offset into DMA source offset
+000136r 2  8D 04 43         sta $4304   ; Store data Bank into DMA source bank
+000139r 2  8C 05 43         sty $4305   ; Store size of data block
+00013Cr 2               
+00013Cr 2  A9 01            lda #$1
+00013Er 2  8D 00 43         sta $4300   ; Set DMA mode (word, normal increment)
+000141r 2  A9 18            lda #$18    ; Set the destination register (VRAM write register)
+000143r 2  8D 01 43         sta $4301
+000146r 2  A9 01            lda #$01    ; Initiate DMA transfer (channel 1)
+000148r 2  8D 0B 42         sta $420B
+00014Br 2               
+00014Br 2  28               plp         ; restore registers
+00014Cr 2  60               rts         ; return
+00014Dr 2               
+00014Dr 2               
+00014Dr 1               .include "sprites.asm"
+00014Dr 2               spriteNum = $0
+00014Dr 2               oam2Data = $1
+00014Dr 2               oam2WriteIndex = $2
+00014Dr 2               
+00014Dr 2               .macro LoadSprite sprite, xOffset, yOffset, tileNum, attributes, xBit, size
+00014Dr 2               ;parameters: sprite num, pointer to x coord, pointer to y coord, pointer to tile num, attributes,first bit of x coordinate, big/small
+00014Dr 2               ;shoutout to nintendo for making me go through all this bullshit, can't have
+00014Dr 2               ; all the memory together or something sane
+00014Dr 2               	lda sprite
+00014Dr 2               	sta spriteNum
+00014Dr 2               	rep #$20
+00014Dr 2               	.a16
+00014Dr 2               	lda sprite
+00014Dr 2               	clc
+00014Dr 2               	rol a
+00014Dr 2               	rol a ;multiply sprite num by 4 because each index in oam table is 4 bytes
+00014Dr 2               	tax
+00014Dr 2               	sep #$20 ;8 bit a
+00014Dr 2               	.a8
+00014Dr 2               	lda xOffset
+00014Dr 2               	sta OamMirror,x
+00014Dr 2               	inx
+00014Dr 2               	lda yOffset
+00014Dr 2               	sta OamMirror,x
+00014Dr 2               	inx
+00014Dr 2               	lda tileNum
+00014Dr 2               	sta OamMirror,x
+00014Dr 2               	inx
+00014Dr 2               	lda attributes
+00014Dr 2               	sta OamMirror,x
+00014Dr 2               
+00014Dr 2               	lda xBit
+00014Dr 2               	and #$1 ;make sure only 1 bit
+00014Dr 2               	sta oam2Data ;mess around with first bit of x coordinate b/c nintendo stored it separately
+00014Dr 2               	lda size
+00014Dr 2               	and #$1 ;combine sprite size and msb of xpos
+00014Dr 2               	ror a
+00014Dr 2               	ora oam2Data
+00014Dr 2               	sta oam2Data
+00014Dr 2               	lda spriteNum
+00014Dr 2               	clc
+00014Dr 2               	ror a ;4 sprites per oam table byte
+00014Dr 2               	ror a
+00014Dr 2               	and #$7F
+00014Dr 2               	sta oam2WriteIndex
+00014Dr 2               	jsr SetOam2Mirror
+00014Dr 2               .endmacro
+00014Dr 2               
+00014Dr 2               .segment "CODE"
+00014Dr 2               InitSprites:
+00014Dr 2  08           	php
+00014Er 2  A9 01        	lda #$1
+000150r 2  A2 00 00     	ldx #$0
+000153r 2               OamInitLoop: ;apparently just setting the sprites to $100 doesn't actually cause them to be removed from the scanline limit
+000153r 2  9D 00 04     	sta OamMirror,x
+000156r 2  E8           	inx
+000157r 2  E8           	inx
+000158r 2  E8           	inx
+000159r 2  E8           	inx
+00015Ar 2  E0 00 02     	cpx #$200
+00015Dr 2  D0 F4        	bne OamInitLoop
+00015Fr 2  A9 55        	lda #$55
+000161r 2  A2 00 00     	ldx #$0
+000164r 2               Oam2InitLoop:
+000164r 2  9D 00 06     	sta Oam2Mirror,x
+000167r 2  E8           	inx
+000168r 2  E0 20 00     	cpx #$20 ;size of oam pt 2
+00016Br 2  D0 F7        	bne Oam2InitLoop
+00016Dr 2  28           	plp
+00016Er 2  60           	rts
+00016Fr 2               
+00016Fr 2               SetOam2Mirror:
+00016Fr 2  08           	php
+000170r 2  A5 00        	lda $0
+000172r 2  29 03        	and #$3 ;check where in the byte to place 1st x bit/sprite size
+000174r 2  C9 00        	cmp #0
+000176r 2  F0 0C        	beq Sprite0
+000178r 2  C9 01        	cmp #1
+00017Ar 2  F0 17        	beq Sprite1
+00017Cr 2  C9 02        	cmp #2
+00017Er 2  F0 27        	beq Sprite2
+000180r 2  C9 03        	cmp #3
+000182r 2  F0 3B        	beq Sprite3
+000184r 2               
+000184r 2               Sprite0:
+000184r 2  A6 02        	ldx oam2WriteIndex
+000186r 2  BD 00 06     	lda Oam2Mirror,x
+000189r 2  29 FC        	and #SPRITE0_MASK
+00018Br 2  05 01        	ora oam2Data
+00018Dr 2  9D 00 06     	sta Oam2Mirror,x
+000190r 2  4C rr rr     	jmp EndBitStuff
+000193r 2               
+000193r 2               Sprite1:
+000193r 2  18           	clc
+000194r 2  66 01        	ror oam2Data
+000196r 2  66 01        	ror oam2Data
+000198r 2               
+000198r 2  A6 02        	ldx oam2WriteIndex
+00019Ar 2  BD 00 06     	lda Oam2Mirror,x
+00019Dr 2  29 F3        	and #SPRITE1_MASK
+00019Fr 2  05 01        	ora oam2Data
+0001A1r 2  9D 00 06     	sta Oam2Mirror,x
+0001A4r 2  4C rr rr     	jmp EndBitStuff
+0001A7r 2               Sprite2:
+0001A7r 2  18           	clc
+0001A8r 2  66 01        	ror oam2Data
+0001AAr 2  66 01        	ror oam2Data
+0001ACr 2  66 01        	ror oam2Data
+0001AEr 2  66 01        	ror oam2Data
+0001B0r 2               
+0001B0r 2  A6 02        	ldx oam2WriteIndex
+0001B2r 2  BD 00 06     	lda Oam2Mirror,x
+0001B5r 2  29 CF        	and #SPRITE2_MASK
+0001B7r 2  05 01        	ora oam2Data
+0001B9r 2  9D 00 06     	sta Oam2Mirror,x
+0001BCr 2  4C rr rr     	jmp EndBitStuff
+0001BFr 2               Sprite3:
+0001BFr 2  18           	clc
+0001C0r 2  66 01        	ror oam2Data
+0001C2r 2  66 01        	ror oam2Data
+0001C4r 2  66 01        	ror oam2Data
+0001C6r 2  66 01        	ror oam2Data
+0001C8r 2  66 01        	ror oam2Data
+0001CAr 2  66 01        	ror oam2Data
+0001CCr 2               
+0001CCr 2  A6 02        	ldx oam2WriteIndex
+0001CEr 2  BD 00 06     	lda Oam2Mirror,x
+0001D1r 2  29 3F        	and #SPRITE3_MASK
+0001D3r 2  05 01        	ora oam2Data
+0001D5r 2  9D 00 06     	sta Oam2Mirror,x
+0001D8r 2  4C rr rr     	jmp EndBitStuff
+0001DBr 2               
+0001DBr 2               EndBitStuff:
+0001DBr 2  28           	plp
+0001DCr 2  60           	rts
+0001DDr 2               
+0001DDr 2               
+0001DDr 1               .include "art.asm"
+0001DDr 2               .macro HandleLarry xPos, yPos, tileNum
+0001DDr 2               ;parameters: pointer to xpos, pointer to ypos, pointer to tile number
+0001DDr 2               lda xPos
+0001DDr 2               sta $4
+0001DDr 2               lda yPos
+0001DDr 2               sta $5
+0001DDr 2               lda tileNum
+0001DDr 2               sta $6
+0001DDr 2               LoadSprite #0, $4, $5, $6, spriteAttrs, #0, #0
+0001DDr 2               lda $5 ;add $10 to sprite y pos because second 16x16 sprite is directly below first
+0001DDr 2               clc
+0001DDr 2               adc #$10
+0001DDr 2               sta $5
+0001DDr 2               
+0001DDr 2               lda $6
+0001DDr 2               clc
+0001DDr 2               adc #LARRY_OFFSET
+0001DDr 2               sta $6
+0001DDr 2               LoadSprite #1, $4, $5, $6, spriteAttrs, #0, #0
+0001DDr 2               .endmacro
+0001DDr 2               
+0001DDr 2               
+0001DDr 2               BGPalette:
+0001DDr 2  00 00 10 00  	.INCBIN ".\art\bgtiles.clr"
+0001E1r 2  00 02 10 02  
+0001E5r 2  00 40 10 40  
+0003DDr 2               
+0003DDr 2               SpritePalette:
+0003DDr 2  00 00 10 00  	.INCBIN ".\art\larry.clr"
+0003E1r 2  9F 5F 66 72  
+0003E5r 2  C5 0D 1D 6F  
+0005DDr 2               
+0005DDr 2               LarryTiles:
+0005DDr 2               	.define NUM_LARRY_TILES $E
+0005DDr 2               	.define LARRY_OFFSET $20
+0005DDr 2               	.define LARRY_ANIMATION_DELAY $2 ;number of frames between incrementing movement
+0005DDr 2  00 00 00 00  	.INCBIN ".\art\larry.pic"
+0005E1r 2  00 00 00 00  
+0005E5r 2  00 0F 00 1F  
+000DDDr 2               BGTiles:
+000DDDr 2  00 00 00 00  	.incbin ".\art\bgtiles.pic"
+000DE1r 2  00 00 00 00  
+000DE5r 2  00 00 00 00  
+0011DDr 2               
+0011DDr 2               BGTilemap:
+0011DDr 2               	;top left screen
+0011DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0011E1r 2  00 00 00 00  
+0011E5r 2  00 00 00 00  
+00121Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001221r 2  00 00 00 00  
+001225r 2  00 00 00 00  
+00125Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001261r 2  00 00 00 00  
+001265r 2  00 00 00 00  
+00129Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0012A1r 2  00 00 00 00  
+0012A5r 2  00 00 00 00  
+0012DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0012E1r 2  00 00 00 00  
+0012E5r 2  00 00 00 00  
+00131Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001321r 2  00 00 00 00  
+001325r 2  00 00 00 00  
+00135Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001361r 2  00 00 00 00  
+001365r 2  00 00 00 00  
+00139Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0013A1r 2  00 00 00 00  
+0013A5r 2  00 00 00 00  
+0013DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0013E1r 2  00 00 00 00  
+0013E5r 2  00 00 00 00  
+00141Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001421r 2  00 00 00 00  
+001425r 2  00 00 00 00  
+00145Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001461r 2  00 00 00 00  
+001465r 2  00 00 00 00  
+00149Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0014A1r 2  00 00 00 00  
+0014A5r 2  00 00 00 00  
+0014DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0014E1r 2  00 00 00 00  
+0014E5r 2  00 00 00 00  
+00151Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001521r 2  00 00 00 00  
+001525r 2  00 00 00 00  
+00155Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001561r 2  00 00 00 00  
+001565r 2  00 00 00 00  
+00159Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0015A1r 2  00 00 00 00  
+0015A5r 2  00 00 00 00  
+0015DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0015E1r 2  00 00 00 00  
+0015E5r 2  00 00 00 00  
+00161Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001621r 2  00 00 00 00  
+001625r 2  00 00 00 00  
+00165Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001661r 2  00 00 00 00  
+001665r 2  00 00 00 00  
+00169Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0016A1r 2  00 00 00 00  
+0016A5r 2  00 00 00 00  
+0016DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0016E1r 2  00 00 00 00  
+0016E5r 2  00 00 00 00  
+00171Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001721r 2  00 00 00 00  
+001725r 2  00 00 00 00  
+00175Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001761r 2  00 00 00 00  
+001765r 2  00 00 00 00  
+00179Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0017A1r 2  00 00 00 00  
+0017A5r 2  00 00 00 00  
+0017DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0017E1r 2  00 00 00 00  
+0017E5r 2  00 00 00 00  
+00181Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001821r 2  00 00 00 00  
+001825r 2  00 00 00 00  
+00185Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001861r 2  00 00 00 00  
+001865r 2  00 00 00 00  
+00189Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0018A1r 2  00 00 00 00  
+0018A5r 2  00 00 00 00  
+0018DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0018E1r 2  00 00 00 00  
+0018E5r 2  00 00 00 00  
+00191Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001921r 2  00 00 00 00  
+001925r 2  00 00 00 00  
+00195Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001961r 2  00 00 00 00  
+001965r 2  00 00 00 00  
+00199Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0019A1r 2  00 00 00 00  
+0019A5r 2  00 00 00 00  
+0019DDr 2               
+0019DDr 2               	;top right screen
+0019DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0019E1r 2  00 00 00 00  
+0019E5r 2  00 00 00 00  
+001A1Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001A21r 2  00 00 00 00  
+001A25r 2  00 00 00 00  
+001A5Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001A61r 2  00 00 00 00  
+001A65r 2  00 00 00 00  
+001A9Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001AA1r 2  00 00 00 00  
+001AA5r 2  00 00 00 00  
+001ADDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001AE1r 2  00 00 00 00  
+001AE5r 2  00 00 00 00  
+001B1Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001B21r 2  00 00 00 00  
+001B25r 2  00 00 00 00  
+001B5Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001B61r 2  00 00 00 00  
+001B65r 2  00 00 00 00  
+001B9Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001BA1r 2  00 00 00 00  
+001BA5r 2  00 00 00 00  
+001BDDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001BE1r 2  00 00 00 00  
+001BE5r 2  00 00 00 00  
+001C1Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$0,$0,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001C21r 2  00 00 00 00  
+001C25r 2  00 00 00 00  
+001C5Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001C61r 2  00 00 00 00  
+001C65r 2  00 00 00 00  
+001C9Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001CA1r 2  00 00 00 00  
+001CA5r 2  00 00 00 00  
+001CDDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$1,$1,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001CE1r 2  00 00 00 00  
+001CE5r 2  00 00 00 00  
+001D1Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001D21r 2  00 00 00 00  
+001D25r 2  00 00 00 00  
+001D5Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001D61r 2  00 00 00 00  
+001D65r 2  00 00 00 00  
+001D9Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001DA1r 2  00 00 00 00  
+001DA5r 2  00 00 00 00  
+001DDDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001DE1r 2  00 00 00 00  
+001DE5r 2  00 00 00 00  
+001E1Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001E21r 2  00 00 00 00  
+001E25r 2  00 00 00 00  
+001E5Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001E61r 2  00 00 00 00  
+001E65r 2  00 00 00 00  
+001E9Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001EA1r 2  00 00 00 00  
+001EA5r 2  00 00 00 00  
+001EDDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001EE1r 2  00 00 00 00  
+001EE5r 2  00 00 00 00  
+001F1Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001F21r 2  00 00 00 00  
+001F25r 2  00 00 00 00  
+001F5Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001F61r 2  00 00 00 00  
+001F65r 2  00 00 00 00  
+001F9Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001FA1r 2  00 00 00 00  
+001FA5r 2  00 00 00 00  
+001FDDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001FE1r 2  00 00 00 00  
+001FE5r 2  00 00 00 00  
+00201Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002021r 2  00 00 00 00  
+002025r 2  00 00 00 00  
+00205Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002061r 2  00 00 00 00  
+002065r 2  00 00 00 00  
+00209Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0020A1r 2  00 00 00 00  
+0020A5r 2  00 00 00 00  
+0020DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0020E1r 2  00 00 00 00  
+0020E5r 2  00 00 00 00  
+00211Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002121r 2  00 00 00 00  
+002125r 2  00 00 00 00  
+00215Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002161r 2  00 00 00 00  
+002165r 2  00 00 00 00  
+00219Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0021A1r 2  00 00 00 00  
+0021A5r 2  00 00 00 00  
+0021DDr 2               
+0021DDr 2               	;bottom left screen
+0021DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0021E1r 2  00 00 00 00  
+0021E5r 2  00 00 00 00  
+00221Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002221r 2  00 00 00 00  
+002225r 2  00 00 00 00  
+00225Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002261r 2  00 00 00 00  
+002265r 2  00 00 00 00  
+00229Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0022A1r 2  00 00 00 00  
+0022A5r 2  00 00 00 00  
+0022DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0022E1r 2  00 00 00 00  
+0022E5r 2  00 00 00 00  
+00231Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002321r 2  00 00 00 00  
+002325r 2  00 00 00 00  
+00235Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002361r 2  00 00 00 00  
+002365r 2  00 00 00 00  
+00239Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0023A1r 2  00 00 00 00  
+0023A5r 2  00 00 00 00  
+0023DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0023E1r 2  00 00 00 00  
+0023E5r 2  00 00 00 00  
+00241Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002421r 2  00 00 00 00  
+002425r 2  00 00 00 00  
+00245Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002461r 2  00 00 00 00  
+002465r 2  00 00 00 00  
+00249Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0024A1r 2  00 00 00 00  
+0024A5r 2  00 00 00 00  
+0024DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0024E1r 2  00 00 00 00  
+0024E5r 2  00 00 00 00  
+00251Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002521r 2  00 00 00 00  
+002525r 2  00 00 00 00  
+00255Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002561r 2  00 00 00 00  
+002565r 2  00 00 00 00  
+00259Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0025A1r 2  00 00 00 00  
+0025A5r 2  00 00 00 00  
+0025DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0025E1r 2  00 00 00 00  
+0025E5r 2  00 00 00 00  
+00261Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002621r 2  00 00 00 00  
+002625r 2  00 00 00 00  
+00265Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002661r 2  00 00 00 00  
+002665r 2  00 00 00 00  
+00269Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0026A1r 2  00 00 00 00  
+0026A5r 2  00 00 00 00  
+0026DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0026E1r 2  00 00 00 00  
+0026E5r 2  00 00 00 00  
+00271Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002721r 2  00 00 00 00  
+002725r 2  00 00 00 00  
+00275Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002761r 2  00 00 00 00  
+002765r 2  00 00 00 00  
+00279Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0027A1r 2  00 00 00 00  
+0027A5r 2  00 00 00 00  
+0027DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0027E1r 2  00 00 00 00  
+0027E5r 2  00 00 00 00  
+00281Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002821r 2  00 00 00 00  
+002825r 2  00 00 00 00  
+00285Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002861r 2  00 00 00 00  
+002865r 2  00 00 00 00  
+00289Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0028A1r 2  00 00 00 00  
+0028A5r 2  00 00 00 00  
+0028DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0028E1r 2  00 00 00 00  
+0028E5r 2  00 00 00 00  
+00291Dr 2  01 00 01 00  	.word $1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1
+002921r 2  01 00 01 00  
+002925r 2  01 00 01 00  
+00295Dr 2  01 00 01 00  	.word $1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1
+002961r 2  01 00 01 00  
+002965r 2  01 00 01 00  
+00299Dr 2  01 00 01 00  	.word $1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1
+0029A1r 2  01 00 01 00  
+0029A5r 2  01 00 01 00  
+0029DDr 2               	;bottom right screen
+0029DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0029E1r 2  00 00 00 00  
+0029E5r 2  00 00 00 00  
+002A1Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002A21r 2  00 00 00 00  
+002A25r 2  00 00 00 00  
+002A5Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002A61r 2  00 00 00 00  
+002A65r 2  00 00 00 00  
+002A9Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002AA1r 2  00 00 00 00  
+002AA5r 2  00 00 00 00  
+002ADDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002AE1r 2  00 00 00 00  
+002AE5r 2  00 00 00 00  
+002B1Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002B21r 2  00 00 00 00  
+002B25r 2  00 00 00 00  
+002B5Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002B61r 2  00 00 00 00  
+002B65r 2  00 00 00 00  
+002B9Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002BA1r 2  00 00 00 00  
+002BA5r 2  00 00 00 00  
+002BDDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002BE1r 2  00 00 00 00  
+002BE5r 2  00 00 00 00  
+002C1Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002C21r 2  00 00 00 00  
+002C25r 2  00 00 00 00  
+002C5Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002C61r 2  00 00 00 00  
+002C65r 2  00 00 00 00  
+002C9Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002CA1r 2  00 00 00 00  
+002CA5r 2  00 00 00 00  
+002CDDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002CE1r 2  00 00 00 00  
+002CE5r 2  00 00 00 00  
+002D1Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002D21r 2  00 00 00 00  
+002D25r 2  00 00 00 00  
+002D5Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002D61r 2  00 00 00 00  
+002D65r 2  00 00 00 00  
+002D9Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002DA1r 2  00 00 00 00  
+002DA5r 2  00 00 00 00  
+002DDDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002DE1r 2  00 00 00 00  
+002DE5r 2  00 00 00 00  
+002E1Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002E21r 2  00 00 00 00  
+002E25r 2  00 00 00 00  
+002E5Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002E61r 2  00 00 00 00  
+002E65r 2  00 00 00 00  
+002E9Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002EA1r 2  00 00 00 00  
+002EA5r 2  00 00 00 00  
+002EDDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002EE1r 2  00 00 00 00  
+002EE5r 2  00 00 00 00  
+002F1Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002F21r 2  00 00 00 00  
+002F25r 2  00 00 00 00  
+002F5Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002F61r 2  00 00 00 00  
+002F65r 2  00 00 00 00  
+002F9Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002FA1r 2  00 00 00 00  
+002FA5r 2  00 00 00 00  
+002FDDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002FE1r 2  00 00 00 00  
+002FE5r 2  00 00 00 00  
+00301Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003021r 2  00 00 00 00  
+003025r 2  00 00 00 00  
+00305Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003061r 2  00 00 00 00  
+003065r 2  00 00 00 00  
+00309Dr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0030A1r 2  00 00 00 00  
+0030A5r 2  00 00 00 00  
+0030DDr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0030E1r 2  00 00 00 00  
+0030E5r 2  00 00 00 00  
+00311Dr 2  01 00 01 00  	.word $1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1
+003121r 2  01 00 01 00  
+003125r 2  01 00 01 00  
+00315Dr 2  01 00 01 00  	.word $1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1
+003161r 2  01 00 01 00  
+003165r 2  01 00 01 00  
+00319Dr 2  01 00 01 00  	.word $1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1
+0031A1r 2  01 00 01 00  
+0031A5r 2  01 00 01 00  
+0031DDr 2               
+0031DDr 2               
+0031DDr 2               
+0031DDr 1               .include "sound.asm"
+0031DDr 2               .segment "BANK1"
+000000r 2               
+000000r 2               SPCPrg:
+000000r 2  10 29 20 CD  	.incbin ".\sound\sound.bin"
+000004r 2  EF BD E8 00  
+000008r 2  C4 0C C4 1C  
+002912r 2               SPCPrgEnd:
+002912r 2               
+002912r 2               SPC_LENGTH = SPCPrgEnd-SPCPrg
+002912r 2               NUM_SPC_BLOCKS = <SPC_LENGTH/256
+002912r 2               .define copyAddr $0 ;address to copy to (word)
+002912r 2               .define blockIndex $2 ;what block's being copied (byte)
+002912r 2               .define copyIndex $3 ;index within one block (byte)
+002912r 2               .define kick $4 ;current "kick" val
+002912r 2               
+002912r 2               LoadSPC:
+002912r 2  C2 20        	rep #$20
+002914r 2               	.a16
+002914r 2  A9 00 02     	lda #$200
+002917r 2  85 00        	sta copyAddr ;set up copy address
+002919r 2  64 02        	stz blockIndex
+00291Br 2  E2 20        	sep #$20
+00291Dr 2               	.a8
+00291Dr 2  A9 CC        	lda #$cc ;starting kick val
+00291Fr 2  85 04        	sta kick
+002921r 2               
+002921r 2  9C 00 42     	stz $4200
+002924r 2  78           	sei ;disable interrupts, this is kinda time sensitive
+002925r 2               WaitForInit:
+002925r 2  AD 40 21     	lda $2140
+002928r 2  C9 AA        	cmp #$aa ;spc sets reg 0 to aa after it inits
+00292Ar 2  D0 F9        	bne WaitForInit
+00292Cr 2               
+00292Cr 2               CopyLoop:
+00292Cr 2  C2 20        	rep #$20 ;16 bit a
+00292Er 2               	.a16
+00292Er 2  A5 00        	lda copyAddr
+002930r 2  8D 42 21     	sta $2142 ;write destination address
+002933r 2  18           	clc
+002934r 2  69 00 01     	adc #$100
+002937r 2  85 00        	sta copyAddr
+002939r 2  E2 20        	sep #$20
+00293Br 2               	.a8
+00293Br 2               
+00293Br 2  A9 01        	lda #$1
+00293Dr 2  8D 41 21     	sta $2141 ;write command
+002940r 2  A5 04        	lda kick
+002942r 2  8D 40 21     	sta $2140 ;"enable"
+002945r 2               WaitForAck: ;spc returns kick when it's ready to write
+002945r 2  AD 40 21     	lda $2140
+002948r 2  C5 04        	cmp kick
+00294Ar 2  D0 F9        	bne WaitForAck
+00294Cr 2               
+00294Cr 2               CopyBlock: ;copies blocks of 256 bytes
+00294Cr 2  C2 20        	rep #$20 ;16 bit a
+00294Er 2               	.a16
+00294Er 2  A5 02        	lda blockIndex ;because blockIndex is next to copyIndex in memory hopefully
+002950r 2  EB           	xba			   ;this will get the address (look at me, so smart for making blocks 256 bytes)
+002951r 2  AA           	tax
+002952r 2  E2 20        	sep #$20
+002954r 2               	.a8
+002954r 2  BD rr rr     	lda SPCPrg,x
+002957r 2  8D 41 21     	sta $2141
+00295Ar 2  A5 03        	lda copyIndex
+00295Cr 2  8D 40 21     	sta $2140
+00295Fr 2               
+00295Fr 2               WaitReceive:
+00295Fr 2  CD 40 21     	cmp $2140 ;spc mirrors count after receiving data
+002962r 2  D0 FB        	bne WaitReceive
+002964r 2  1A           	inc a
+002965r 2  85 03        	sta copyIndex
+002967r 2  C9 00        	cmp #$0 ;256 bytes in a block
+002969r 2  D0 E1        	bne CopyBlock
+00296Br 2               
+00296Br 2  E6 02        	inc blockIndex
+00296Dr 2  A5 04        	lda kick
+00296Fr 2  18           	clc
+002970r 2  69 02        	adc #$2
+002972r 2  29 7F        	and #$7f ;kick=previous kick "+2 to 127" -ninty
+002974r 2  85 04        	sta kick
+002976r 2  A5 02        	lda blockIndex
+002978r 2  C9 00        	cmp #NUM_SPC_BLOCKS
+00297Ar 2  D0 B0        	bne CopyLoop
+00297Cr 2               
+00297Cr 2  C2 20        	rep #$20
+00297Er 2               	.a16
+00297Er 2  A9 00 02     	lda #$200 ;entry point
+002981r 2  8D 42 21     	sta $2142
+002984r 2  E2 20        	sep #$20
+002986r 2               	.a8
+002986r 2  9C 41 21     	stz $2141 ;start command
+002989r 2  A5 04        	lda kick
+00298Br 2  8D 40 21     	sta $2140
+00298Er 2  58           	cli ;enable interrupts
+00298Fr 2  6B           	rtl
+002990r 2               
+002990r 1               
+002990r 1               .segment "CODE"
+0031DDr 1               Reset:
+0031DDr 1  78 18 FB C2  	InitSNES
+0031E1r 1  38 A2 FF 1F  
+0031E5r 1  9A 22 rr rr  
+0031ECr 1  22 rr rr rr  	jsl LoadSPC
+0031F0r 1  A9 00 8D 21  	LoadPalette BGPalette, 0, $100
+0031F4r 1  21 A9 rr A2  
+0031F8r 1  rr rr A0 00  
+003200r 1  A9 80 8D 21      LoadPalette SpritePalette, $80, $F
+003204r 1  21 A9 rr A2  
+003208r 1  rr rr A0 1E  
+003210r 1               	; Load Tile data to VRAM
+003210r 1  A9 80 8D 15      LoadBlockToVRAM BGTiles, $2000, $0040	; 2 tiles, 2bpp, = 32 bytes
+003214r 1  21 A2 00 20  
+003218r 1  8E 16 21 A9  
+003226r 1  A9 80 8D 15  	LoadBlockToVRAM LarryTiles, $6000, $2000 ;16x16, 4bpp=128 bytes
+00322Ar 1  21 A2 00 60  
+00322Er 1  8E 16 21 A9  
+00323Cr 1  A9 80 8D 15  	LoadBlockToVRAM BGTilemap, $0000, $2000
+003240r 1  21 A2 00 00  
+003244r 1  8E 16 21 A9  
+003252r 1               
+003252r 1                   ; Setup Video modes and other stuff, then turn on the screen
+003252r 1  20 rr rr         jsr SetupVideo
+003255r 1  20 rr rr     	jsr InitSprites
+003258r 1  A9 81        	lda #$81
+00325Ar 1  8D 00 42     	sta $4200 ;enable vblank interrupt and joypad read
+00325Dr 1               
+00325Dr 1  C2 20        	rep #$20
+00325Fr 1               	.a16
+00325Fr 1  A9 1B 01     	lda #$11B ;default scroll pos
+003262r 1  85 12        	sta scrollY
+003264r 1  E2 20        	sep #$20
+003266r 1               	.a8
+003266r 1               
+003266r 1  A9 B1        	lda #$B1
+003268r 1  85 15        	sta spriteY
+00326Ar 1               MainLoop:
+00326Ar 1  AD 19 42     	lda $4219 ;p1 joypad read address
+00326Dr 1  89 02        	bit #JOY_LEFT
+00326Fr 1  F0 1C        	beq NOT_LEFT
+003271r 1  C2 20        	rep #$20
+003273r 1  C6 10        	dec scrollX
+003275r 1  E2 20        	sep #$20
+003277r 1  C6 14        	dec spriteX
+003279r 1  C6 14        	dec spriteX
+00327Br 1               
+00327Br 1  A9 70        	lda #$70 ;max sprite priority, mirror sprite
+00327Dr 1  85 17        	sta spriteAttrs
+00327Fr 1               
+00327Fr 1  E6 16        	inc spriteTileNum
+003281r 1  E6 16        	inc spriteTileNum
+003283r 1  A5 16        	lda spriteTileNum
+003285r 1  C9 0E        	cmp #NUM_LARRY_TILES
+003287r 1  D0 27        	bne NOT_RIGHT
+003289r 1  A9 02        	lda #$2
+00328Br 1  85 16        	sta spriteTileNum
+00328Dr 1               NOT_LEFT:
+00328Dr 1  AD 19 42     	lda $4219
+003290r 1               
+003290r 1  89 01        	bit #JOY_RIGHT
+003292r 1  F0 1C        	beq NOT_RIGHT
+003294r 1  C2 20        	rep #$20
+003296r 1  E6 10        	inc scrollX
+003298r 1  E2 20        	sep #$20
+00329Ar 1  E6 14        	inc spriteX
+00329Cr 1  E6 14        	inc spriteX
+00329Er 1               
+00329Er 1  A9 30        	lda #$30
+0032A0r 1  85 17        	sta spriteAttrs ;max sprite priority
+0032A2r 1               
+0032A2r 1  E6 16        	inc spriteTileNum
+0032A4r 1  E6 16        	inc spriteTileNum
+0032A6r 1  A5 16        	lda spriteTileNum
+0032A8r 1  C9 0E        	cmp #NUM_LARRY_TILES
+0032AAr 1  D0 04        	bne NOT_RIGHT
+0032ACr 1  A9 02        	lda #$2
+0032AEr 1  85 16        	sta spriteTileNum
+0032B0r 1               NOT_RIGHT:
+0032B0r 1  AD 19 42     	lda $4219
+0032B3r 1               
+0032B3r 1               	; bit #JOY_UP
+0032B3r 1               	; beq NOT_UP
+0032B3r 1               	; rep #$20
+0032B3r 1               	; dec scrollY
+0032B3r 1               	; sep #$20
+0032B3r 1               	; dec spriteY
+0032B3r 1               	; dec spriteY
+0032B3r 1               ; NOT_UP:
+0032B3r 1               
+0032B3r 1               	; bit #JOY_DOWN
+0032B3r 1               	; beq NOT_DOWN
+0032B3r 1               	; rep #$20
+0032B3r 1               	; inc scrollY
+0032B3r 1               	; sep #$20
+0032B3r 1               	; inc spriteY
+0032B3r 1               	; inc spriteY
+0032B3r 1               ; NOT_DOWN:
+0032B3r 1               
+0032B3r 1  89 80        	bit #JOY_B
+0032B5r 1  F0 02        	beq NOT_B
+0032B7r 1  E6 18        	inc mosaic
+0032B9r 1               NOT_B:
+0032B9r 1  C2 20 A5 10  	SetHScroll scrollX
+0032BDr 1  E2 20 8D 0D  
+0032C1r 1  21 EB 8D 0D  
+0032C6r 1  C2 20 A5 12  	SetVScroll scrollY
+0032CAr 1  E2 20 8D 0E  
+0032CEr 1  21 EB 8D 0E  
+0032D3r 1  A5 14 85 04  	HandleLarry spriteX,spriteY,spriteTileNum
+0032D7r 1  A5 15 85 05  
+0032DBr 1  A5 16 85 06  
+00336Fr 1  CB           	wai
+003370r 1  4C rr rr     	jmp MainLoop
+003373r 1               
+003373r 1               VBlank:
+003373r 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
+003374r 1  DA           	phx ;fucking up
+003375r 1  5A           	phy
+003376r 1  20 rr rr     	jsr DMASpriteMirror
+003379r 1  A5 18 29 0F  	SetMosaic mosaic
+00337Dr 1  18 6A 6A 6A  
+003381r 1  09 01 8D 06  
+003386r 1  AD 10 42     	lda $4210 ;clear vblank flag
+003389r 1  7A           	ply
+00338Ar 1  FA           	plx
+00338Br 1  68           	pla
+00338Cr 1  40           	rti
+00338Dr 1               
+00338Dr 1               SetupVideo:
+00338Dr 1  08               php
+00338Er 1               
+00338Er 1  A9 73        	lda #$73
+003390r 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
+003393r 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
+003396r 1  9C 03 21     	stz $2103
+003399r 1  A9 01        	lda #$1
+00339Br 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
+00339Er 1               
+00339Er 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
+0033A0r 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
+0033A3r 1               
+0033A3r 1  A9 52        	lda #$52
+0033A5r 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
+0033A8r 1               
+0033A8r 1  A9 11            lda #$11            ; Enable BG1 and sprites
+0033AAr 1  8D 2C 21         sta $212C
+0033ADr 1               
+0033ADr 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
+0033AFr 1  8D 0E 21         sta $210E
+0033B2r 1  8D 0E 21         sta $210E
+0033B5r 1               
+0033B5r 1  A9 0F            lda #$0F
+0033B7r 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
+0033BAr 1               
+0033BAr 1  28               plp
+0033BBr 1  60               rts
+0033BCr 1               
+0033BCr 1               DMASpriteMirror:
+0033BCr 1  9C 02 21     	stz $2102		; set OAM address to 0
+0033BFr 1  9C 03 21     	stz $2103
+0033C2r 1               
+0033C2r 1  A0 00 04     	LDY #$0400
+0033C5r 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
+0033C8r 1  A0 00 04     	LDY #$0400
+0033CBr 1  8C 02 43     	STY $4302		; source offset
+0033CEr 1  A0 20 02     	LDY #$0220
+0033D1r 1  8C 05 43     	STY $4305		; number of bytes to transfer
+0033D4r 1  A9 7E        	LDA #$7E
+0033D6r 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
+0033D9r 1  A9 01        	LDA #$01
+0033DBr 1  8D 0B 42     	STA $420B		;start DMA transfer
+0033DEr 1  60           	rts
+0033DEr 1               

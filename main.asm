@@ -10,6 +10,7 @@
 .segment "CODE"
 Reset:
 	InitSNES
+	jsl LoadSPC
 	LoadPalette BGPalette, 0, $100
     LoadPalette SpritePalette, $80, $F
 	; Load Tile data to VRAM
