@@ -5,6 +5,7 @@
 .include "ppuMacros.asm"
 .include "sprites.asm"
 .include "art.asm"
+.include "sound.asm"
 
 .segment "CODE"
 Reset:
@@ -28,6 +29,9 @@ Reset:
 	sta scrollY
 	sep #$20
 	.a8
+	
+	lda #$B1
+	sta spriteY
 MainLoop:
 	lda $4219 ;p1 joypad read address
 	bit #JOY_LEFT
@@ -37,8 +41,20 @@ MainLoop:
 	sep #$20
 	dec spriteX
 	dec spriteX
+	
+	lda #$70 ;max sprite priority, mirror sprite
+	sta spriteAttrs
+	
+	inc spriteTileNum
+	inc spriteTileNum
+	lda spriteTileNum
+	cmp #NUM_LARRY_TILES
+	bne NOT_RIGHT
+	lda #$2
+	sta spriteTileNum
 NOT_LEFT:
-
+	lda $4219
+	
 	bit #JOY_RIGHT
 	beq NOT_RIGHT
 	rep #$20
@@ -46,6 +62,9 @@ NOT_LEFT:
 	sep #$20
 	inc spriteX
 	inc spriteX
+	
+	lda #$30
+	sta spriteAttrs ;max sprite priority
 	
 	inc spriteTileNum
 	inc spriteTileNum
@@ -57,23 +76,23 @@ NOT_LEFT:
 NOT_RIGHT:
 	lda $4219
 
-	bit #JOY_UP
-	beq NOT_UP
-	rep #$20
-	dec scrollY
-	sep #$20
-	dec spriteY
-	dec spriteY
-NOT_UP:
+	; bit #JOY_UP
+	; beq NOT_UP
+	; rep #$20
+	; dec scrollY
+	; sep #$20
+	; dec spriteY
+	; dec spriteY
+; NOT_UP:
 
-	bit #JOY_DOWN
-	beq NOT_DOWN
-	rep #$20
-	inc scrollY
-	sep #$20
-	inc spriteY
-	inc spriteY
-NOT_DOWN:
+	; bit #JOY_DOWN
+	; beq NOT_DOWN
+	; rep #$20
+	; inc scrollY
+	; sep #$20
+	; inc spriteY
+	; inc spriteY
+; NOT_DOWN:
 
 	bit #JOY_B
 	beq NOT_B
@@ -107,7 +126,7 @@ SetupVideo:
 	lda #$1
     sta $2105           ; Set Video mode 1, 8x8 tiles
 
-    lda #$02           ; Set BG1's Tile Map offset to $0000 (Word address)
+    lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
     sta $2107           ; And the Tile Map size to 64x64
 
 	lda #$52
@@ -141,4 +160,3 @@ DMASpriteMirror:
 	LDA #$01
 	STA $420B		;start DMA transfer
 	rts
-	

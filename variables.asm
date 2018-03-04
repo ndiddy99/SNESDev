@@ -4,5 +4,6 @@ scrollY = scrollX+2
 spriteX = scrollY+2
 spriteY
 spriteTileNum
+spriteAttrs
 mosaic
 .endenum

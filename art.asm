@@ -6,7 +6,7 @@ lda yPos
 sta $5
 lda tileNum
 sta $6
-LoadSprite #0, $4, $5, $6, #$30, #0, #0
+LoadSprite #0, $4, $5, $6, spriteAttrs, #0, #0
 lda $5 ;add $10 to sprite y pos because second 16x16 sprite is directly below first
 clc
 adc #$10
@@ -16,8 +16,9 @@ lda $6
 clc
 adc #LARRY_OFFSET
 sta $6
-LoadSprite #1, $4, $5, $6, #$30, #0, #0
+LoadSprite #1, $4, $5, $6, spriteAttrs, #0, #0
 .endmacro
+
 
 BGPalette:
 	.INCBIN ".\art\bgtiles.clr"
