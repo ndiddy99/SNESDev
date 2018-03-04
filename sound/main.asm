@@ -1,8 +1,7 @@
 architecture spc700
 
 	origin 0
-	base $200-2
-	dw end-start
+	base $200
 	
 start:
 	clp //clear direct page flag (direct page = $0, not $100

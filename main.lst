@@ -1011,101 +1011,102 @@ Current file: main.asm
 0031DDr 2               .segment "BANK1"
 000000r 2               
 000000r 2               SPCPrg:
-000000r 2  10 29 20 CD  	.incbin ".\sound\sound.bin"
-000004r 2  EF BD E8 00  
-000008r 2  C4 0C C4 1C  
-002912r 2               SPCPrgEnd:
-002912r 2               
-002912r 2               SPC_LENGTH = SPCPrgEnd-SPCPrg
-002912r 2               NUM_SPC_BLOCKS = <SPC_LENGTH/256
-002912r 2               .define copyAddr $0 ;address to copy to (word)
-002912r 2               .define blockIndex $2 ;what block's being copied (byte)
-002912r 2               .define copyIndex $3 ;index within one block (byte)
-002912r 2               .define kick $4 ;current "kick" val
-002912r 2               
-002912r 2               LoadSPC:
-002912r 2  C2 20        	rep #$20
-002914r 2               	.a16
-002914r 2  A9 00 02     	lda #$200
-002917r 2  85 00        	sta copyAddr ;set up copy address
-002919r 2  64 02        	stz blockIndex
-00291Br 2  E2 20        	sep #$20
-00291Dr 2               	.a8
-00291Dr 2  A9 CC        	lda #$cc ;starting kick val
-00291Fr 2  85 04        	sta kick
-002921r 2               
-002921r 2  9C 00 42     	stz $4200
-002924r 2  78           	sei ;disable interrupts, this is kinda time sensitive
-002925r 2               WaitForInit:
-002925r 2  AD 40 21     	lda $2140
-002928r 2  C9 AA        	cmp #$aa ;spc sets reg 0 to aa after it inits
-00292Ar 2  D0 F9        	bne WaitForInit
-00292Cr 2               
-00292Cr 2               CopyLoop:
-00292Cr 2  C2 20        	rep #$20 ;16 bit a
-00292Er 2               	.a16
-00292Er 2  A5 00        	lda copyAddr
-002930r 2  8D 42 21     	sta $2142 ;write destination address
-002933r 2  18           	clc
-002934r 2  69 00 01     	adc #$100
-002937r 2  85 00        	sta copyAddr
-002939r 2  E2 20        	sep #$20
-00293Br 2               	.a8
-00293Br 2               
-00293Br 2  A9 01        	lda #$1
-00293Dr 2  8D 41 21     	sta $2141 ;write command
-002940r 2  A5 04        	lda kick
-002942r 2  8D 40 21     	sta $2140 ;"enable"
-002945r 2               WaitForAck: ;spc returns kick when it's ready to write
-002945r 2  AD 40 21     	lda $2140
-002948r 2  C5 04        	cmp kick
-00294Ar 2  D0 F9        	bne WaitForAck
-00294Cr 2               
-00294Cr 2               CopyBlock: ;copies blocks of 256 bytes
-00294Cr 2  C2 20        	rep #$20 ;16 bit a
-00294Er 2               	.a16
-00294Er 2  A5 02        	lda blockIndex ;because blockIndex is next to copyIndex in memory hopefully
-002950r 2  EB           	xba			   ;this will get the address (look at me, so smart for making blocks 256 bytes)
-002951r 2  AA           	tax
-002952r 2  E2 20        	sep #$20
-002954r 2               	.a8
-002954r 2  BD rr rr     	lda SPCPrg,x
-002957r 2  8D 41 21     	sta $2141
-00295Ar 2  A5 03        	lda copyIndex
-00295Cr 2  8D 40 21     	sta $2140
-00295Fr 2               
-00295Fr 2               WaitReceive:
-00295Fr 2  CD 40 21     	cmp $2140 ;spc mirrors count after receiving data
-002962r 2  D0 FB        	bne WaitReceive
-002964r 2  1A           	inc a
-002965r 2  85 03        	sta copyIndex
-002967r 2  C9 00        	cmp #$0 ;256 bytes in a block
-002969r 2  D0 E1        	bne CopyBlock
-00296Br 2               
-00296Br 2  E6 02        	inc blockIndex
-00296Dr 2  A5 04        	lda kick
-00296Fr 2  18           	clc
-002970r 2  69 02        	adc #$2
-002972r 2  29 7F        	and #$7f ;kick=previous kick "+2 to 127" -ninty
-002974r 2  85 04        	sta kick
-002976r 2  A5 02        	lda blockIndex
-002978r 2  C9 00        	cmp #NUM_SPC_BLOCKS
-00297Ar 2  D0 B0        	bne CopyLoop
-00297Cr 2               
-00297Cr 2  C2 20        	rep #$20
-00297Er 2               	.a16
-00297Er 2  A9 00 02     	lda #$200 ;entry point
-002981r 2  8D 42 21     	sta $2142
-002984r 2  E2 20        	sep #$20
-002986r 2               	.a8
-002986r 2  9C 41 21     	stz $2141 ;start command
-002989r 2  A5 04        	lda kick
-00298Br 2  8D 40 21     	sta $2140
-00298Er 2  58           	cli ;enable interrupts
-00298Fr 2  6B           	rtl
-002990r 2               
-002990r 1               
-002990r 1               .segment "CODE"
+000000r 2  20 CD EF BD  	.incbin ".\sound\sound.bin"
+000004r 2  E8 00 C4 0C  
+000008r 2  C4 1C C4 2C  
+002910r 2               SPCPrgEnd:
+002910r 2               
+002910r 2               SPC_LENGTH = SPCPrgEnd-SPCPrg
+002910r 2               NUM_SPC_BLOCKS = SPC_LENGTH/256
+002910r 2               .define copyAddr $0 ;address to copy to (word)
+002910r 2               .define blockIndex $2 ;what block's being copied (byte)
+002910r 2               .define copyIndex $3 ;index within one block (byte)
+002910r 2               .define kick $4 ;current "kick" val
+002910r 2               
+002910r 2               LoadSPC:
+002910r 2  C2 20        	rep #$20
+002912r 2               	.a16
+002912r 2  A9 29 00     	lda #NUM_SPC_BLOCKS
+002915r 2  A9 00 02     	lda #$200
+002918r 2  85 00        	sta copyAddr ;set up copy address
+00291Ar 2  64 02        	stz blockIndex
+00291Cr 2  E2 20        	sep #$20
+00291Er 2               	.a8
+00291Er 2  A9 CC        	lda #$cc ;starting kick val
+002920r 2  85 04        	sta kick
+002922r 2               
+002922r 2  9C 00 42     	stz $4200
+002925r 2  78           	sei ;disable interrupts, this is kinda time sensitive
+002926r 2               WaitForInit:
+002926r 2  AD 40 21     	lda $2140
+002929r 2  C9 AA        	cmp #$aa ;spc sets reg 0 to aa after it inits
+00292Br 2  D0 F9        	bne WaitForInit
+00292Dr 2               
+00292Dr 2               CopyLoop:
+00292Dr 2  C2 20        	rep #$20 ;16 bit a
+00292Fr 2               	.a16
+00292Fr 2  A5 00        	lda copyAddr
+002931r 2  8D 42 21     	sta $2142 ;write destination address
+002934r 2  18           	clc
+002935r 2  69 00 01     	adc #$100
+002938r 2  85 00        	sta copyAddr
+00293Ar 2  E2 20        	sep #$20
+00293Cr 2               	.a8
+00293Cr 2               
+00293Cr 2  A9 01        	lda #$1
+00293Er 2  8D 41 21     	sta $2141 ;write command
+002941r 2  A5 04        	lda kick
+002943r 2  8D 40 21     	sta $2140 ;"enable"
+002946r 2               WaitForAck: ;spc returns kick when it's ready to write
+002946r 2  AD 40 21     	lda $2140
+002949r 2  C5 04        	cmp kick
+00294Br 2  D0 F9        	bne WaitForAck
+00294Dr 2               
+00294Dr 2               CopyBlock: ;copies blocks of 256 bytes
+00294Dr 2  C2 20        	rep #$20 ;16 bit a
+00294Fr 2               	.a16
+00294Fr 2  A5 02        	lda blockIndex ;because blockIndex is next to copyIndex in memory hopefully
+002951r 2  EB           	xba			   ;this will get the address (look at me, so smart for making blocks 256 bytes)
+002952r 2  AA           	tax
+002953r 2  E2 20        	sep #$20
+002955r 2               	.a8
+002955r 2  BF rr rr rr  	lda f:SPCPrg,x ;specify bank
+002959r 2  8D 41 21     	sta $2141
+00295Cr 2  A5 03        	lda copyIndex
+00295Er 2  8D 40 21     	sta $2140
+002961r 2               
+002961r 2               WaitReceive:
+002961r 2  CD 40 21     	cmp $2140 ;spc mirrors count after receiving data
+002964r 2  D0 FB        	bne WaitReceive
+002966r 2  1A           	inc a
+002967r 2  85 03        	sta copyIndex
+002969r 2  C9 00        	cmp #$0 ;256 bytes in a block
+00296Br 2  D0 E0        	bne CopyBlock
+00296Dr 2               
+00296Dr 2  E6 02        	inc blockIndex
+00296Fr 2  A5 04        	lda kick
+002971r 2  18           	clc
+002972r 2  69 02        	adc #$2
+002974r 2  29 7F        	and #$7f ;kick=previous kick "+2 to 127" -ninty
+002976r 2  85 04        	sta kick
+002978r 2  A5 02        	lda blockIndex
+00297Ar 2  C9 29        	cmp #NUM_SPC_BLOCKS
+00297Cr 2  D0 AF        	bne CopyLoop
+00297Er 2               
+00297Er 2  C2 20        	rep #$20
+002980r 2               	.a16
+002980r 2  A9 00 02     	lda #$200 ;entry point
+002983r 2  8D 42 21     	sta $2142
+002986r 2  E2 20        	sep #$20
+002988r 2               	.a8
+002988r 2  9C 41 21     	stz $2141 ;start command
+00298Br 2  A5 04        	lda kick
+00298Dr 2  8D 40 21     	sta $2140
+002990r 2  58           	cli ;enable interrupts
+002991r 2  6B           	rtl
+002992r 2               
+002992r 1               
+002992r 1               .segment "CODE"
 0031DDr 1               Reset:
 0031DDr 1  78 18 FB C2  	InitSNES
 0031E1r 1  38 A2 FF 1F  

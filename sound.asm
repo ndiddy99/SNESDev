@@ -5,7 +5,7 @@ SPCPrg:
 SPCPrgEnd:
 
 SPC_LENGTH = SPCPrgEnd-SPCPrg
-NUM_SPC_BLOCKS = <SPC_LENGTH/256
+NUM_SPC_BLOCKS = SPC_LENGTH/256
 .define copyAddr $0 ;address to copy to (word)
 .define blockIndex $2 ;what block's being copied (byte)
 .define copyIndex $3 ;index within one block (byte)
@@ -14,6 +14,7 @@ NUM_SPC_BLOCKS = <SPC_LENGTH/256
 LoadSPC:
 	rep #$20
 	.a16
+	lda #NUM_SPC_BLOCKS
 	lda #$200
 	sta copyAddr ;set up copy address
 	stz blockIndex
@@ -57,7 +58,7 @@ CopyBlock: ;copies blocks of 256 bytes
 	tax
 	sep #$20
 	.a8
-	lda SPCPrg,x
+	lda f:SPCPrg,x ;specify bank
 	sta $2141
 	lda copyIndex
 	sta $2140
