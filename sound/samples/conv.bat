@@ -1,1 +1,1 @@
-..\tools\brr_encoder.exe -g nyaa.wav nyaa.brr
+..\tools\brr_encoder.exe -g -l nyaa.wav nyaa.brr
