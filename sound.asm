@@ -7,8 +7,8 @@ SPCPrgEnd:
 SPC_LENGTH = SPCPrgEnd-SPCPrg
 NUM_SPC_BLOCKS = SPC_LENGTH/256
 .define copyAddr $0 ;address to copy to (word)
-.define blockIndex $2 ;what block's being copied (byte)
-.define copyIndex $3 ;index within one block (byte)
+.define copyIndex $2 ;index within one block (byte)
+.define blockIndex $3 ;what block's being copied (byte)
 .define kick $4 ;current "kick" val
 
 LoadSPC:
@@ -53,9 +53,8 @@ WaitForAck: ;spc returns kick when it's ready to write
 CopyBlock: ;copies blocks of 256 bytes 
 	rep #$20 ;16 bit a
 	.a16
-	lda blockIndex ;because blockIndex is next to copyIndex in memory hopefully 
-	xba			   ;this will get the address (look at me, so smart for making blocks 256 bytes)
-	tax
+	lda copyIndex ;because blockIndex is next to copyIndex in memory hopefully
+	tax	;this will get the address (look at me, so smart for making blocks 256 bytes)
 	sep #$20
 	.a8
 	lda f:SPCPrg,x ;specify bank

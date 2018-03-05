@@ -1,5 +1,6 @@
 .macro HandleLarry xPos, yPos, tileNum
 ;parameters: pointer to xpos, pointer to ypos, pointer to tile number
+ClearMem $0, #$06
 lda xPos
 sta $4
 lda yPos
@@ -18,7 +19,6 @@ adc #LARRY_OFFSET
 sta $6
 LoadSprite #1, $4, $5, $6, spriteAttrs, #0, #0
 .endmacro
-
 
 BGPalette:
 	.INCBIN ".\art\bgtiles.clr"

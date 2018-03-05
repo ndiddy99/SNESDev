@@ -54,6 +54,18 @@
 	sta $2106
 .endmacro
 
+.macro ClearMem start, range
+;start-address to start clearing
+;range-num of bytes to clear
+	ldx #$0
+	@loop:
+	stz start,x
+	inx
+	cpx range
+	bne @loop
+.endmacro
+	
+
 .segment "CODE"
 DMAPalette: 
 ;a- data bank

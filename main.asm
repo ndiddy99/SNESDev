@@ -111,10 +111,17 @@ VBlank:
 	phy
 	jsr DMASpriteMirror
 	SetMosaic mosaic
+	
+	lda #$20
+	sta $2140
+	lda $2141
+	sta $a
+	
 	lda $4210 ;clear vblank flag
 	ply
 	plx
 	pla
+	
 	rti
 	
 SetupVideo:
