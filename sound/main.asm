@@ -5,63 +5,37 @@ macro dspWrite(variable reg,variable val) {
 	sta $f3
 }
 
+macro dspClear(variable reg) {
+	lda #reg
+	sta $f2
+	lda #$00
+	sta $f3
+}
+
 architecture spc700
 
 	origin 0
 	base $200
 	
 start:
-	clp //clear direct page flag (direct page = $0, not $100
+	clp //clear direct page flag (direct page = $0, not $100)
 	ldx #$ef
 	txs //set up stack pointer
 	
-	ldx #$00
+	dspClear($2c) //zero echo vol
+	dspClear($3c)
 	
-	lda #$2c //init registers
-	sta $f2 //zero echo vol
-	stx $f3
+	dspClear($4c) //zero key on
+	dspClear($5c) //zero key off
+	dspClear($6c) //zero flag register
+	dspClear($0d) //zero echo feedback vol
+	dspClear($2d) //disable pitch modulation
 	
-	lda #$3c
-	sta $f2
-	stx $f3
+	dspClear($3d) //disable noise
+	dspClear($4d) //disable noise
+	dspClear($05) //direct gain
+	dspClear($06) //direct gain
 	
-	lda #$4c //zero key on
-	sta $f2
-	stx $f3
-	
-	
-	lda #$5c //zero key off
-	sta $f2
-	stx $f3
-	
-	lda #$6c //zero flag register
-	sta $f2
-	stx $f3
-	
-	lda #$0d //zero echo feedback vol
-	sta $f2
-	stx $f3
-
-	lda #$2d //disable pitch modulation
-	sta $f2
-	stx $f3
-	
-	lda #$3d //disable noise
-	sta $f2
-	stx $f3
-
-	lda #$4d //disable noise
-	sta $f2
-	stx $f3
-	
-	lda #$05 //direct gain
-	sta $f2
-	stx $f3
-	
-	lda #$06
-	sta $f2
-	stx $f3
-
 	dspWrite($07,$3f) //channel 0 gain
 	dspWrite($00,$7f) //channel 0 vol
 	dspWrite($01,$7f) 
@@ -82,7 +56,11 @@ loop:
 	sta $f5 //i/o port 1
 jmp loop
 
-	origin $400
+	origin $200
+	base $400
+Directory:
+	dw Sample
+	dw Sample
 Sample:
 	insert ".\samples\nyaa.brr"
 EndSample:
