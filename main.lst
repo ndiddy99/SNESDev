@@ -327,6 +327,7 @@ Current file: main.asm
 000117r 2               spriteY
 000117r 2               spriteTileNum
 000117r 2               spriteAttrs
+000117r 2               animDelay
 000117r 2               mosaic
 000117r 2               .endenum
 000117r 2               
@@ -1026,98 +1027,98 @@ Current file: main.asm
 000000r 2  20 CD EF BD  	.incbin ".\sound\sound.bin"
 000004r 2  E8 2C C4 F2  
 000008r 2  E8 00 C4 F3  
-002AE7r 2               SPCPrgEnd:
-002AE7r 2               
-002AE7r 2               SPC_LENGTH = SPCPrgEnd-SPCPrg
-002AE7r 2               NUM_SPC_BLOCKS = SPC_LENGTH/256
-002AE7r 2               .define copyAddr $0 ;address to copy to (word)
-002AE7r 2               .define copyIndex $2 ;index within one block (byte)
-002AE7r 2               .define blockIndex $3 ;what block's being copied (byte)
-002AE7r 2               .define kick $4 ;current "kick" val
-002AE7r 2               
-002AE7r 2               LoadSPC:
-002AE7r 2  C2 20        	rep #$20
-002AE9r 2               	.a16
-002AE9r 2  A9 2A 00     	lda #NUM_SPC_BLOCKS
-002AECr 2  A9 00 02     	lda #$200
-002AEFr 2  85 00        	sta copyAddr ;set up copy address
-002AF1r 2  64 03        	stz blockIndex
-002AF3r 2  E2 20        	sep #$20
-002AF5r 2               	.a8
-002AF5r 2  A9 CC        	lda #$cc ;starting kick val
-002AF7r 2  85 04        	sta kick
-002AF9r 2               
-002AF9r 2  9C 00 42     	stz $4200
-002AFCr 2  78           	sei ;disable interrupts, this is kinda time sensitive
-002AFDr 2               WaitForInit:
-002AFDr 2  AD 40 21     	lda $2140
-002B00r 2  C9 AA        	cmp #$aa ;spc sets reg 0 to aa after it inits
-002B02r 2  D0 F9        	bne WaitForInit
-002B04r 2               
-002B04r 2               CopyLoop:
-002B04r 2  C2 20        	rep #$20 ;16 bit a
-002B06r 2               	.a16
-002B06r 2  A5 00        	lda copyAddr
-002B08r 2  8D 42 21     	sta $2142 ;write destination address
-002B0Br 2  18           	clc
-002B0Cr 2  69 00 01     	adc #$100
-002B0Fr 2  85 00        	sta copyAddr
-002B11r 2  E2 20        	sep #$20
-002B13r 2               	.a8
-002B13r 2               
-002B13r 2  A9 01        	lda #$1
-002B15r 2  8D 41 21     	sta $2141 ;write command
-002B18r 2  A5 04        	lda kick
-002B1Ar 2  8D 40 21     	sta $2140 ;"enable"
-002B1Dr 2               WaitForAck: ;spc returns kick when it's ready to write
-002B1Dr 2  AD 40 21     	lda $2140
-002B20r 2  C5 04        	cmp kick
-002B22r 2  D0 F9        	bne WaitForAck
-002B24r 2               
-002B24r 2               CopyBlock: ;copies blocks of 256 bytes
-002B24r 2  C2 20        	rep #$20 ;16 bit a
-002B26r 2               	.a16
-002B26r 2  A5 02        	lda copyIndex ;because blockIndex is next to copyIndex in memory hopefully
-002B28r 2  AA           	tax	;this will get the address (look at me, so smart for making blocks 256 bytes)
-002B29r 2  E2 20        	sep #$20
-002B2Br 2               	.a8
-002B2Br 2  BF rr rr rr  	lda f:SPCPrg,x ;specify bank
-002B2Fr 2  8D 41 21     	sta $2141
-002B32r 2  A5 02        	lda copyIndex
-002B34r 2  8D 40 21     	sta $2140
-002B37r 2               
-002B37r 2               WaitReceive:
-002B37r 2  CD 40 21     	cmp $2140 ;spc mirrors count after receiving data
-002B3Ar 2  D0 FB        	bne WaitReceive
-002B3Cr 2  1A           	inc a
-002B3Dr 2  85 02        	sta copyIndex
-002B3Fr 2  C9 00        	cmp #$0 ;256 bytes in a block
-002B41r 2  D0 E1        	bne CopyBlock
-002B43r 2               
-002B43r 2  E6 03        	inc blockIndex
-002B45r 2  A5 04        	lda kick
-002B47r 2  18           	clc
-002B48r 2  69 02        	adc #$2
-002B4Ar 2  29 7F        	and #$7f ;kick=previous kick "+2 to 127" -ninty
-002B4Cr 2  85 04        	sta kick
-002B4Er 2  A5 03        	lda blockIndex
-002B50r 2  C9 2A        	cmp #NUM_SPC_BLOCKS
-002B52r 2  D0 B0        	bne CopyLoop
-002B54r 2               
-002B54r 2  C2 20        	rep #$20
-002B56r 2               	.a16
-002B56r 2  A9 00 02     	lda #$200 ;entry point
-002B59r 2  8D 42 21     	sta $2142
-002B5Cr 2  E2 20        	sep #$20
-002B5Er 2               	.a8
-002B5Er 2  9C 41 21     	stz $2141 ;start command
-002B61r 2  A5 04        	lda kick
-002B63r 2  8D 40 21     	sta $2140
-002B66r 2  58           	cli ;enable interrupts
-002B67r 2  6B           	rtl
-002B68r 2               
-002B68r 1               
-002B68r 1               .segment "CODE"
+00563Fr 2               SPCPrgEnd:
+00563Fr 2               
+00563Fr 2               SPC_LENGTH = SPCPrgEnd-SPCPrg
+00563Fr 2               NUM_SPC_BLOCKS = SPC_LENGTH/256
+00563Fr 2               .define copyAddr $0 ;address to copy to (word)
+00563Fr 2               .define copyIndex $2 ;index within one block (byte)
+00563Fr 2               .define blockIndex $3 ;what block's being copied (byte)
+00563Fr 2               .define kick $4 ;current "kick" val
+00563Fr 2               
+00563Fr 2               LoadSPC:
+00563Fr 2  C2 20        	rep #$20
+005641r 2               	.a16
+005641r 2  A9 56 00     	lda #NUM_SPC_BLOCKS
+005644r 2  A9 00 02     	lda #$200
+005647r 2  85 00        	sta copyAddr ;set up copy address
+005649r 2  64 03        	stz blockIndex
+00564Br 2  E2 20        	sep #$20
+00564Dr 2               	.a8
+00564Dr 2  A9 CC        	lda #$cc ;starting kick val
+00564Fr 2  85 04        	sta kick
+005651r 2               
+005651r 2  9C 00 42     	stz $4200
+005654r 2  78           	sei ;disable interrupts, this is kinda time sensitive
+005655r 2               WaitForInit:
+005655r 2  AD 40 21     	lda $2140
+005658r 2  C9 AA        	cmp #$aa ;spc sets reg 0 to aa after it inits
+00565Ar 2  D0 F9        	bne WaitForInit
+00565Cr 2               
+00565Cr 2               CopyLoop:
+00565Cr 2  C2 20        	rep #$20 ;16 bit a
+00565Er 2               	.a16
+00565Er 2  A5 00        	lda copyAddr
+005660r 2  8D 42 21     	sta $2142 ;write destination address
+005663r 2  18           	clc
+005664r 2  69 00 01     	adc #$100
+005667r 2  85 00        	sta copyAddr
+005669r 2  E2 20        	sep #$20
+00566Br 2               	.a8
+00566Br 2               
+00566Br 2  A9 01        	lda #$1
+00566Dr 2  8D 41 21     	sta $2141 ;write command
+005670r 2  A5 04        	lda kick
+005672r 2  8D 40 21     	sta $2140 ;"enable"
+005675r 2               WaitForAck: ;spc returns kick when it's ready to write
+005675r 2  AD 40 21     	lda $2140
+005678r 2  C5 04        	cmp kick
+00567Ar 2  D0 F9        	bne WaitForAck
+00567Cr 2               
+00567Cr 2               CopyBlock: ;copies blocks of 256 bytes
+00567Cr 2  C2 20        	rep #$20 ;16 bit a
+00567Er 2               	.a16
+00567Er 2  A5 02        	lda copyIndex ;because blockIndex is next to copyIndex in memory hopefully
+005680r 2  AA           	tax	;this will get the address (look at me, so smart for making blocks 256 bytes)
+005681r 2  E2 20        	sep #$20
+005683r 2               	.a8
+005683r 2  BF rr rr rr  	lda f:SPCPrg,x ;specify bank
+005687r 2  8D 41 21     	sta $2141
+00568Ar 2  A5 02        	lda copyIndex
+00568Cr 2  8D 40 21     	sta $2140
+00568Fr 2               
+00568Fr 2               WaitReceive:
+00568Fr 2  CD 40 21     	cmp $2140 ;spc mirrors count after receiving data
+005692r 2  D0 FB        	bne WaitReceive
+005694r 2  1A           	inc a
+005695r 2  85 02        	sta copyIndex
+005697r 2  C9 00        	cmp #$0 ;256 bytes in a block
+005699r 2  D0 E1        	bne CopyBlock
+00569Br 2               
+00569Br 2  E6 03        	inc blockIndex
+00569Dr 2  A5 04        	lda kick
+00569Fr 2  18           	clc
+0056A0r 2  69 02        	adc #$2
+0056A2r 2  29 7F        	and #$7f ;kick=previous kick "+2 to 127" -ninty
+0056A4r 2  85 04        	sta kick
+0056A6r 2  A5 03        	lda blockIndex
+0056A8r 2  C9 56        	cmp #NUM_SPC_BLOCKS
+0056AAr 2  D0 B0        	bne CopyLoop
+0056ACr 2               
+0056ACr 2  C2 20        	rep #$20
+0056AEr 2               	.a16
+0056AEr 2  A9 00 02     	lda #$200 ;entry point
+0056B1r 2  8D 42 21     	sta $2142
+0056B4r 2  E2 20        	sep #$20
+0056B6r 2               	.a8
+0056B6r 2  9C 41 21     	stz $2141 ;start command
+0056B9r 2  A5 04        	lda kick
+0056BBr 2  8D 40 21     	sta $2140
+0056BEr 2  58           	cli ;enable interrupts
+0056BFr 2  6B           	rtl
+0056C0r 2               
+0056C0r 1               
+0056C0r 1               .segment "CODE"
 0031DDr 1               Reset:
 0031DDr 1  78 18 FB C2  	InitSNES
 0031E1r 1  38 A2 FF 1F  
@@ -1168,9 +1169,10 @@ Current file: main.asm
 00327Br 1  A9 70        	lda #$70 ;max sprite priority, mirror sprite
 00327Dr 1  85 17        	sta spriteAttrs
 00327Fr 1               
-00327Fr 1  E6 16        	inc spriteTileNum
-003281r 1  E6 16        	inc spriteTileNum
-003283r 1  A5 16        	lda spriteTileNum
+00327Fr 1  A5 16        	lda spriteTileNum
+003281r 1  1A           	ina
+003282r 1  1A           	ina
+003283r 1  85 16        	sta spriteTileNum
 003285r 1  C9 0E        	cmp #NUM_LARRY_TILES
 003287r 1  D0 27        	bne NOT_RIGHT
 003289r 1  A9 02        	lda #$2
@@ -1189,9 +1191,10 @@ Current file: main.asm
 00329Er 1  A9 30        	lda #$30
 0032A0r 1  85 17        	sta spriteAttrs ;max sprite priority
 0032A2r 1               
-0032A2r 1  E6 16        	inc spriteTileNum
-0032A4r 1  E6 16        	inc spriteTileNum
-0032A6r 1  A5 16        	lda spriteTileNum
+0032A2r 1  A5 16        	lda spriteTileNum
+0032A4r 1  1A           	ina
+0032A5r 1  1A           	ina
+0032A6r 1  85 16        	sta spriteTileNum
 0032A8r 1  C9 0E        	cmp #NUM_LARRY_TILES
 0032AAr 1  D0 04        	bne NOT_RIGHT
 0032ACr 1  A9 02        	lda #$2
@@ -1219,7 +1222,7 @@ Current file: main.asm
 0032B3r 1               
 0032B3r 1  89 80        	bit #JOY_B
 0032B5r 1  F0 02        	beq NOT_B
-0032B7r 1  E6 18        	inc mosaic
+0032B7r 1  E6 19        	inc mosaic
 0032B9r 1               NOT_B:
 0032B9r 1  C2 20 A5 10  	SetHScroll scrollX
 0032BDr 1  E2 20 8D 0D  
@@ -1238,7 +1241,7 @@ Current file: main.asm
 00337Fr 1  DA           	phx ;fucking up
 003380r 1  5A           	phy
 003381r 1  20 rr rr     	jsr DMASpriteMirror
-003384r 1  A5 18 29 0F  	SetMosaic mosaic
+003384r 1  A5 19 29 0F  	SetMosaic mosaic
 003388r 1  18 6A 6A 6A  
 00338Cr 1  09 01 8D 06  
 003391r 1  AD 10 42     	lda $4210 ;clear vblank flag

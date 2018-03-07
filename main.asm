@@ -46,9 +46,10 @@ MainLoop:
 	lda #$70 ;max sprite priority, mirror sprite
 	sta spriteAttrs
 	
-	inc spriteTileNum
-	inc spriteTileNum
 	lda spriteTileNum
+	ina
+	ina
+	sta spriteTileNum
 	cmp #NUM_LARRY_TILES
 	bne NOT_RIGHT
 	lda #$2
@@ -67,9 +68,10 @@ NOT_LEFT:
 	lda #$30
 	sta spriteAttrs ;max sprite priority
 	
-	inc spriteTileNum
-	inc spriteTileNum
 	lda spriteTileNum
+	ina
+	ina
+	sta spriteTileNum
 	cmp #NUM_LARRY_TILES
 	bne NOT_RIGHT
 	lda #$2
