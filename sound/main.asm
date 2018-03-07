@@ -30,6 +30,11 @@ macro dspRead(variable reg) {
 	base $200
 
 //defines for variables
+variable c0Pitch = $10 
+variable c0Inst = $11 //stands for instrument
+variable keyOn = $12 //1=kon (not the anime)
+variable keyOff = $13 //1 = koff
+variable numTimerTicks = $14
 
 	
 start:
@@ -54,7 +59,7 @@ start:
 	dspWrite($03,$10) //pitch: 32000 hz
 	dspWrite($02,$00) 
 	dspWrite($5d,$04) //set dir to $400
-	dspWrite($04,$01) //select instrument 0
+	dspWrite($04,$00) //select instrument 0
 	
 	dspWrite($4c,$01) //channel 0 k on
 	
@@ -63,22 +68,40 @@ start:
 	
 	lda #$01
 	sta $f1 //enable timer 0
-Main:
-	// lda $fd
-	// beq Main
-	// inc $10
-	// cmp #$FF
-	// dspWrite($04,$01)
-	// bne Main
-//	dspWrite($4c,$00) //channel 0 k off
-	dspRead($7c)
-	cmp #$01
-	bne Main
-	dspWrite($4c,$01)
 	
+	ldx #$00 //set up counter
+	
+variable SONG_LENGTH = EndSong - Song
+Main:
+	lda $fd //only run code when timer's done a tick
+	beq Main
+	inc numTimerTicks
+	lda Song,x
+	cmp numTimerTicks
+	bne Main
+	lda #$00
+	sta numTimerTicks
+	inx
+	lda Song,x
+	sta c0Pitch
+	inx
+	lda Song,x
+	sta c0Inst
+	txa
+	cmp #SONG_LENGTH
+	bne DSPWrites
+	ldx #$00
+	
+DSPWrites:
+	dspWritePointer($03,c0Pitch)
+	dspWritePointer($04,c0Inst)
 	jmp Main
 	
+Song: //format: duration (timer ticks), pitch, instrument
+	db $50,$10,$00
+EndSong:
 	
+
 	origin $200
 	base $400
 Directory:
@@ -87,7 +110,7 @@ Directory:
 	dw Cymbal
 	dw Cymbal
 	dw Roland
-	dw Roland+3000
+	dw Roland
 Nyaa:
 	insert ".\samples\nyaa.brr"
 Cymbal:
