@@ -61,7 +61,7 @@ start:
 	dspWrite($5d,$04) //set dir to $400
 	dspWrite($04,$00) //select instrument 0
 	
-	dspWrite($4c,$01) //channel 0 k on
+	//dspWrite($4c,$01) //channel 0 k on
 	
 	lda #$20 //timer 0 divider around 240 hz
 	sta $fa
@@ -77,7 +77,7 @@ Main:
 	beq Main
 	inc numTimerTicks
 	lda Song,x
-	cmp numTimerTicks
+	cmp numTimerTicks 
 	bne Main
 	lda #$00
 	sta numTimerTicks
@@ -95,10 +95,18 @@ Main:
 DSPWrites:
 	dspWritePointer($03,c0Pitch)
 	dspWritePointer($04,c0Inst)
+	dspWrite($4c,$01) //keyon
+	dspWrite($5c,$00) //keyon
+	inx
 	jmp Main
 	
 Song: //format: duration (timer ticks), pitch, instrument
+	db $50,$20,$01
+	db $50,$1a,$01
+	db $50,$10,$01
+	db $50,$1a,$01
 	db $50,$10,$00
+	
 EndSong:
 	
 
@@ -110,12 +118,11 @@ Directory:
 	dw Cymbal
 	dw Cymbal
 	dw Roland
-	dw Roland
+	dw Roland+$a8c
 Nyaa:
 	insert ".\samples\nyaa.brr"
 Cymbal:
 	insert ".\samples\cymbal.brr"
 Roland:
 	insert ".\samples\roland.brr"
-
 end:
