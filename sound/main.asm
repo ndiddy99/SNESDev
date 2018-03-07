@@ -32,10 +32,7 @@ macro dspRead(variable reg) {
 //defines for variables
 variable c0Pitch = $10 
 variable c0Inst = $11 //stands for instrument
-variable keyOn = $12 //1=kon (not the anime)
-variable keyOff = $13 //1 = koff
-variable numTimerTicks = $14
-
+variable numTimerTicks = $12
 	
 start:
 	clp //clear direct page flag (direct page = $0, not $100)
@@ -73,39 +70,43 @@ start:
 	
 variable SONG_LENGTH = EndSong - Song
 Main:
-	lda $fd //only run code when timer's done a tick
-	beq Main
-	inc numTimerTicks
-	lda Song,x
-	cmp numTimerTicks 
-	bne Main
-	lda #$00
-	sta numTimerTicks
-	inx
 	lda Song,x
 	sta c0Pitch
 	inx
 	lda Song,x
 	sta c0Inst
+	jsr DSPWrites //write dsp vals
+	inx //x points to "note" duration
+TimerWait:
+	lda $fd //wait for timer to tick
+	beq TimerWait
+	inc numTimerTicks
+	lda Song,x
+	cmp numTimerTicks //if number of timer ticks is greater than/equal to 
+	bne TimerWait		//song data, continue, otherwise wait 
+	lda #$00
+	sta numTimerTicks
+	inx
 	txa
-	cmp #SONG_LENGTH
-	bne DSPWrites
+	cmp #SONG_LENGTH //if song length < x, loop song
+	bcc Main
 	ldx #$00
+	jmp Main
 	
 DSPWrites:
 	dspWritePointer($03,c0Pitch)
 	dspWritePointer($04,c0Inst)
 	dspWrite($4c,$01) //keyon
 	dspWrite($5c,$00) //keyon
-	inx
-	jmp Main
+	rts
 	
-Song: //format: duration (timer ticks), pitch, instrument
-	db $50,$20,$01
-	db $50,$1a,$01
-	db $50,$10,$01
-	db $50,$1a,$01
-	db $50,$10,$00
+Song: //format: pitch, instrument, duration (timer ticks)
+	db $12,$00,$50
+	db $11,$00,$50
+	db $11,$00,$50
+	db $0e,$00,$50
+	db $12,$00,$20
+	db $14,$00,$20
 	
 EndSong:
 	
@@ -125,4 +126,5 @@ Cymbal:
 	insert ".\samples\cymbal.brr"
 Roland:
 	insert ".\samples\roland.brr"
+
 end:
