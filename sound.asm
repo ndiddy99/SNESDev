@@ -12,6 +12,9 @@ NUM_SPC_BLOCKS = SPC_LENGTH/256
 .define kick $4 ;current "kick" val
 
 LoadSPC:
+	phb
+	php
+	
 	rep #$20
 	.a16
 	lda #NUM_SPC_BLOCKS
@@ -67,7 +70,7 @@ WaitReceive:
 	bne WaitReceive
 	inc a
 	sta copyIndex
-	cmp #$0 ;256 bytes in a block
+	cmp #$00 ;256 bytes in a block
 	bne CopyBlock
 	
 	inc blockIndex
@@ -90,4 +93,7 @@ WaitReceive:
 	lda kick
 	sta $2140
 	cli ;enable interrupts
+	ClearMem $0, #$06 ;clear memory used by this function
+	plp
+	plb
 	rtl

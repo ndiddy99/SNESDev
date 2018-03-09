@@ -101,13 +101,11 @@ DSPWrites:
 	rts
 	
 Song: //format: pitch, instrument, duration (timer ticks)
-	db $12,$00,$50
-	db $11,$00,$50
-	db $11,$00,$50
-	db $0e,$00,$50
-	db $12,$00,$20
-	db $14,$00,$20
-	
+	db $10,$01,$20
+	db $10,$01,$50
+	db $0f,$01,$40
+	db $09,$01,$70
+	db $09,$02,$ff
 EndSong:
 	
 
@@ -119,12 +117,10 @@ Directory:
 	dw Cymbal
 	dw Cymbal
 	dw Roland
-	dw Roland+$a8c
+	dw Roland
 Nyaa:
 	insert ".\samples\nyaa.brr"
 Cymbal:
 	insert ".\samples\cymbal.brr"
 Roland:
 	insert ".\samples\roland.brr"
-
-end:

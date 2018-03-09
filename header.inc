@@ -19,10 +19,23 @@
 ;cop,brk,abort,nmi,reset,irq
 ;cop,abort,nmi,res,brk,irqbrk
 .segment "VECTORS"
-    .word 0, 0, EmptyHandler, EmptyHandler, EmptyHandler, VBlank, Reset, EmptyHandler
-    .word 0, 0, EmptyHandler, EmptyHandler, VBlank, EmptyHandler, Reset, EmptyHandler
+    .word 0, 0, EmptyHandler0, EmptyHandler1, EmptyHandler2, VBlank, Reset, EmptyHandler3
+    .word 0, 0, EmptyHandler4, EmptyHandler5, VBlank, EmptyHandler6, Reset, EmptyHandler7
 	
 .segment "CODE"
-EmptyHandler:
+EmptyHandler0:
 	rti
-	
+EmptyHandler1:
+	rti
+EmptyHandler2:
+	rti
+EmptyHandler3:
+	rti
+EmptyHandler4:
+	rti
+EmptyHandler5:
+	rti
+EmptyHandler6:
+	rti
+EmptyHandler7:
+	rti

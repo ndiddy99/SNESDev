@@ -1,6 +1,5 @@
 .macro HandleLarry xPos, yPos, tileNum
 ;parameters: pointer to xpos, pointer to ypos, pointer to tile number
-ClearMem $0, #$06
 lda xPos
 sta $4
 lda yPos

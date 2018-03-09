@@ -13,20 +13,21 @@ Reset:
 	jsl LoadSPC
 	LoadPalette BGPalette, 0, $100
     LoadPalette SpritePalette, $80, $F
-	; Load Tile data to VRAM
+	; ; Load Tile data to VRAM
     LoadBlockToVRAM BGTiles, $2000, $0040	; 2 tiles, 2bpp, = 32 bytes
 	LoadBlockToVRAM LarryTiles, $6000, $2000 ;16x16, 4bpp=128 bytes
 	LoadBlockToVRAM BGTilemap, $0000, $2000
 	
-    ; Setup Video modes and other stuff, then turn on the screen
+    ; ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
 	jsr InitSprites
 	lda #$81
 	sta $4200 ;enable vblank interrupt and joypad read
+	lda #$00
 	
 	rep #$20
 	.a16
-	lda #$11B ;default scroll pos
+	lda #$11b
 	sta scrollY
 	sep #$20
 	.a8
@@ -79,23 +80,23 @@ NOT_LEFT:
 NOT_RIGHT:
 	lda $4219
 
-	; bit #JOY_UP
-	; beq NOT_UP
-	; rep #$20
-	; dec scrollY
-	; sep #$20
-	; dec spriteY
-	; dec spriteY
-; NOT_UP:
+	bit #JOY_UP
+	beq NOT_UP
+	rep #$20
+	dec scrollY
+	sep #$20
+	dec spriteY
+	dec spriteY
+NOT_UP:
 
-	; bit #JOY_DOWN
-	; beq NOT_DOWN
-	; rep #$20
-	; inc scrollY
-	; sep #$20
-	; inc spriteY
-	; inc spriteY
-; NOT_DOWN:
+	bit #JOY_DOWN
+	beq NOT_DOWN
+	rep #$20
+	inc scrollY
+	sep #$20
+	inc spriteY
+	inc spriteY
+NOT_DOWN:
 
 	bit #JOY_B
 	beq NOT_B
