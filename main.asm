@@ -5,6 +5,7 @@
 .include "ppuMacros.asm"
 .include "sprites.asm"
 .include "art.asm"
+.include "larry.asm"
 .include "sound.asm"
 
 .segment "CODE"
@@ -13,18 +14,18 @@ Reset:
 	jsl LoadSPC
 	LoadPalette BGPalette, 0, $100
     LoadPalette SpritePalette, $80, $F
-	; ; Load Tile data to VRAM
+	; Load Tile data to VRAM
     LoadBlockToVRAM BGTiles, $2000, $0040	; 2 tiles, 2bpp, = 32 bytes
 	LoadBlockToVRAM LarryTiles, $6000, $2000 ;16x16, 4bpp=128 bytes
 	LoadBlockToVRAM BGTilemap, $0000, $2000
 	
-    ; ; Setup Video modes and other stuff, then turn on the screen
+    ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
 	jsr InitSprites
 	lda #$81
 	sta $4200 ;enable vblank interrupt and joypad read
-	lda #$00
-	
+	lda #$00 ;idk why but sometimes spc writes crash the cpu without this line, at least on no$sns
+	;did a bit more debugging, looks like it's a conflict b/t loading larrytiles and bgtilemap to vram
 	rep #$20
 	.a16
 	lda #$11b
@@ -35,73 +36,102 @@ Reset:
 	lda #$B1
 	sta spriteY
 MainLoop:
-	lda $4219 ;p1 joypad read address
-	bit #JOY_LEFT
-	beq NOT_LEFT
-	rep #$20
-	dec scrollX
-	sep #$20
-	dec spriteX
-	dec spriteX
-	
-	lda #$70 ;max sprite priority, mirror sprite
-	sta spriteAttrs
-	
-	lda spriteTileNum
-	ina
-	ina
-	sta spriteTileNum
-	cmp #NUM_LARRY_TILES
-	bne NOT_RIGHT
-	lda #$2
-	sta spriteTileNum
-NOT_LEFT:
-	lda $4219
-	
+	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
 	bit #JOY_RIGHT
-	beq NOT_RIGHT
-	rep #$20
-	inc scrollX
-	sep #$20
-	inc spriteX
-	inc spriteX
+	beq AssignRightReleased ;if it is still being pressed, state=RIGHT_PRESSED
+	lda #STATE_RIGHT_PRESSED
+	sta playerState
+	jmp EndRightAssign
 	
-	lda #$30
-	sta spriteAttrs ;max sprite priority
+AssignRightReleased:
+	lda playerState
+	bit #STATE_RIGHT_PRESSED ;was right pressed last frame?
+	beq EndRightAssign ;if no, skip
+	lda #STATE_RIGHT_RELEASED
+	sta playerState
 	
-	lda spriteTileNum
-	ina
-	ina
-	sta spriteTileNum
-	cmp #NUM_LARRY_TILES
-	bne NOT_RIGHT
-	lda #$2
-	sta spriteTileNum
-NOT_RIGHT:
-	lda $4219
+EndRightAssign:
 
-	bit #JOY_UP
-	beq NOT_UP
-	rep #$20
-	dec scrollY
-	sep #$20
-	dec spriteY
-	dec spriteY
-NOT_UP:
+EndStateAssigns:
+	
+	
+	; bit #JOY_LEFT
+	; beq NOT_LEFT
+	; rep #$20
+	; dec scrollX
+	; sep #$20
+	; dec spriteX
+	; dec spriteX
+	
+	; lda #$70 ;max sprite priority, mirror sprite
+	; sta spriteAttrs
+	
+	; lda spriteTileNum
+	; ina
+	; ina
+	; sta spriteTileNum
+	; cmp #NUM_LARRY_TILES
+	; bne NOT_RIGHT
+	; lda #$2
+	; sta spriteTileNum
+; NOT_LEFT:
+	; lda $4219
+	
+	; bit #JOY_RIGHT
+	; beq NOT_RIGHT
+	; rep #$20
+	; inc scrollX
+	; sep #$20
+	
+	; lda spriteSpeed
+	; cmp #MAX_LARRY_SPEED
+	; bcs DontAdd ;if speed is less than max speed, add
+	; clc
+	; adc #LARRY_ACCEL
+	; sta spriteSpeed
+; DontAdd:
+	; lda spriteX
+	; clc
+	; adc spriteSpeed
+	; sta spriteX
+	
+	; lda #$30
+	; sta spriteAttrs ;max sprite priority
+	
+	; lda spriteTileNum
+	; ina
+	; ina
+	; sta spriteTileNum
+	; cmp #NUM_LARRY_TILES
+	; bne NOT_RIGHT
+	; lda #$2
+	; sta spriteTileNum
+	
+; NOT_RIGHT:
+	; lda $4219
 
-	bit #JOY_DOWN
-	beq NOT_DOWN
-	rep #$20
-	inc scrollY
-	sep #$20
-	inc spriteY
-	inc spriteY
-NOT_DOWN:
+	; ; bit #JOY_UP
+	; ; beq NOT_UP
+	; ; rep #$20
+	; ; dec scrollY
+	; ; sep #$20
+	; ; dec spriteY
+	; ; dec spriteY
+; ; NOT_UP:
 
-	bit #JOY_B
-	beq NOT_B
-	inc mosaic
-NOT_B:
+	; ; bit #JOY_DOWN
+	; ; beq NOT_DOWN
+	; ; rep #$20
+	; ; inc scrollY
+	; ; sep #$20
+	; ; inc spriteY
+	; ; inc spriteY
+; ; NOT_DOWN:
+
+	; bit #JOY_B
+	; beq NOT_B
+	; inc mosaic
+; NOT_B:
 	SetHScroll scrollX
 	SetVScroll scrollY
 	HandleLarry spriteX,spriteY,spriteTileNum

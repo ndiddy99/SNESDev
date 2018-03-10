@@ -5,6 +5,7 @@ spriteX = scrollY+2
 spriteY
 spriteTileNum
 spriteAttrs
-animDelay
+spriteSpeed
+playerState
 mosaic
 .endenum

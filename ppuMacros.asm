@@ -19,7 +19,7 @@
     lda #<.bank(source)        ; SRCBANK
     ldx #source         ; SRCOFFSET
     ldy #size         ; SIZE
-    jsr LoadVRAM
+   jsr LoadVRAM
 .endmacro
 
 .macro SetHScroll hVal
@@ -92,8 +92,8 @@ LoadVRAM:
 ;a- data bank
 ;x- data offset
 ;y- num of bytes to copy
+	phb
     php         ; Preserve Registers
-
     stx $4302   ; Store Data offset into DMA source offset
     sta $4304   ; Store data Bank into DMA source bank
     sty $4305   ; Store size of data block
@@ -102,9 +102,10 @@ LoadVRAM:
     sta $4300   ; Set DMA mode (word, normal increment)
     lda #$18    ; Set the destination register (VRAM write register)
     sta $4301
-    lda #$01    ; Initiate DMA transfer (channel 1)
-    sta $420B
+    lda #$1    ; Initiate DMA transfer (channel 1)
+	sta $420B
 
     plp         ; restore registers
+	plb
     rts         ; return
 	
