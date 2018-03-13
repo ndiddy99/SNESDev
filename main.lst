@@ -1037,7 +1037,7 @@ Current file: main.asm
 0031E6r 2               
 0031E6r 2               ;sprite constants
 0031E6r 2               .define LARRY_ACCEL $1
-0031E6r 2               .define MAX_LARRY_SPEED $6
+0031E6r 2               .define MAX_LARRY_SPEED $8
 0031E6r 2               ;various states
 0031E6r 2               .define STATE_NONE $0
 0031E6r 2               .define STATE_RIGHT_PRESSED $1
@@ -1200,162 +1200,254 @@ Current file: main.asm
 003283r 1               
 003283r 1               AssignRightReleased:
 003283r 1  A5 19        	lda playerState
-003285r 1  89 01        	bit #STATE_RIGHT_PRESSED ;was right pressed last frame?
-003287r 1  F0 04        	beq EndRightAssign ;if no, skip
+003285r 1  C9 01        	cmp #STATE_RIGHT_PRESSED ;was right pressed last frame?
+003287r 1  D0 04        	bne EndRightAssign ;if no, skip
 003289r 1  A9 02        	lda #STATE_RIGHT_RELEASED
 00328Br 1  85 19        	sta playerState
 00328Dr 1               
 00328Dr 1               EndRightAssign:
 00328Dr 1               
-00328Dr 1               EndStateAssigns:
-00328Dr 1               
-00328Dr 1               
-00328Dr 1               	; bit #JOY_LEFT
-00328Dr 1               	; beq NOT_LEFT
-00328Dr 1               	; rep #$20
-00328Dr 1               	; dec scrollX
-00328Dr 1               	; sep #$20
-00328Dr 1               	; dec spriteX
-00328Dr 1               	; dec spriteX
-00328Dr 1               
-00328Dr 1               	; lda #$70 ;max sprite priority, mirror sprite
-00328Dr 1               	; sta spriteAttrs
-00328Dr 1               
-00328Dr 1               	; lda spriteTileNum
-00328Dr 1               	; ina
-00328Dr 1               	; ina
-00328Dr 1               	; sta spriteTileNum
-00328Dr 1               	; cmp #NUM_LARRY_TILES
-00328Dr 1               	; bne NOT_RIGHT
-00328Dr 1               	; lda #$2
-00328Dr 1               	; sta spriteTileNum
-00328Dr 1               ; NOT_LEFT:
-00328Dr 1               	; lda $4219
-00328Dr 1               
-00328Dr 1               	; bit #JOY_RIGHT
-00328Dr 1               	; beq NOT_RIGHT
-00328Dr 1               	; rep #$20
-00328Dr 1               	; inc scrollX
-00328Dr 1               	; sep #$20
-00328Dr 1               
-00328Dr 1               	; lda spriteSpeed
-00328Dr 1               	; cmp #MAX_LARRY_SPEED
-00328Dr 1               	; bcs DontAdd ;if speed is less than max speed, add
-00328Dr 1               	; clc
-00328Dr 1               	; adc #LARRY_ACCEL
-00328Dr 1               	; sta spriteSpeed
-00328Dr 1               ; DontAdd:
-00328Dr 1               	; lda spriteX
-00328Dr 1               	; clc
-00328Dr 1               	; adc spriteSpeed
-00328Dr 1               	; sta spriteX
-00328Dr 1               
-00328Dr 1               	; lda #$30
-00328Dr 1               	; sta spriteAttrs ;max sprite priority
-00328Dr 1               
-00328Dr 1               	; lda spriteTileNum
-00328Dr 1               	; ina
-00328Dr 1               	; ina
-00328Dr 1               	; sta spriteTileNum
-00328Dr 1               	; cmp #NUM_LARRY_TILES
-00328Dr 1               	; bne NOT_RIGHT
-00328Dr 1               	; lda #$2
-00328Dr 1               	; sta spriteTileNum
-00328Dr 1               
-00328Dr 1               ; NOT_RIGHT:
-00328Dr 1               	; lda $4219
-00328Dr 1               
-00328Dr 1               	; ; bit #JOY_UP
-00328Dr 1               	; ; beq NOT_UP
-00328Dr 1               	; ; rep #$20
-00328Dr 1               	; ; dec scrollY
-00328Dr 1               	; ; sep #$20
-00328Dr 1               	; ; dec spriteY
-00328Dr 1               	; ; dec spriteY
-00328Dr 1               ; ; NOT_UP:
-00328Dr 1               
-00328Dr 1               	; ; bit #JOY_DOWN
-00328Dr 1               	; ; beq NOT_DOWN
-00328Dr 1               	; ; rep #$20
-00328Dr 1               	; ; inc scrollY
-00328Dr 1               	; ; sep #$20
-00328Dr 1               	; ; inc spriteY
-00328Dr 1               	; ; inc spriteY
-00328Dr 1               ; ; NOT_DOWN:
-00328Dr 1               
-00328Dr 1               	; bit #JOY_B
-00328Dr 1               	; beq NOT_B
-00328Dr 1               	; inc mosaic
-00328Dr 1               ; NOT_B:
-00328Dr 1  C2 20 A5 10  	SetHScroll scrollX
-003291r 1  E2 20 8D 0D  
-003295r 1  21 EB 8D 0D  
-00329Ar 1  C2 20 A5 12  	SetVScroll scrollY
-00329Er 1  E2 20 8D 0E  
-0032A2r 1  21 EB 8D 0E  
-0032A7r 1  A5 14 85 04  	HandleLarry spriteX,spriteY,spriteTileNum
-0032ABr 1  A5 15 85 05  
-0032AFr 1  A5 16 85 06  
-003343r 1  CB           	wai
-003344r 1  4C rr rr     	jmp MainLoop
-003347r 1               
-003347r 1               VBlank:
-003347r 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
-003348r 1  DA           	phx ;fucking up
-003349r 1  5A           	phy
-00334Ar 1  20 rr rr     	jsr DMASpriteMirror
-00334Dr 1  A5 1A 29 0F  	SetMosaic mosaic
-003351r 1  18 6A 6A 6A  
-003355r 1  09 01 8D 06  
-00335Ar 1  AD 10 42     	lda $4210 ;clear vblank flag
-00335Dr 1  7A           	ply
-00335Er 1  FA           	plx
-00335Fr 1  68           	pla
-003360r 1               
-003360r 1  40           	rti
-003361r 1               
-003361r 1               SetupVideo:
-003361r 1  08               php
-003362r 1               
-003362r 1  A9 73        	lda #$73
-003364r 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
-003367r 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
-00336Ar 1  9C 03 21     	stz $2103
-00336Dr 1  A9 01        	lda #$1
-00336Fr 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
-003372r 1               
-003372r 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
-003374r 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
-003377r 1               
-003377r 1  A9 52        	lda #$52
-003379r 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
-00337Cr 1               
-00337Cr 1  A9 11            lda #$11            ; Enable BG1 and sprites
-00337Er 1  8D 2C 21         sta $212C
-003381r 1               
-003381r 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
-003383r 1  8D 0E 21         sta $210E
-003386r 1  8D 0E 21         sta $210E
-003389r 1               
-003389r 1  A9 0F            lda #$0F
-00338Br 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
-00338Er 1               
-00338Er 1  28               plp
-00338Fr 1  60               rts
-003390r 1               
-003390r 1               DMASpriteMirror:
-003390r 1  9C 02 21     	stz $2102		; set OAM address to 0
-003393r 1  9C 03 21     	stz $2103
-003396r 1               
-003396r 1  A0 00 04     	LDY #$0400
-003399r 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
-00339Cr 1  A0 00 04     	LDY #$0400
-00339Fr 1  8C 02 43     	STY $4302		; source offset
-0033A2r 1  A0 20 02     	LDY #$0220
-0033A5r 1  8C 05 43     	STY $4305		; number of bytes to transfer
-0033A8r 1  A9 7E        	LDA #$7E
-0033AAr 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
-0033ADr 1  A9 01        	LDA #$01
-0033AFr 1  8D 0B 42     	STA $420B		;start DMA transfer
-0033B2r 1  60           	rts
-0033B2r 1               
+00328Dr 1  AD 19 42     	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
+003290r 1  89 02        	bit #JOY_LEFT
+003292r 1  F0 07        	beq AssignLeftReleased ;if it is still being pressed, state=RIGHT_PRESSED
+003294r 1  A9 03        	lda #STATE_LEFT_PRESSED
+003296r 1  85 19        	sta playerState
+003298r 1  4C rr rr     	jmp EndLeftAssign
+00329Br 1               
+00329Br 1               AssignLeftReleased:
+00329Br 1  A5 19        	lda playerState
+00329Dr 1  C9 03        	cmp #STATE_LEFT_PRESSED ;was right pressed last frame?
+00329Fr 1  D0 04        	bne EndLeftAssign ;if no, skip
+0032A1r 1  A9 04        	lda #STATE_LEFT_RELEASED
+0032A3r 1  85 19        	sta playerState
+0032A5r 1               
+0032A5r 1               EndLeftAssign:
+0032A5r 1               
+0032A5r 1               EndStateAssigns:
+0032A5r 1               ;accelerate player until reaches max speed
+0032A5r 1  A5 19        	lda playerState
+0032A7r 1  C9 01        	cmp #STATE_RIGHT_PRESSED
+0032A9r 1  D0 12        	bne RightNotPressed
+0032ABr 1               
+0032ABr 1  A5 18        	lda spriteSpeed
+0032ADr 1  C9 08        	cmp #MAX_LARRY_SPEED
+0032AFr 1  F0 05        	beq @DontAdd
+0032B1r 1  18           	clc
+0032B2r 1  69 01        	adc #LARRY_ACCEL
+0032B4r 1  85 18        	sta spriteSpeed
+0032B6r 1               @DontAdd:
+0032B6r 1  A5 14        	lda spriteX
+0032B8r 1  18           	clc
+0032B9r 1  65 18        	adc spriteSpeed
+0032BBr 1  85 14        	sta spriteX
+0032BDr 1               RightNotPressed:
+0032BDr 1               
+0032BDr 1               ;decelerate player right until they stop
+0032BDr 1  A5 19        	lda playerState
+0032BFr 1  C9 02        	cmp #STATE_RIGHT_RELEASED
+0032C1r 1  D0 19        	bne RightNotReleased
+0032C3r 1               
+0032C3r 1  A5 18        	lda spriteSpeed
+0032C5r 1  C9 00        	cmp #$0
+0032C7r 1  D0 07        	bne @Subtract
+0032C9r 1  A9 00        	lda #STATE_NONE
+0032CBr 1  85 19        	sta playerState
+0032CDr 1  4C rr rr     	jmp RightNotReleased
+0032D0r 1               @Subtract:
+0032D0r 1  38           	sec
+0032D1r 1  E9 01        	sbc #LARRY_ACCEL
+0032D3r 1  85 18        	sta spriteSpeed
+0032D5r 1  A5 14        	lda spriteX
+0032D7r 1  18           	clc
+0032D8r 1  65 18        	adc spriteSpeed
+0032DAr 1  85 14        	sta spriteX
+0032DCr 1               RightNotReleased:
+0032DCr 1               
+0032DCr 1               ;accelerate player until they hit max speed
+0032DCr 1  A5 19        	lda playerState
+0032DEr 1  C9 03        	cmp #STATE_LEFT_PRESSED
+0032E0r 1  D0 12        	bne LeftNotPressed
+0032E2r 1               
+0032E2r 1  A5 18        	lda spriteSpeed
+0032E4r 1  C9 08        	cmp #MAX_LARRY_SPEED
+0032E6r 1  F0 05        	beq @DontAdd
+0032E8r 1  18           	clc
+0032E9r 1  69 01        	adc #LARRY_ACCEL
+0032EBr 1  85 18        	sta spriteSpeed
+0032EDr 1               @DontAdd:
+0032EDr 1  A5 14        	lda spriteX
+0032EFr 1  38           	sec
+0032F0r 1  E5 18        	sbc spriteSpeed
+0032F2r 1  85 14        	sta spriteX
+0032F4r 1               LeftNotPressed:
+0032F4r 1               
+0032F4r 1               ;decelerate player until they stop
+0032F4r 1  A5 19        	lda playerState
+0032F6r 1  C9 04        	cmp #STATE_LEFT_RELEASED
+0032F8r 1  D0 19        	bne LeftNotReleased
+0032FAr 1               
+0032FAr 1  A5 18        	lda spriteSpeed
+0032FCr 1  C9 00        	cmp #$0
+0032FEr 1  D0 07        	bne @Subtract
+003300r 1  A9 00        	lda #STATE_NONE
+003302r 1  85 19        	sta playerState
+003304r 1  4C rr rr     	jmp LeftNotReleased
+003307r 1               @Subtract:
+003307r 1  38           	sec
+003308r 1  E9 01        	sbc #LARRY_ACCEL
+00330Ar 1  85 18        	sta spriteSpeed
+00330Cr 1  A5 14        	lda spriteX
+00330Er 1  38           	sec
+00330Fr 1  E5 18        	sbc spriteSpeed
+003311r 1  85 14        	sta spriteX
+003313r 1               LeftNotReleased:
+003313r 1               
+003313r 1               	; bit #JOY_LEFT
+003313r 1               	; beq NOT_LEFT
+003313r 1               	; rep #$20
+003313r 1               	; dec scrollX
+003313r 1               	; sep #$20
+003313r 1               	; dec spriteX
+003313r 1               	; dec spriteX
+003313r 1               
+003313r 1               	; lda #$70 ;max sprite priority, mirror sprite
+003313r 1               	; sta spriteAttrs
+003313r 1               
+003313r 1               	; lda spriteTileNum
+003313r 1               	; ina
+003313r 1               	; ina
+003313r 1               	; sta spriteTileNum
+003313r 1               	; cmp #NUM_LARRY_TILES
+003313r 1               	; bne NOT_RIGHT
+003313r 1               	; lda #$2
+003313r 1               	; sta spriteTileNum
+003313r 1               ; NOT_LEFT:
+003313r 1               	; lda $4219
+003313r 1               
+003313r 1               	; bit #JOY_RIGHT
+003313r 1               	; beq NOT_RIGHT
+003313r 1               	; rep #$20
+003313r 1               	; inc scrollX
+003313r 1               	; sep #$20
+003313r 1               
+003313r 1               	; lda spriteSpeed
+003313r 1               	; cmp #MAX_LARRY_SPEED
+003313r 1               	; bcs DontAdd ;if speed is less than max speed, add
+003313r 1               	; clc
+003313r 1               	; adc #LARRY_ACCEL
+003313r 1               	; sta spriteSpeed
+003313r 1               ; DontAdd:
+003313r 1               	; lda spriteX
+003313r 1               	; clc
+003313r 1               	; adc spriteSpeed
+003313r 1               	; sta spriteX
+003313r 1               
+003313r 1               	; lda #$30
+003313r 1               	; sta spriteAttrs ;max sprite priority
+003313r 1               
+003313r 1               	; lda spriteTileNum
+003313r 1               	; ina
+003313r 1               	; ina
+003313r 1               	; sta spriteTileNum
+003313r 1               	; cmp #NUM_LARRY_TILES
+003313r 1               	; bne NOT_RIGHT
+003313r 1               	; lda #$2
+003313r 1               	; sta spriteTileNum
+003313r 1               
+003313r 1               ; NOT_RIGHT:
+003313r 1               	; lda $4219
+003313r 1               
+003313r 1               	; ; bit #JOY_UP
+003313r 1               	; ; beq NOT_UP
+003313r 1               	; ; rep #$20
+003313r 1               	; ; dec scrollY
+003313r 1               	; ; sep #$20
+003313r 1               	; ; dec spriteY
+003313r 1               	; ; dec spriteY
+003313r 1               ; ; NOT_UP:
+003313r 1               
+003313r 1               	; ; bit #JOY_DOWN
+003313r 1               	; ; beq NOT_DOWN
+003313r 1               	; ; rep #$20
+003313r 1               	; ; inc scrollY
+003313r 1               	; ; sep #$20
+003313r 1               	; ; inc spriteY
+003313r 1               	; ; inc spriteY
+003313r 1               ; ; NOT_DOWN:
+003313r 1               
+003313r 1               	; bit #JOY_B
+003313r 1               	; beq NOT_B
+003313r 1               	; inc mosaic
+003313r 1               ; NOT_B:
+003313r 1  C2 20 A5 10  	SetHScroll scrollX
+003317r 1  E2 20 8D 0D  
+00331Br 1  21 EB 8D 0D  
+003320r 1  C2 20 A5 12  	SetVScroll scrollY
+003324r 1  E2 20 8D 0E  
+003328r 1  21 EB 8D 0E  
+00332Dr 1  A5 14 85 04  	HandleLarry spriteX,spriteY,spriteTileNum
+003331r 1  A5 15 85 05  
+003335r 1  A5 16 85 06  
+0033C9r 1  CB           	wai
+0033CAr 1  4C rr rr     	jmp MainLoop
+0033CDr 1               
+0033CDr 1               VBlank:
+0033CDr 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
+0033CEr 1  DA           	phx ;fucking up
+0033CFr 1  5A           	phy
+0033D0r 1  20 rr rr     	jsr DMASpriteMirror
+0033D3r 1  A5 1A 29 0F  	SetMosaic mosaic
+0033D7r 1  18 6A 6A 6A  
+0033DBr 1  09 01 8D 06  
+0033E0r 1  AD 10 42     	lda $4210 ;clear vblank flag
+0033E3r 1  7A           	ply
+0033E4r 1  FA           	plx
+0033E5r 1  68           	pla
+0033E6r 1               
+0033E6r 1  40           	rti
+0033E7r 1               
+0033E7r 1               SetupVideo:
+0033E7r 1  08               php
+0033E8r 1               
+0033E8r 1  A9 73        	lda #$73
+0033EAr 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
+0033EDr 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
+0033F0r 1  9C 03 21     	stz $2103
+0033F3r 1  A9 01        	lda #$1
+0033F5r 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
+0033F8r 1               
+0033F8r 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
+0033FAr 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
+0033FDr 1               
+0033FDr 1  A9 52        	lda #$52
+0033FFr 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
+003402r 1               
+003402r 1  A9 11            lda #$11            ; Enable BG1 and sprites
+003404r 1  8D 2C 21         sta $212C
+003407r 1               
+003407r 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
+003409r 1  8D 0E 21         sta $210E
+00340Cr 1  8D 0E 21         sta $210E
+00340Fr 1               
+00340Fr 1  A9 0F            lda #$0F
+003411r 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
+003414r 1               
+003414r 1  28               plp
+003415r 1  60               rts
+003416r 1               
+003416r 1               DMASpriteMirror:
+003416r 1  9C 02 21     	stz $2102		; set OAM address to 0
+003419r 1  9C 03 21     	stz $2103
+00341Cr 1               
+00341Cr 1  A0 00 04     	LDY #$0400
+00341Fr 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
+003422r 1  A0 00 04     	LDY #$0400
+003425r 1  8C 02 43     	STY $4302		; source offset
+003428r 1  A0 20 02     	LDY #$0220
+00342Br 1  8C 05 43     	STY $4305		; number of bytes to transfer
+00342Er 1  A9 7E        	LDA #$7E
+003430r 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
+003433r 1  A9 01        	LDA #$01
+003435r 1  8D 0B 42     	STA $420B		;start DMA transfer
+003438r 1  60           	rts
+003438r 1               

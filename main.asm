@@ -45,15 +45,107 @@ MainLoop:
 	
 AssignRightReleased:
 	lda playerState
-	bit #STATE_RIGHT_PRESSED ;was right pressed last frame?
-	beq EndRightAssign ;if no, skip
+	cmp #STATE_RIGHT_PRESSED ;was right pressed last frame?
+	bne EndRightAssign ;if no, skip
 	lda #STATE_RIGHT_RELEASED
 	sta playerState
 	
 EndRightAssign:
 
-EndStateAssigns:
+	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
+	bit #JOY_LEFT
+	beq AssignLeftReleased ;if it is still being pressed, state=RIGHT_PRESSED
+	lda #STATE_LEFT_PRESSED
+	sta playerState
+	jmp EndLeftAssign
 	
+AssignLeftReleased:
+	lda playerState
+	cmp #STATE_LEFT_PRESSED ;was right pressed last frame?
+	bne EndLeftAssign ;if no, skip
+	lda #STATE_LEFT_RELEASED
+	sta playerState
+	
+EndLeftAssign:
+
+EndStateAssigns:
+;accelerate player until reaches max speed
+	lda playerState
+	cmp #STATE_RIGHT_PRESSED
+	bne RightNotPressed
+	
+	lda spriteSpeed
+	cmp #MAX_LARRY_SPEED
+	beq @DontAdd
+	clc
+	adc #LARRY_ACCEL
+	sta spriteSpeed
+@DontAdd:
+	lda spriteX
+	clc
+	adc spriteSpeed
+	sta spriteX
+RightNotPressed:
+
+;decelerate player right until they stop
+	lda playerState
+	cmp #STATE_RIGHT_RELEASED
+	bne RightNotReleased
+	
+	lda spriteSpeed
+	cmp #$0
+	bne @Subtract
+	lda #STATE_NONE
+	sta playerState
+	jmp RightNotReleased
+@Subtract:
+	sec
+	sbc #LARRY_ACCEL
+	sta spriteSpeed
+	lda spriteX
+	clc
+	adc spriteSpeed
+	sta spriteX
+RightNotReleased:
+
+;accelerate player until they hit max speed
+	lda playerState
+	cmp #STATE_LEFT_PRESSED
+	bne LeftNotPressed
+	
+	lda spriteSpeed
+	cmp #MAX_LARRY_SPEED
+	beq @DontAdd
+	clc
+	adc #LARRY_ACCEL
+	sta spriteSpeed
+@DontAdd:
+	lda spriteX
+	sec
+	sbc spriteSpeed
+	sta spriteX
+LeftNotPressed:
+
+;decelerate player until they stop
+	lda playerState
+	cmp #STATE_LEFT_RELEASED
+	bne LeftNotReleased
+	
+	lda spriteSpeed
+	cmp #$0
+	bne @Subtract
+	lda #STATE_NONE
+	sta playerState
+	jmp LeftNotReleased
+@Subtract:
+	sec
+	sbc #LARRY_ACCEL
+	sta spriteSpeed
+	lda spriteX
+	sec
+	sbc spriteSpeed
+	sta spriteX
+LeftNotReleased:
 	
 	; bit #JOY_LEFT
 	; beq NOT_LEFT
