@@ -75,7 +75,10 @@ Main:
 	inx
 	lda Song,x
 	sta c0Inst
-	jsr DSPWrites //write dsp vals
+	dspWritePointer($03,c0Pitch)
+	dspWritePointer($04,c0Inst)
+	dspWrite($4c,$01) //keyon
+	dspWrite($5c,$00) //keyon
 	inx //x points to "note" duration
 TimerWait:
 	lda $fd //wait for timer to tick
@@ -93,18 +96,13 @@ TimerWait:
 	ldx #$00
 	jmp Main
 	
-DSPWrites:
-	dspWritePointer($03,c0Pitch)
-	dspWritePointer($04,c0Inst)
-	dspWrite($4c,$01) //keyon
-	dspWrite($5c,$00) //keyon
-	rts
 	
 Song: //format: pitch, instrument, duration (timer ticks)
 	db $10,$01,$20
 	db $10,$01,$50
 	db $0f,$01,$40
 	db $09,$01,$70
+//	db $10,$00,$50
 EndSong:
 	
 

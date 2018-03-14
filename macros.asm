@@ -64,6 +64,21 @@
 	cpx range
 	bne @loop
 .endmacro
+
+.macro PositiveDiff val1, val2
+;puts the difference of val1 and val2 into a
+	lda val1
+	cmp val2
+	bcs @Val1Greater
+	sec
+	lda val2
+	sbc val1
+	jmp @end
+@Val1Greater:
+	sec
+	sbc val2
+@end:
+.endmacro
 	
 
 .segment "CODE"
@@ -108,4 +123,5 @@ LoadVRAM:
     plp         ; restore registers
 	plb
     rts         ; return
+
 	

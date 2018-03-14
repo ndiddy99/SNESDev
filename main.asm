@@ -2,7 +2,7 @@
 .include "initSNES.inc"
 .include "defines.asm"
 .include "variables.asm"
-.include "ppuMacros.asm"
+.include "macros.asm"
 .include "sprites.asm"
 .include "art.asm"
 .include "larry.asm"
@@ -32,23 +32,23 @@ Reset:
 	sta scrollY
 	sep #$20
 	.a8
-	
-	lda #$B1
+.define GROUND_Y $B0
+	lda #GROUND_Y
 	sta spriteY
 MainLoop:
 	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
 	bit #JOY_RIGHT
 	beq AssignRightReleased ;if it is still being pressed, state=RIGHT_PRESSED
 	lda #STATE_RIGHT_PRESSED
-	sta playerState
+	sta movementState
 	jmp EndRightAssign
 	
 AssignRightReleased:
-	lda playerState
+	lda movementState
 	cmp #STATE_RIGHT_PRESSED ;was right pressed last frame?
 	bne EndRightAssign ;if no, skip
 	lda #STATE_RIGHT_RELEASED
-	sta playerState
+	sta movementState
 	
 EndRightAssign:
 
@@ -56,97 +56,169 @@ EndRightAssign:
 	bit #JOY_LEFT
 	beq AssignLeftReleased ;if it is still being pressed, state=RIGHT_PRESSED
 	lda #STATE_LEFT_PRESSED
-	sta playerState
+	sta movementState
 	jmp EndLeftAssign
 	
 AssignLeftReleased:
-	lda playerState
+	lda movementState
 	cmp #STATE_LEFT_PRESSED ;was right pressed last frame?
 	bne EndLeftAssign ;if no, skip
 	lda #STATE_LEFT_RELEASED
-	sta playerState
+	sta movementState
 	
 EndLeftAssign:
 
+;if player is on ground, assign jump state
+	lda $4219
+	bit #JOY_B
+	beq JumpNotPressed
+	lda playerState
+	cmp #STATE_GROUND
+	bne JumpNotPressed
+	lda #STATE_JUMP_RISE
+	sta playerState
+	lda #MAX_LARRY_SPEED
+	sta playerVSpeed
+JumpNotPressed:
+	
 EndStateAssigns:
 ;accelerate player until reaches max speed
-	lda playerState
+	lda movementState
 	cmp #STATE_RIGHT_PRESSED
 	bne RightNotPressed
 	
-	lda spriteSpeed
+	lda playerHSpeed
 	cmp #MAX_LARRY_SPEED
 	beq @DontAdd
 	clc
 	adc #LARRY_ACCEL
-	sta spriteSpeed
+	sta playerHSpeed
 @DontAdd:
 	lda spriteX
 	clc
-	adc spriteSpeed
+	adc playerHSpeed
 	sta spriteX
 RightNotPressed:
 
 ;decelerate player right until they stop
-	lda playerState
+	lda movementState
 	cmp #STATE_RIGHT_RELEASED
 	bne RightNotReleased
 	
-	lda spriteSpeed
+	lda playerHSpeed
 	cmp #$0
 	bne @Subtract
 	lda #STATE_NONE
-	sta playerState
+	sta movementState
 	jmp RightNotReleased
 @Subtract:
 	sec
 	sbc #LARRY_ACCEL
-	sta spriteSpeed
+	sta playerHSpeed
 	lda spriteX
 	clc
-	adc spriteSpeed
+	adc playerHSpeed
 	sta spriteX
 RightNotReleased:
 
 ;accelerate player until they hit max speed
-	lda playerState
+	lda movementState
 	cmp #STATE_LEFT_PRESSED
 	bne LeftNotPressed
 	
-	lda spriteSpeed
+	lda playerHSpeed
 	cmp #MAX_LARRY_SPEED
 	beq @DontAdd
 	clc
 	adc #LARRY_ACCEL
-	sta spriteSpeed
+	sta playerHSpeed
 @DontAdd:
 	lda spriteX
 	sec
-	sbc spriteSpeed
+	sbc playerHSpeed
 	sta spriteX
 LeftNotPressed:
 
 ;decelerate player until they stop
-	lda playerState
+	lda movementState
 	cmp #STATE_LEFT_RELEASED
 	bne LeftNotReleased
 	
-	lda spriteSpeed
+	lda playerHSpeed
 	cmp #$0
 	bne @Subtract
 	lda #STATE_NONE
-	sta playerState
+	sta movementState
 	jmp LeftNotReleased
 @Subtract:
 	sec
 	sbc #LARRY_ACCEL
-	sta spriteSpeed
+	sta playerHSpeed
 	lda spriteX
 	sec
-	sbc spriteSpeed
+	sbc playerHSpeed
 	sta spriteX
 LeftNotReleased:
+
+;animate player based on speed
+	PositiveDiff spriteX, lastAnimPoint
+	cmp #MAX_LARRY_SPEED*2 ;if sprite pos is less than max speed, don't animate
+	bmi DontAnimate
+	lda playerTileNum
+	ina
+	ina
+	sta playerTileNum
+	cmp #NUM_LARRY_TILES
+	bne DontAnimate
+	lda #$2
+	sta playerTileNum
+	lda spriteX
+	sta lastAnimPoint
+DontAnimate:
 	
+;1. subtract gravity accel value until initial speed is 0
+;2. set state to fall
+	
+	lda playerState
+	cmp #STATE_JUMP_RISE
+	bne DontRise
+	lda playerVSpeed
+	bne @SubSpeed ;branch if player v speed isn't 0
+	lda #STATE_JUMP_FALL
+	sta playerState
+	jmp DontRise
+@SubSpeed:
+	sec
+	sbc #LARRY_ACCEL
+	sta playerVSpeed
+	lda spriteY
+	sec
+	sbc playerVSpeed
+	sta spriteY
+DontRise:
+;todo- jump 
+;4. add gravity accel value until player touches ground
+;5. set state to ground
+	
+	lda playerState
+	cmp #STATE_JUMP_FALL
+	bne DontFall
+	lda spriteY
+	cmp #GROUND_Y
+	bne @AddSpeed
+	lda #STATE_GROUND
+	sta playerState
+	jmp DontFall
+@AddSpeed:
+	lda playerVSpeed
+	clc
+	adc #LARRY_ACCEL
+	sta playerVSpeed
+	lda spriteY
+	clc
+	adc playerVSpeed
+	sta spriteY
+DontFall:
 	; bit #JOY_LEFT
 	; beq NOT_LEFT
 	; rep #$20
@@ -156,16 +228,16 @@ LeftNotReleased:
 	; dec spriteX
 	
 	; lda #$70 ;max sprite priority, mirror sprite
-	; sta spriteAttrs
+	; sta playerAttrs
 	
-	; lda spriteTileNum
+	; lda playerTileNum
 	; ina
 	; ina
-	; sta spriteTileNum
+	; sta playerTileNum
 	; cmp #NUM_LARRY_TILES
 	; bne NOT_RIGHT
 	; lda #$2
-	; sta spriteTileNum
+	; sta playerTileNum
 ; NOT_LEFT:
 	; lda $4219
 	
@@ -175,29 +247,29 @@ LeftNotReleased:
 	; inc scrollX
 	; sep #$20
 	
-	; lda spriteSpeed
+	; lda playerHSpeed
 	; cmp #MAX_LARRY_SPEED
 	; bcs DontAdd ;if speed is less than max speed, add
 	; clc
 	; adc #LARRY_ACCEL
-	; sta spriteSpeed
+	; sta playerHSpeed
 ; DontAdd:
 	; lda spriteX
 	; clc
-	; adc spriteSpeed
+	; adc playerHSpeed
 	; sta spriteX
 	
 	; lda #$30
-	; sta spriteAttrs ;max sprite priority
+	; sta playerAttrs ;max sprite priority
 	
-	; lda spriteTileNum
+	; lda playerTileNum
 	; ina
 	; ina
-	; sta spriteTileNum
+	; sta playerTileNum
 	; cmp #NUM_LARRY_TILES
 	; bne NOT_RIGHT
 	; lda #$2
-	; sta spriteTileNum
+	; sta playerTileNum
 	
 ; NOT_RIGHT:
 	; lda $4219
@@ -226,7 +298,7 @@ LeftNotReleased:
 ; NOT_B:
 	SetHScroll scrollX
 	SetVScroll scrollY
-	HandleLarry spriteX,spriteY,spriteTileNum
+	HandleLarry spriteX,spriteY,playerTileNum
 	wai
 	jmp MainLoop
 	
@@ -235,7 +307,6 @@ VBlank:
 	phx ;fucking up
 	phy
 	jsr DMASpriteMirror
-	SetMosaic mosaic
 	lda $4210 ;clear vblank flag
 	ply
 	plx

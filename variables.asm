@@ -3,9 +3,11 @@ scrollX = $10
 scrollY = scrollX+2
 spriteX = scrollY+2
 spriteY
-spriteTileNum
-spriteAttrs
-spriteSpeed
+playerTileNum
+playerAttrs
+playerHSpeed
+playerVSpeed
 playerState
-mosaic
+movementState
+lastAnimPoint
 .endenum
