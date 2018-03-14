@@ -41,12 +41,14 @@ start:
 	
 	dspClear($2c) //zero echo vol
 	dspClear($3c)
-	
+	dspClear($3d) //disable noise
 	dspClear($4c) //zero key on
 	dspClear($5c) //zero key off
-	dspClear($6c) //zero flag register
+	dspWrite($6c,$20) //noise off, echo buffer writes off
 	dspClear($0d) //zero echo feedback vol
 	dspClear($2d) //disable pitch modulation
+	dspClear($4d) //disable echo
+	dspWrite($6d,$d0) //echo buffer out of the way
 	dspWrite($0c,$7f) //master vol max
 	dspWrite($1c,$7f)
 	

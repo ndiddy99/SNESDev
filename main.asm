@@ -32,6 +32,8 @@ Reset:
 	sta scrollY
 	sep #$20
 	.a8
+	lda #$50
+	sta spriteX
 .define GROUND_Y $B0
 	lda #GROUND_Y
 	sta spriteY
@@ -41,6 +43,8 @@ MainLoop:
 	beq AssignRightReleased ;if it is still being pressed, state=RIGHT_PRESSED
 	lda #STATE_RIGHT_PRESSED
 	sta movementState
+	lda #$30 ;max sprite priority
+	sta playerAttrs
 	jmp EndRightAssign
 	
 AssignRightReleased:
@@ -57,6 +61,8 @@ EndRightAssign:
 	beq AssignLeftReleased ;if it is still being pressed, state=RIGHT_PRESSED
 	lda #STATE_LEFT_PRESSED
 	sta movementState
+	lda #$70 ;max sprite priority, mirrored
+	sta playerAttrs
 	jmp EndLeftAssign
 	
 AssignLeftReleased:
@@ -77,11 +83,13 @@ EndLeftAssign:
 	bne JumpNotPressed
 	lda #STATE_JUMP_RISE
 	sta playerState
-	lda #MAX_LARRY_SPEED
+	lda #MAX_LARRY_JUMP_HEIGHT
 	sta playerVSpeed
 JumpNotPressed:
 	
 EndStateAssigns:
+	
+
 ;accelerate player until reaches max speed
 	lda movementState
 	cmp #STATE_RIGHT_PRESSED
@@ -94,10 +102,12 @@ EndStateAssigns:
 	adc #LARRY_ACCEL
 	sta playerHSpeed
 @DontAdd:
-	lda spriteX
+	a16
+	lda scrollX
 	clc
 	adc playerHSpeed
-	sta spriteX
+	sta scrollX
+	a8
 RightNotPressed:
 
 ;decelerate player right until they stop
@@ -115,10 +125,12 @@ RightNotPressed:
 	sec
 	sbc #LARRY_ACCEL
 	sta playerHSpeed
-	lda spriteX
+	a16
+	lda scrollX
 	clc
 	adc playerHSpeed
-	sta spriteX
+	sta scrollX
+	a8
 RightNotReleased:
 
 ;accelerate player until they hit max speed
@@ -133,10 +145,12 @@ RightNotReleased:
 	adc #LARRY_ACCEL
 	sta playerHSpeed
 @DontAdd:
-	lda spriteX
+	a16
+	lda scrollX
 	sec
 	sbc playerHSpeed
-	sta spriteX
+	sta scrollX
+	a8
 LeftNotPressed:
 
 ;decelerate player until they stop
@@ -154,16 +168,18 @@ LeftNotPressed:
 	sec
 	sbc #LARRY_ACCEL
 	sta playerHSpeed
-	lda spriteX
+	a16
+	lda scrollX
 	sec
 	sbc playerHSpeed
-	sta spriteX
+	sta scrollX
+	a8
 LeftNotReleased:
 
 ;animate player based on speed
 	PositiveDiff spriteX, lastAnimPoint
-	cmp #MAX_LARRY_SPEED*2 ;if sprite pos is less than max speed, don't animate
-	bmi DontAnimate
+	cmp #MAX_LARRY_SPEED ;if sprite pos is less than max speed, don't animate
+	bcc DontAnimate
 	lda playerTileNum
 	ina
 	ina
@@ -172,9 +188,16 @@ LeftNotReleased:
 	bne DontAnimate
 	lda #$2
 	sta playerTileNum
-	lda spriteX
+	lda scrollX+1
 	sta lastAnimPoint
 DontAnimate:
+
+	lda movementState
+	cmp #STATE_NONE
+	bne DontStandStill
+	lda #$0
+	sta playerTileNum
+DontStandStill:
 	
 ;1. subtract gravity accel value until initial speed is 0
 ;2. set state to fall
@@ -196,9 +219,9 @@ DontAnimate:
 	sbc playerVSpeed
 	sta spriteY
 DontRise:
-;todo- jump 
-;4. add gravity accel value until player touches ground
-;5. set state to ground
+
+;3. add gravity accel value until player touches ground
+;4. set state to ground
 	
 	lda playerState
 	cmp #STATE_JUMP_FALL
@@ -219,83 +242,7 @@ DontRise:
 	adc playerVSpeed
 	sta spriteY
 DontFall:
-	; bit #JOY_LEFT
-	; beq NOT_LEFT
-	; rep #$20
-	; dec scrollX
-	; sep #$20
-	; dec spriteX
-	; dec spriteX
-	
-	; lda #$70 ;max sprite priority, mirror sprite
-	; sta playerAttrs
-	
-	; lda playerTileNum
-	; ina
-	; ina
-	; sta playerTileNum
-	; cmp #NUM_LARRY_TILES
-	; bne NOT_RIGHT
-	; lda #$2
-	; sta playerTileNum
-; NOT_LEFT:
-	; lda $4219
-	
-	; bit #JOY_RIGHT
-	; beq NOT_RIGHT
-	; rep #$20
-	; inc scrollX
-	; sep #$20
-	
-	; lda playerHSpeed
-	; cmp #MAX_LARRY_SPEED
-	; bcs DontAdd ;if speed is less than max speed, add
-	; clc
-	; adc #LARRY_ACCEL
-	; sta playerHSpeed
-; DontAdd:
-	; lda spriteX
-	; clc
-	; adc playerHSpeed
-	; sta spriteX
-	
-	; lda #$30
-	; sta playerAttrs ;max sprite priority
-	
-	; lda playerTileNum
-	; ina
-	; ina
-	; sta playerTileNum
-	; cmp #NUM_LARRY_TILES
-	; bne NOT_RIGHT
-	; lda #$2
-	; sta playerTileNum
-	
-; NOT_RIGHT:
-	; lda $4219
 
-	; ; bit #JOY_UP
-	; ; beq NOT_UP
-	; ; rep #$20
-	; ; dec scrollY
-	; ; sep #$20
-	; ; dec spriteY
-	; ; dec spriteY
-; ; NOT_UP:
-
-	; ; bit #JOY_DOWN
-	; ; beq NOT_DOWN
-	; ; rep #$20
-	; ; inc scrollY
-	; ; sep #$20
-	; ; inc spriteY
-	; ; inc spriteY
-; ; NOT_DOWN:
-
-	; bit #JOY_B
-	; beq NOT_B
-	; inc mosaic
-; NOT_B:
 	SetHScroll scrollX
 	SetVScroll scrollY
 	HandleLarry spriteX,spriteY,playerTileNum

@@ -79,7 +79,16 @@
 	sbc val2
 @end:
 .endmacro
-	
+
+.macro a16
+	rep #$20
+	.a16
+.endmacro
+
+.macro a8
+	sep #$20
+	.a8
+.endmacro
 
 .segment "CODE"
 DMAPalette: 
