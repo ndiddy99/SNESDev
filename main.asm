@@ -41,6 +41,8 @@ MainLoop:
 	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
 	bit #JOY_RIGHT
 	beq AssignRightReleased ;if it is still being pressed, state=RIGHT_PRESSED
+	lda playerHSpeed
+	bne EndRightAssign
 	lda #STATE_RIGHT_PRESSED
 	sta movementState
 	lda #$30 ;max sprite priority
@@ -59,6 +61,8 @@ EndRightAssign:
 	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
 	bit #JOY_LEFT
 	beq AssignLeftReleased ;if it is still being pressed, state=RIGHT_PRESSED
+	lda playerHSpeed
+	bne EndLeftAssign
 	lda #STATE_LEFT_PRESSED
 	sta movementState
 	lda #$70 ;max sprite priority, mirrored
