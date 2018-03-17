@@ -22,6 +22,46 @@
    jsr LoadVRAM
 .endmacro
 
+.macro LoadBlockToWRAM source, destination, size
+	ldx #source
+	stx $4302 ;source address
+	lda #<.bank(source)
+	sta $4304 ;bank
+	ldx #size
+	stx $4305
+	ldx #destination ; set wram transfer address
+	stx $2181 
+	stz $2183 ;only accesses the first 64k, yolo
+	lda #$80 ;dest = vram port
+	sta $4301
+	stz $4300 ; 1 byte transfer, auto-increment
+	lda #$1
+	sta $420b ;start transfer
+.endmacro
+
+.macro WRAMToVRAM source, destination, size
+;reading from the wram port because you can access data ~1.5x faster 
+	lda #$80
+	sta $2115 ;word-access,increment by one
+	ldx #destination
+	stx $2116
+	ldx #source
+	stx $2181
+	stz $2183 ;also only accesses first 64k
+	ldx #$2180
+	stx $4302 ;dma source address=wram read port
+	stz $4304 ;bank
+	ldx #size
+	stx $4305
+	lda #$18 ;dest = $2118, vram write register
+	sta $4301
+	lda #$9 ;word increment on dest, no src increment
+	sta $4300 
+	lda #$1
+	sta $420b ;start transfer
+.endmacro
+	
+
 .macro SetHScroll hVal
 ;parameter: mem address of horizontal scroll val
 	rep #$20

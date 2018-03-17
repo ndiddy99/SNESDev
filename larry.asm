@@ -21,8 +21,8 @@ LoadSprite #1, $4, $5, $6, playerAttrs, #0, #0
 
 ;sprite constants
 .define LARRY_ACCEL $1
-.define MAX_LARRY_SPEED $8
-.define MAX_LARRY_JUMP_HEIGHT $10
+.define MAX_LARRY_SPEED $10
+.define MAX_LARRY_JUMP_HEIGHT $e
 ;various movement states
 .define STATE_NONE $0
 .define STATE_RIGHT_PRESSED $1

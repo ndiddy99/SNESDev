@@ -17,8 +17,9 @@ Reset:
 	; Load Tile data to VRAM
     LoadBlockToVRAM BGTiles, $2000, $0040	; 2 tiles, 2bpp, = 32 bytes
 	LoadBlockToVRAM LarryTiles, $6000, $2000 ;16x16, 4bpp=128 bytes
-	LoadBlockToVRAM BGTilemap, $0000, $2000
-	
+;	LoadBlockToVRAM BGTilemap, $0000, $2000
+	LoadBlockToWRAM BGTilemap, $2000, $2000
+	WRAMToVRAM $2000, $0000, $2000
     ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
 	jsr InitSprites
