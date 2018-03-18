@@ -104,7 +104,7 @@ Song: //format: pitch, instrument, duration (timer ticks)
 	db $10,$01,$50
 	db $0f,$01,$40
 	db $09,$01,$70
-//	db $10,$00,$50
+	// db $10,$00,$50
 EndSong:
 	
 

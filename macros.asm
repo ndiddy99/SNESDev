@@ -46,16 +46,14 @@
 	ldx #destination
 	stx $2116
 	ldx #source
-	stx $2181
-	stz $2183 ;also only accesses first 64k
-	ldx #$2180
 	stx $4302 ;dma source address=wram read port
-	stz $4304 ;bank
+	lda #$7e
+	sta $4304 ;bank
 	ldx #size
 	stx $4305
 	lda #$18 ;dest = $2118, vram write register
 	sta $4301
-	lda #$9 ;word increment on dest, no src increment
+	lda #$1 ;word increment on dest, no src increment
 	sta $4300 
 	lda #$1
 	sta $420b ;start transfer
