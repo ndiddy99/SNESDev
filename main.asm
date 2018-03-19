@@ -251,6 +251,18 @@ DontFall:
 	SetHScroll scrollX
 	SetVScroll scrollY
 	HandleLarry spriteX,spriteY,playerTileNum
+	; lda #$7e
+	; pha 
+	; plb
+	; lda #$01
+	; sta $2000
+	; lda #$00
+	; pha
+	; plb
+	WriteTilemap #$03, #$0, #$10, #$01
+	WriteTilemap #$03, #$1, #$f, #$01
+	WriteTilemap #$03, #$2, #$11, #$01
+	WriteTilemap #$02, #$2, #$11, #$01
 	wai
 	jmp MainLoop
 	
@@ -258,7 +270,9 @@ VBlank:
 	pha ;push regs to stack so if my main loop is ever too long it'll continue without
 	phx ;fucking up
 	phy
+	WRAMToVRAM $2000, $0000, $2000
 	jsr DMASpriteMirror
+	StartDMA
 	lda $4210 ;clear vblank flag
 	ply
 	plx
@@ -307,6 +321,4 @@ DMASpriteMirror:
 	STY $4305		; number of bytes to transfer
 	LDA #$7E
 	STA $4304		; bank address = $7E  (work RAM)
-	LDA #$01
-	STA $420B		;start DMA transfer
 	rts

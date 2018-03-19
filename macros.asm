@@ -40,23 +40,65 @@
 .endmacro
 
 .macro WRAMToVRAM source, destination, size
-;reading from the wram port because you can access data ~1.5x faster 
 	lda #$80
 	sta $2115 ;word-access,increment by one
 	ldx #destination
 	stx $2116
 	ldx #source
-	stx $4302 ;dma source address=wram read port
+	stx $4312 ;dma source address
 	lda #$7e
-	sta $4304 ;bank
+	sta $4314 ;bank
 	ldx #size
-	stx $4305
+	stx $4315
 	lda #$18 ;dest = $2118, vram write register
-	sta $4301
-	lda #$1 ;word increment on dest, no src increment
-	sta $4300 
-	lda #$1
-	sta $420b ;start transfer
+	sta $4311
+	lda #$1 ;word increment on dest, src increment
+	sta $4310 
+.endmacro
+
+.macro WriteTilemap screen, xOff, yOff, data
+;point to write to = ($800*screen + $20*yOff+xOff)*2
+	a16
+	lda screen
+	xba
+	rol a
+	rol a
+	rol a ;screens are $800 apart, so multiply it by that
+	sta $0
+	lda yOff ;each "screen" is 32x32 words or $40x$40 bytes
+	rol a
+	rol a
+	rol a
+	rol a
+	rol a
+	rol a
+	ora $0
+	clc
+	adc xOff ;words, so add twice to multiply by 
+	clc
+	adc xOff
+	sta $0
+	WriteWRAM data, $0
+	stz $0 ;cleanup
+	a8
+.endmacro
+
+.macro WriteWRAM data, offset
+	lda #$7e
+	pha
+	plb
+	lda data
+	ldx offset
+	sta $2000,x
+	lda #$0
+	pha
+	plb
+.endmacro
+
+.macro StartDMA
+;make sure to modify when i add more shit to dma
+	lda #$3 ;channels 1 and 2
+	sta $420b
 .endmacro
 	
 
