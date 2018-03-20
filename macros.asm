@@ -58,9 +58,11 @@
 
 .macro WriteTilemap screen, xOff, yOff, data
 ;point to write to = ($800*screen + $20*yOff+xOff)*2
+;writes to $0 and $1
 	a16
 	lda screen
 	xba
+	clc
 	rol a
 	rol a
 	rol a ;screens are $800 apart, so multiply it by that
@@ -92,6 +94,25 @@
 	plb
 	stz $0 ;cleanup
 	stz $1 ;cleanup
+.endmacro
+
+.macro DrawBox screen, x1, y1, x2
+;note that "coordinates" are tiles, not pixels
+	lda x1
+	sta $2
+	lda x2
+	sta $4
+@DrawLoop:
+	WriteTilemap screen, $2, y1, #$1
+	lda $2
+	inc a
+	sta $2
+	cmp $4
+	bne @DrawLoop
+	stz $2 ;cleanup
+	stz $3
+	stz $4
+	stz $5
 .endmacro
 
 .macro StartDMA

@@ -252,10 +252,11 @@ DontFall:
 	SetHScroll scrollX
 	SetVScroll scrollY
 	HandleLarry spriteX,spriteY,playerTileNum
-	WriteTilemap #$03, #$0, #$10, #$01
-	WriteTilemap #$03, #$1, #$f, #$01
-	WriteTilemap #$03, #$2, #$11, #$01
-	WriteTilemap #$02, #$2, #$11, #$01
+	; WriteTilemap #$03, #$0, #$10, #$01
+	; WriteTilemap #$03, #$1, #$f, #$01
+	; WriteTilemap #$03, #$2, #$11, #$01
+;	WriteTilemap #$02, #$2, #$11, #$01
+	DrawBox #$2, #$5, #$1a, #$8
 	wai
 	jmp MainLoop
 	

@@ -17,6 +17,7 @@ clc
 adc #LARRY_OFFSET
 sta $6
 LoadSprite #1, $4, $5, $6, playerAttrs, #0, #0
+ClearMem $0, #$7
 .endmacro
 
 ;sprite constants
