@@ -96,24 +96,33 @@
 	stz $1 ;cleanup
 .endmacro
 
-.macro DrawBox screen, x1, y1, x2
+.macro DrawBox screen, x1, y1, x2, y2
 ;note that "coordinates" are tiles, not pixels
+	lda x2 
+	sta $4
+	lda y1 ;$2 apart because gets read in 16-bit mdode
+	sta $6 ;inside writeTilemap
+	lda y2
+	sta $8
+@DrawVLoop:
 	lda x1
 	sta $2
-	lda x2
-	sta $4
-@DrawLoop:
-	WriteTilemap screen, $2, y1, #$1
+@DrawHLoop:
+	WriteTilemap screen, $2, $6, #$1
 	lda $2
 	inc a
 	sta $2
 	cmp $4
-	bne @DrawLoop
-	stz $2 ;cleanup
-	stz $3
-	stz $4
-	stz $5
+	bne @DrawHLoop
+	lda $6
+	inc a
+	sta $6
+	cmp $8
+	bne @DrawVLoop
+	ldx #$a
+	jsr ClearMem
 .endmacro
+
 
 .macro StartDMA
 ;make sure to modify when i add more shit to dma
@@ -152,17 +161,6 @@
 	ror a
 	ora #$1
 	sta $2106
-.endmacro
-
-.macro ClearMem start, range
-;start-address to start clearing
-;range-num of bytes to clear
-	ldx #$0
-	@loop:
-	stz start,x
-	inx
-	cpx range
-	bne @loop
 .endmacro
 
 .macro PositiveDiff val1, val2
@@ -233,4 +231,11 @@ LoadVRAM:
 	plb
     rts         ; return
 
+ClearMem:
+;x- amount of ram to clear
+@ClearLoop:
+	stz $0, x
+	dex
+	bne @ClearLoop
+	rts
 	

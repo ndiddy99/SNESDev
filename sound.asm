@@ -93,7 +93,11 @@ WaitReceive:
 	lda kick
 	sta $2140
 	cli ;enable interrupts
-	ClearMem $0, #$06 ;clear memory used by this function
+	ldx #$6
+@ClrLoop:
+	stz $0,x
+	dex
+	bne @ClrLoop
 	plp
 	plb
 	rtl
