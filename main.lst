@@ -428,21 +428,20 @@ Current file: main.asm
 00011Er 2               	clc
 00011Er 2               	adc xOff
 00011Er 2               	sta $0
-00011Er 2               	WriteWRAM data, $0
-00011Er 2               	stz $0 ;cleanup
 00011Er 2               	a8
-00011Er 2               .endmacro
-00011Er 2               
-00011Er 2               .macro WriteWRAM data, offset
 00011Er 2               	lda #$7e
 00011Er 2               	pha
 00011Er 2               	plb
+00011Er 2               	a16
 00011Er 2               	lda data
-00011Er 2               	ldx offset
+00011Er 2               	ldx $0
 00011Er 2               	sta $2000,x
+00011Er 2               	a8
 00011Er 2               	lda #$0
 00011Er 2               	pha
 00011Er 2               	plb
+00011Er 2               	stz $0 ;cleanup
+00011Er 2               	stz $1 ;cleanup
 00011Er 2               .endmacro
 00011Er 2               
 00011Er 2               .macro StartDMA
@@ -1308,6 +1307,7 @@ Current file: main.asm
 0032ACr 1               .define GROUND_Y $B0
 0032ACr 1  A9 B0        	lda #GROUND_Y
 0032AEr 1  85 17        	sta spriteY
+0032B0r 1               
 0032B0r 1               MainLoop:
 0032B0r 1  AD 19 42     	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
 0032B3r 1  89 01        	bit #JOY_RIGHT
@@ -1529,86 +1529,78 @@ Current file: main.asm
 00340Cr 1  A5 16 85 04  	HandleLarry spriteX,spriteY,playerTileNum
 003410r 1  A5 17 85 05  
 003414r 1  A5 18 85 06  
-0034A8r 1               	; lda #$7e
-0034A8r 1               	; pha
-0034A8r 1               	; plb
-0034A8r 1               	; lda #$01
-0034A8r 1               	; sta $2000
-0034A8r 1               	; lda #$00
-0034A8r 1               	; pha
-0034A8r 1               	; plb
 0034A8r 1  C2 20 A9 03  	WriteTilemap #$03, #$0, #$10, #$01
 0034ACr 1  00 EB 2A 2A  
 0034B0r 1  2A 85 00 A9  
-0034DEr 1  C2 20 A9 03  	WriteTilemap #$03, #$1, #$f, #$01
-0034E2r 1  00 EB 2A 2A  
-0034E6r 1  2A 85 00 A9  
-003514r 1  C2 20 A9 03  	WriteTilemap #$03, #$2, #$11, #$01
-003518r 1  00 EB 2A 2A  
-00351Cr 1  2A 85 00 A9  
-00354Ar 1  C2 20 A9 02  	WriteTilemap #$02, #$2, #$11, #$01
-00354Er 1  00 EB 2A 2A  
-003552r 1  2A 85 00 A9  
-003580r 1  CB           	wai
-003581r 1  4C rr rr     	jmp MainLoop
-003584r 1               
-003584r 1               VBlank:
-003584r 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
-003585r 1  DA           	phx ;fucking up
-003586r 1  5A           	phy
-003587r 1  A9 80 8D 15  	WRAMToVRAM $2000, $0000, $2000
-00358Br 1  21 A2 00 00  
-00358Fr 1  8E 16 21 A2  
-0035ADr 1  20 rr rr     	jsr DMASpriteMirror
-0035B0r 1  A9 03 8D 0B  	StartDMA
-0035B4r 1  42           
-0035B5r 1  AD 10 42     	lda $4210 ;clear vblank flag
-0035B8r 1  7A           	ply
-0035B9r 1  FA           	plx
-0035BAr 1  68           	pla
-0035BBr 1               
-0035BBr 1  40           	rti
-0035BCr 1               
-0035BCr 1               SetupVideo:
-0035BCr 1  08               php
-0035BDr 1               
-0035BDr 1  A9 73        	lda #$73
-0035BFr 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
-0035C2r 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
-0035C5r 1  9C 03 21     	stz $2103
-0035C8r 1  A9 01        	lda #$1
-0035CAr 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
+0034E2r 1  C2 20 A9 03  	WriteTilemap #$03, #$1, #$f, #$01
+0034E6r 1  00 EB 2A 2A  
+0034EAr 1  2A 85 00 A9  
+00351Cr 1  C2 20 A9 03  	WriteTilemap #$03, #$2, #$11, #$01
+003520r 1  00 EB 2A 2A  
+003524r 1  2A 85 00 A9  
+003556r 1  C2 20 A9 02  	WriteTilemap #$02, #$2, #$11, #$01
+00355Ar 1  00 EB 2A 2A  
+00355Er 1  2A 85 00 A9  
+003590r 1  CB           	wai
+003591r 1  4C rr rr     	jmp MainLoop
+003594r 1               
+003594r 1               VBlank:
+003594r 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
+003595r 1  DA           	phx ;fucking up
+003596r 1  5A           	phy
+003597r 1  A9 80 8D 15  	WRAMToVRAM $2000, $0000, $2000
+00359Br 1  21 A2 00 00  
+00359Fr 1  8E 16 21 A2  
+0035BDr 1  20 rr rr     	jsr DMASpriteMirror
+0035C0r 1  A9 03 8D 0B  	StartDMA
+0035C4r 1  42           
+0035C5r 1  AD 10 42     	lda $4210 ;clear vblank flag
+0035C8r 1  7A           	ply
+0035C9r 1  FA           	plx
+0035CAr 1  68           	pla
+0035CBr 1               
+0035CBr 1  40           	rti
+0035CCr 1               
+0035CCr 1               SetupVideo:
+0035CCr 1  08               php
 0035CDr 1               
-0035CDr 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
-0035CFr 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
-0035D2r 1               
-0035D2r 1  A9 52        	lda #$52
-0035D4r 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
-0035D7r 1               
-0035D7r 1  A9 11            lda #$11            ; Enable BG1 and sprites
-0035D9r 1  8D 2C 21         sta $212C
-0035DCr 1               
-0035DCr 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
-0035DEr 1  8D 0E 21         sta $210E
-0035E1r 1  8D 0E 21         sta $210E
-0035E4r 1               
-0035E4r 1  A9 0F            lda #$0F
-0035E6r 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
-0035E9r 1               
-0035E9r 1  28               plp
-0035EAr 1  60               rts
-0035EBr 1               
-0035EBr 1               DMASpriteMirror:
-0035EBr 1  9C 02 21     	stz $2102		; set OAM address to 0
-0035EEr 1  9C 03 21     	stz $2103
-0035F1r 1               
-0035F1r 1  A0 00 04     	LDY #$0400
-0035F4r 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
-0035F7r 1  A0 00 04     	LDY #$0400
-0035FAr 1  8C 02 43     	STY $4302		; source offset
-0035FDr 1  A0 20 02     	LDY #$0220
-003600r 1  8C 05 43     	STY $4305		; number of bytes to transfer
-003603r 1  A9 7E        	LDA #$7E
-003605r 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
-003608r 1  60           	rts
-003608r 1               
+0035CDr 1  A9 73        	lda #$73
+0035CFr 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
+0035D2r 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
+0035D5r 1  9C 03 21     	stz $2103
+0035D8r 1  A9 01        	lda #$1
+0035DAr 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
+0035DDr 1               
+0035DDr 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
+0035DFr 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
+0035E2r 1               
+0035E2r 1  A9 52        	lda #$52
+0035E4r 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
+0035E7r 1               
+0035E7r 1  A9 11            lda #$11            ; Enable BG1 and sprites
+0035E9r 1  8D 2C 21         sta $212C
+0035ECr 1               
+0035ECr 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
+0035EEr 1  8D 0E 21         sta $210E
+0035F1r 1  8D 0E 21         sta $210E
+0035F4r 1               
+0035F4r 1  A9 0F            lda #$0F
+0035F6r 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
+0035F9r 1               
+0035F9r 1  28               plp
+0035FAr 1  60               rts
+0035FBr 1               
+0035FBr 1               DMASpriteMirror:
+0035FBr 1  9C 02 21     	stz $2102		; set OAM address to 0
+0035FEr 1  9C 03 21     	stz $2103
+003601r 1               
+003601r 1  A0 00 04     	LDY #$0400
+003604r 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
+003607r 1  A0 00 04     	LDY #$0400
+00360Ar 1  8C 02 43     	STY $4302		; source offset
+00360Dr 1  A0 20 02     	LDY #$0220
+003610r 1  8C 05 43     	STY $4305		; number of bytes to transfer
+003613r 1  A9 7E        	LDA #$7E
+003615r 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
+003618r 1  60           	rts
+003618r 1               

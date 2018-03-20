@@ -38,6 +38,7 @@ Reset:
 .define GROUND_Y $B0
 	lda #GROUND_Y
 	sta spriteY
+	
 MainLoop:
 	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
 	bit #JOY_RIGHT
@@ -251,14 +252,6 @@ DontFall:
 	SetHScroll scrollX
 	SetVScroll scrollY
 	HandleLarry spriteX,spriteY,playerTileNum
-	; lda #$7e
-	; pha 
-	; plb
-	; lda #$01
-	; sta $2000
-	; lda #$00
-	; pha
-	; plb
 	WriteTilemap #$03, #$0, #$10, #$01
 	WriteTilemap #$03, #$1, #$f, #$01
 	WriteTilemap #$03, #$2, #$11, #$01

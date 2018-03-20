@@ -78,21 +78,20 @@
 	clc
 	adc xOff
 	sta $0
-	WriteWRAM data, $0
-	stz $0 ;cleanup
 	a8
-.endmacro
-
-.macro WriteWRAM data, offset
 	lda #$7e
 	pha
 	plb
+	a16
 	lda data
-	ldx offset
+	ldx $0
 	sta $2000,x
+	a8
 	lda #$0
 	pha
 	plb
+	stz $0 ;cleanup
+	stz $1 ;cleanup
 .endmacro
 
 .macro StartDMA
