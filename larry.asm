@@ -24,18 +24,20 @@
 .macro ClearMemRange start, range
 ;start-address to start clearing
 ;range-num of bytes to clear
+.scope
 	ldx #$0
 	@loop:
 	stz start,x
 	inx
 	cpx range
 	bne @loop
+.endscope
 .endmacro
 
 ;sprite constants
 .define LARRY_ACCEL $1
 .define MAX_LARRY_SPEED $10
-.define MAX_LARRY_JUMP_HEIGHT $e
+.define MAX_LARRY_JUMP_HEIGHT $12
 ;various movement states
 .define STATE_NONE $0
 .define STATE_RIGHT_PRESSED $1

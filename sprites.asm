@@ -8,15 +8,13 @@ oam2WriteIndex = $2
 ; all the memory together or something sane
 	lda sprite
 	sta spriteNum
-	rep #$20
-	.a16
+	a16
 	lda sprite
 	clc
 	rol a
 	rol a ;multiply sprite num by 4 because each index in oam table is 4 bytes
 	tax
-	sep #$20 ;8 bit a
-	.a8
+	a8
 	lda xOffset
 	sta OamMirror,x
 	inx

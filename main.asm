@@ -17,27 +17,30 @@ Reset:
 	; Load Tile data to VRAM
     LoadBlockToVRAM BGTiles, $2000, $0040	; 2 tiles, 2bpp, = 32 bytes
 	LoadBlockToVRAM LarryTiles, $6000, $2000 ;16x16, 4bpp=128 bytes
-;	LoadBlockToVRAM BGTilemap, $0000, $2000
-	LoadBlockToWRAM BGTilemap, $2000, $2000
-	WRAMToVRAM $2000, $0000, $2000
+	LoadBlockToVRAM BGTilemap, $0000, $2000
+	LoadBlockToWRAM BGTilemap, TilemapMirror, $2000	
     ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
 	jsr InitSprites
+;	DrawBox #$2, #$0, #$11, #$10, #$18	
+;	DrawBox #$1, #$0, #$11, #$10, #$18	
+;	DrawBox #$0, #$0, #$11, #$10, #$18
+;	DrawBox #$2, #$5, #$11, #$1a, #$18
 	lda #$81
 	sta $4200 ;enable vblank interrupt and joypad read
 	lda #$00 ;idk why but sometimes spc writes crash the cpu without this line, at least on no$sns
 	;did a bit more debugging, looks like it's a conflict b/t loading larrytiles and bgtilemap to vram
-	rep #$20
-	.a16
+	a16
 	lda #$11b
 	sta scrollY
 	sep #$20
-	.a8
+	a8
 	lda #$50
 	sta spriteX
 .define GROUND_Y $B0
 	lda #GROUND_Y
 	sta spriteY
+	
 	
 MainLoop:
 	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
@@ -248,25 +251,47 @@ DontRise:
 	adc playerVSpeed
 	sta spriteY
 DontFall:
-
 	SetHScroll scrollX
 	SetVScroll scrollY
 	HandleLarry spriteX,spriteY,playerTileNum
-	DrawBox #$2, #$5, #$11, #$1a, #$18
+	;DrawLine #$3, #$1, #$2, #$10
+;	WriteTilemap #$2, #$1, #$15, #$01
+	lda #$7e
+	pha
+	plb
+	lda #$01
+	sta $3540
+	lda #$0
+	pha
+	plb
+	
 	wai
 	jmp MainLoop
 	
 VBlank:
+	php
+	phb
+	phd
 	pha ;push regs to stack so if my main loop is ever too long it'll continue without
 	phx ;fucking up
 	phy
-	WRAMToVRAM $2000, $0000, $2000
+	nop
+	nop
+	nop
+	a8
+	DMATilemapMirror #$2
+	; WRAMToVRAM $3000, $400, $800
 	jsr DMASpriteMirror
-	StartDMA
+	lda #$3
+	sta $420b
+;	StartDMA
 	lda $4210 ;clear vblank flag
 	ply
 	plx
 	pla
+	pld
+	plb
+	plp
 	
 	rti
 	
@@ -312,3 +337,4 @@ DMASpriteMirror:
 	LDA #$7E
 	STA $4304		; bank address = $7E  (work RAM)
 	rts
+	

@@ -15,14 +15,12 @@ LoadSPC:
 	phb
 	php
 	
-	rep #$20
-	.a16
+	a16
 	lda #NUM_SPC_BLOCKS
 	lda #$200
 	sta copyAddr ;set up copy address
 	stz blockIndex
-	sep #$20
-	.a8
+	a8
 	lda #$cc ;starting kick val
 	sta kick
 	
@@ -34,15 +32,13 @@ WaitForInit:
 	bne WaitForInit
 	
 CopyLoop:
-	rep #$20 ;16 bit a
-	.a16
+	a16
 	lda copyAddr
 	sta $2142 ;write destination address
 	clc
 	adc #$100
 	sta copyAddr
-	sep #$20
-	.a8
+	a8
 	
 	lda #$1
 	sta $2141 ;write command
@@ -54,12 +50,10 @@ WaitForAck: ;spc returns kick when it's ready to write
 	bne WaitForAck
 	
 CopyBlock: ;copies blocks of 256 bytes 
-	rep #$20 ;16 bit a
-	.a16
+	a16
 	lda copyIndex ;because blockIndex is next to copyIndex in memory hopefully
 	tax	;this will get the address (look at me, so smart for making blocks 256 bytes)
-	sep #$20
-	.a8
+	a8
 	lda f:SPCPrg,x ;specify bank
 	sta $2141
 	lda copyIndex
@@ -83,12 +77,10 @@ WaitReceive:
 	cmp #NUM_SPC_BLOCKS
 	bne CopyLoop
 	
-	rep #$20
-	.a16
+	a16
 	lda #$200 ;entry point
 	sta $2142
-	sep #$20
-	.a8
+	a8
 	stz $2141 ;start command
 	lda kick
 	sta $2140

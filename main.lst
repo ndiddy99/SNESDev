@@ -331,6 +331,7 @@ Current file: main.asm
 00011Er 2               ;oam mirror defines
 00011Er 2               .define OamMirror $400
 00011Er 2               .define Oam2Mirror $600
+00011Er 2               .define TilemapMirror $2000
 00011Er 2               
 00011Er 1               .include "variables.asm"
 00011Er 2               .enum ;start at $10 because first 15 bytes are "scratchpad"
@@ -389,16 +390,24 @@ Current file: main.asm
 00011Er 2               	sta $420b ;start transfer
 00011Er 2               .endmacro
 00011Er 2               
-00011Er 2               .macro WRAMToVRAM source, destination, size
+00011Er 2               .macro DMATilemapMirror screen
 00011Er 2               	lda #$80
 00011Er 2               	sta $2115 ;word-access,increment by one
-00011Er 2               	ldx #destination
-00011Er 2               	stx $2116
-00011Er 2               	ldx #source
-00011Er 2               	stx $4312 ;dma source address
+00011Er 2               	a16
+00011Er 2               	lda screen ;calculate offset based on screen parameter
+00011Er 2               	xba
+00011Er 2               	clc
+00011Er 2               	rol a
+00011Er 2               	rol a
+00011Er 2               	sta $2116 ;vram address to write to
+00011Er 2               	rol a
+00011Er 2               	ora #$2000
+00011Er 2               	lda #$3000
+00011Er 2               	sta $4312 ;dma source address
+00011Er 2               	a8
 00011Er 2               	lda #$7e
 00011Er 2               	sta $4314 ;bank
-00011Er 2               	ldx #size
+00011Er 2               	ldx #$800
 00011Er 2               	stx $4315
 00011Er 2               	lda #$18 ;dest = $2118, vram write register
 00011Er 2               	sta $4311
@@ -418,15 +427,19 @@ Current file: main.asm
 00011Er 2               	rol a ;screens are $800 apart, so multiply it by that
 00011Er 2               	sta $0
 00011Er 2               	lda yOff ;each "screen" is 32x32 words or $40x$40 bytes
-00011Er 2               	rol a
-00011Er 2               	rol a
-00011Er 2               	rol a
-00011Er 2               	rol a
-00011Er 2               	rol a
-00011Er 2               	rol a
+00011Er 2               	; rol a
+00011Er 2               	; rol a
+00011Er 2               	; rol a
+00011Er 2               	; rol a
+00011Er 2               	; rol a
+00011Er 2               	; rol a
+00011Er 2               	xba
+00011Er 2               	clc
+00011Er 2               	ror a
+00011Er 2               	ror a
 00011Er 2               	ora $0
 00011Er 2               	clc
-00011Er 2               	adc xOff ;words, so add twice to multiply by
+00011Er 2               	adc xOff ;words, so add twice to multiply by 2
 00011Er 2               	clc
 00011Er 2               	adc xOff
 00011Er 2               	sta $0
@@ -448,6 +461,7 @@ Current file: main.asm
 00011Er 2               
 00011Er 2               .macro DrawBox screen, x1, y1, x2, y2
 00011Er 2               ;note that "coordinates" are tiles, not pixels
+00011Er 2               .scope
 00011Er 2               	lda x2
 00011Er 2               	sta $4
 00011Er 2               	lda y1 ;$2 apart because gets read in 16-bit mdode
@@ -471,6 +485,25 @@ Current file: main.asm
 00011Er 2               	bne @DrawVLoop
 00011Er 2               	ldx #$a
 00011Er 2               	jsr ClearMem
+00011Er 2               .endscope
+00011Er 2               .endmacro
+00011Er 2               
+00011Er 2               .macro DrawLine screen, x1, x2, yVal
+00011Er 2               .scope
+00011Er 2               	lda x1
+00011Er 2               	sta $2
+00011Er 2               	lda x2 ;$2 apart because gets read in 16-bit mdode
+00011Er 2               	sta $4 ;inside writeTilemap
+00011Er 2               @DrawLoop:
+00011Er 2               	WriteTilemap screen, $2, yVal, #$1
+00011Er 2               	lda $2
+00011Er 2               	inc a
+00011Er 2               	sta $2
+00011Er 2               	cmp $4
+00011Er 2               	bne @DrawLoop
+00011Er 2               	ldx #$6
+00011Er 2               	jsr ClearMem
+00011Er 2               .endscope
 00011Er 2               .endmacro
 00011Er 2               
 00011Er 2               
@@ -601,15 +634,13 @@ Current file: main.asm
 00015Cr 2               ; all the memory together or something sane
 00015Cr 2               	lda sprite
 00015Cr 2               	sta spriteNum
-00015Cr 2               	rep #$20
-00015Cr 2               	.a16
+00015Cr 2               	a16
 00015Cr 2               	lda sprite
 00015Cr 2               	clc
 00015Cr 2               	rol a
 00015Cr 2               	rol a ;multiply sprite num by 4 because each index in oam table is 4 bytes
 00015Cr 2               	tax
-00015Cr 2               	sep #$20 ;8 bit a
-00015Cr 2               	.a8
+00015Cr 2               	a8
 00015Cr 2               	lda xOffset
 00015Cr 2               	sta OamMirror,x
 00015Cr 2               	inx
@@ -1033,18 +1064,18 @@ Current file: main.asm
 0028ACr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0028B0r 2  00 00 00 00  
 0028B4r 2  00 00 00 00  
-0028ECr 2  01 00 00 00  	.word $1,$0,$1,$0,$1,$0,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-0028F0r 2  01 00 00 00  
-0028F4r 2  01 00 00 00  
-00292Cr 2  01 00 01 00  	.word $1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1
-002930r 2  01 00 01 00  
-002934r 2  01 00 01 00  
-00296Cr 2  01 00 01 00  	.word $1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1
-002970r 2  01 00 01 00  
-002974r 2  01 00 01 00  
-0029ACr 2  01 00 01 00  	.word $1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1
-0029B0r 2  01 00 01 00  
-0029B4r 2  01 00 01 00  
+0028ECr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0028F0r 2  00 00 00 00  
+0028F4r 2  00 00 00 00  
+00292Cr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002930r 2  00 00 00 00  
+002934r 2  00 00 00 00  
+00296Cr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002970r 2  00 00 00 00  
+002974r 2  00 00 00 00  
+0029ACr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0029B0r 2  00 00 00 00  
+0029B4r 2  00 00 00 00  
 0029ECr 2               	;bottom right screen
 0029ECr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0029F0r 2  00 00 00 00  
@@ -1109,22 +1140,22 @@ Current file: main.asm
 002EECr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002EF0r 2  00 00 00 00  
 002EF4r 2  00 00 00 00  
-002F2Cr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002F2Cr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002F30r 2  00 00 00 00  
 002F34r 2  00 00 00 00  
-002F6Cr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002F6Cr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002F70r 2  00 00 00 00  
 002F74r 2  00 00 00 00  
-002FACr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002FACr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002FB0r 2  00 00 00 00  
 002FB4r 2  00 00 00 00  
-002FECr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002FECr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002FF0r 2  00 00 00 00  
 002FF4r 2  00 00 00 00  
-00302Cr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+00302Cr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003030r 2  00 00 00 00  
 003034r 2  00 00 00 00  
-00306Cr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+00306Cr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003070r 2  00 00 00 00  
 003074r 2  00 00 00 00  
 0030ACr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
@@ -1172,18 +1203,20 @@ Current file: main.asm
 0031ECr 2               .macro ClearMemRange start, range
 0031ECr 2               ;start-address to start clearing
 0031ECr 2               ;range-num of bytes to clear
+0031ECr 2               .scope
 0031ECr 2               	ldx #$0
 0031ECr 2               	@loop:
 0031ECr 2               	stz start,x
 0031ECr 2               	inx
 0031ECr 2               	cpx range
 0031ECr 2               	bne @loop
+0031ECr 2               .endscope
 0031ECr 2               .endmacro
 0031ECr 2               
 0031ECr 2               ;sprite constants
 0031ECr 2               .define LARRY_ACCEL $1
 0031ECr 2               .define MAX_LARRY_SPEED $10
-0031ECr 2               .define MAX_LARRY_JUMP_HEIGHT $e
+0031ECr 2               .define MAX_LARRY_JUMP_HEIGHT $12
 0031ECr 2               ;various movement states
 0031ECr 2               .define STATE_NONE $0
 0031ECr 2               .define STATE_RIGHT_PRESSED $1
@@ -1216,14 +1249,12 @@ Current file: main.asm
 005330r 2  8B           	phb
 005331r 2  08           	php
 005332r 2               
-005332r 2  C2 20        	rep #$20
-005334r 2               	.a16
+005332r 2  C2 20        	a16
 005334r 2  A9 53 00     	lda #NUM_SPC_BLOCKS
 005337r 2  A9 00 02     	lda #$200
 00533Ar 2  85 00        	sta copyAddr ;set up copy address
 00533Cr 2  64 03        	stz blockIndex
-00533Er 2  E2 20        	sep #$20
-005340r 2               	.a8
+00533Er 2  E2 20        	a8
 005340r 2  A9 CC        	lda #$cc ;starting kick val
 005342r 2  85 04        	sta kick
 005344r 2               
@@ -1235,15 +1266,13 @@ Current file: main.asm
 00534Dr 2  D0 F9        	bne WaitForInit
 00534Fr 2               
 00534Fr 2               CopyLoop:
-00534Fr 2  C2 20        	rep #$20 ;16 bit a
-005351r 2               	.a16
+00534Fr 2  C2 20        	a16
 005351r 2  A5 00        	lda copyAddr
 005353r 2  8D 42 21     	sta $2142 ;write destination address
 005356r 2  18           	clc
 005357r 2  69 00 01     	adc #$100
 00535Ar 2  85 00        	sta copyAddr
-00535Cr 2  E2 20        	sep #$20
-00535Er 2               	.a8
+00535Cr 2  E2 20        	a8
 00535Er 2               
 00535Er 2  A9 01        	lda #$1
 005360r 2  8D 41 21     	sta $2141 ;write command
@@ -1255,12 +1284,10 @@ Current file: main.asm
 00536Dr 2  D0 F9        	bne WaitForAck
 00536Fr 2               
 00536Fr 2               CopyBlock: ;copies blocks of 256 bytes
-00536Fr 2  C2 20        	rep #$20 ;16 bit a
-005371r 2               	.a16
+00536Fr 2  C2 20        	a16
 005371r 2  A5 02        	lda copyIndex ;because blockIndex is next to copyIndex in memory hopefully
 005373r 2  AA           	tax	;this will get the address (look at me, so smart for making blocks 256 bytes)
-005374r 2  E2 20        	sep #$20
-005376r 2               	.a8
+005374r 2  E2 20        	a8
 005376r 2  BF rr rr rr  	lda f:SPCPrg,x ;specify bank
 00537Ar 2  8D 41 21     	sta $2141
 00537Dr 2  A5 02        	lda copyIndex
@@ -1284,12 +1311,10 @@ Current file: main.asm
 00539Br 2  C9 53        	cmp #NUM_SPC_BLOCKS
 00539Dr 2  D0 B0        	bne CopyLoop
 00539Fr 2               
-00539Fr 2  C2 20        	rep #$20
-0053A1r 2               	.a16
+00539Fr 2  C2 20        	a16
 0053A1r 2  A9 00 02     	lda #$200 ;entry point
 0053A4r 2  8D 42 21     	sta $2142
-0053A7r 2  E2 20        	sep #$20
-0053A9r 2               	.a8
+0053A7r 2  E2 20        	a8
 0053A9r 2  9C 41 21     	stz $2141 ;start command
 0053ACr 2  A5 04        	lda kick
 0053AEr 2  8D 40 21     	sta $2140
@@ -1323,316 +1348,339 @@ Current file: main.asm
 003235r 1  A9 80 8D 15  	LoadBlockToVRAM LarryTiles, $6000, $2000 ;16x16, 4bpp=128 bytes
 003239r 1  21 A2 00 60  
 00323Dr 1  8E 16 21 A9  
-00324Br 1               ;	LoadBlockToVRAM BGTilemap, $0000, $2000
-00324Br 1  A2 rr rr 8E  	LoadBlockToWRAM BGTilemap, $2000, $2000
-00324Fr 1  02 43 A9 rr  
-003253r 1  8D 04 43 A2  
-003272r 1  A9 80 8D 15  	WRAMToVRAM $2000, $0000, $2000
-003276r 1  21 A2 00 00  
-00327Ar 1  8E 16 21 A2  
-003298r 1                   ; Setup Video modes and other stuff, then turn on the screen
-003298r 1  20 rr rr         jsr SetupVideo
-00329Br 1  20 rr rr     	jsr InitSprites
-00329Er 1  A9 81        	lda #$81
-0032A0r 1  8D 00 42     	sta $4200 ;enable vblank interrupt and joypad read
-0032A3r 1  A9 00        	lda #$00 ;idk why but sometimes spc writes crash the cpu without this line, at least on no$sns
-0032A5r 1               	;did a bit more debugging, looks like it's a conflict b/t loading larrytiles and bgtilemap to vram
-0032A5r 1  C2 20        	rep #$20
-0032A7r 1               	.a16
-0032A7r 1  A9 1B 01     	lda #$11b
-0032AAr 1  85 12        	sta scrollY
-0032ACr 1  E2 20        	sep #$20
-0032AEr 1               	.a8
-0032AEr 1  A9 50        	lda #$50
-0032B0r 1  85 16        	sta spriteX
-0032B2r 1               .define GROUND_Y $B0
-0032B2r 1  A9 B0        	lda #GROUND_Y
-0032B4r 1  85 17        	sta spriteY
-0032B6r 1               
-0032B6r 1               MainLoop:
-0032B6r 1  AD 19 42     	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
-0032B9r 1  89 01        	bit #JOY_RIGHT
-0032BBr 1  F0 0F        	beq AssignRightReleased ;if it is still being pressed, state=RIGHT_PRESSED
-0032BDr 1  A5 14        	lda playerHSpeed
-0032BFr 1  D0 15        	bne EndRightAssign
-0032C1r 1  A9 01        	lda #STATE_RIGHT_PRESSED
-0032C3r 1  85 1C        	sta movementState
-0032C5r 1  A9 30        	lda #$30 ;max sprite priority
-0032C7r 1  85 19        	sta playerAttrs
-0032C9r 1  4C rr rr     	jmp EndRightAssign
-0032CCr 1               
-0032CCr 1               AssignRightReleased:
-0032CCr 1  A5 1C        	lda movementState
-0032CEr 1  C9 01        	cmp #STATE_RIGHT_PRESSED ;was right pressed last frame?
-0032D0r 1  D0 04        	bne EndRightAssign ;if no, skip
-0032D2r 1  A9 02        	lda #STATE_RIGHT_RELEASED
-0032D4r 1  85 1C        	sta movementState
-0032D6r 1               
-0032D6r 1               EndRightAssign:
-0032D6r 1               
-0032D6r 1  AD 19 42     	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
-0032D9r 1  89 02        	bit #JOY_LEFT
-0032DBr 1  F0 0F        	beq AssignLeftReleased ;if it is still being pressed, state=RIGHT_PRESSED
-0032DDr 1  A5 14        	lda playerHSpeed
-0032DFr 1  D0 15        	bne EndLeftAssign
-0032E1r 1  A9 03        	lda #STATE_LEFT_PRESSED
-0032E3r 1  85 1C        	sta movementState
-0032E5r 1  A9 70        	lda #$70 ;max sprite priority, mirrored
-0032E7r 1  85 19        	sta playerAttrs
-0032E9r 1  4C rr rr     	jmp EndLeftAssign
-0032ECr 1               
-0032ECr 1               AssignLeftReleased:
-0032ECr 1  A5 1C        	lda movementState
-0032EEr 1  C9 03        	cmp #STATE_LEFT_PRESSED ;was right pressed last frame?
-0032F0r 1  D0 04        	bne EndLeftAssign ;if no, skip
-0032F2r 1  A9 04        	lda #STATE_LEFT_RELEASED
-0032F4r 1  85 1C        	sta movementState
-0032F6r 1               
-0032F6r 1               EndLeftAssign:
-0032F6r 1               
-0032F6r 1               ;if player is on ground, assign jump state
-0032F6r 1  AD 19 42     	lda $4219
-0032F9r 1  89 80        	bit #JOY_B
-0032FBr 1  F0 0E        	beq JumpNotPressed
-0032FDr 1  A5 1B        	lda playerState
-0032FFr 1  C9 00        	cmp #STATE_GROUND
-003301r 1  D0 08        	bne JumpNotPressed
-003303r 1  A9 01        	lda #STATE_JUMP_RISE
-003305r 1  85 1B        	sta playerState
-003307r 1  A9 0E        	lda #MAX_LARRY_JUMP_HEIGHT
-003309r 1  85 1A        	sta playerVSpeed
-00330Br 1               JumpNotPressed:
-00330Br 1               
-00330Br 1               EndStateAssigns:
-00330Br 1               
-00330Br 1               
-00330Br 1               ;accelerate player until reaches max speed
-00330Br 1  A5 1C        	lda movementState
-00330Dr 1  C9 01        	cmp #STATE_RIGHT_PRESSED
-00330Fr 1  D0 16        	bne RightNotPressed
-003311r 1               
-003311r 1  A5 14        	lda playerHSpeed
-003313r 1  C9 10        	cmp #MAX_LARRY_SPEED
-003315r 1  F0 05        	beq @DontAdd
-003317r 1  18           	clc
-003318r 1  69 01        	adc #LARRY_ACCEL
-00331Ar 1  85 14        	sta playerHSpeed
-00331Cr 1               @DontAdd:
-00331Cr 1  C2 20        	a16
-00331Er 1  A5 10        	lda scrollX
-003320r 1  18           	clc
-003321r 1  65 14        	adc playerHSpeed
-003323r 1  85 10        	sta scrollX
-003325r 1  E2 20        	a8
-003327r 1               RightNotPressed:
-003327r 1               
-003327r 1               ;decelerate player right until they stop
-003327r 1  A5 1C        	lda movementState
-003329r 1  C9 02        	cmp #STATE_RIGHT_RELEASED
-00332Br 1  D0 1D        	bne RightNotReleased
-00332Dr 1               
-00332Dr 1  A5 14        	lda playerHSpeed
-00332Fr 1  C9 00        	cmp #$0
-003331r 1  D0 07        	bne @Subtract
-003333r 1  A9 00        	lda #STATE_NONE
-003335r 1  85 1C        	sta movementState
-003337r 1  4C rr rr     	jmp RightNotReleased
-00333Ar 1               @Subtract:
-00333Ar 1  38           	sec
-00333Br 1  E9 01        	sbc #LARRY_ACCEL
-00333Dr 1  85 14        	sta playerHSpeed
-00333Fr 1  C2 20        	a16
-003341r 1  A5 10        	lda scrollX
-003343r 1  18           	clc
-003344r 1  65 14        	adc playerHSpeed
-003346r 1  85 10        	sta scrollX
-003348r 1  E2 20        	a8
-00334Ar 1               RightNotReleased:
-00334Ar 1               
-00334Ar 1               ;accelerate player until they hit max speed
-00334Ar 1  A5 1C        	lda movementState
-00334Cr 1  C9 03        	cmp #STATE_LEFT_PRESSED
-00334Er 1  D0 16        	bne LeftNotPressed
-003350r 1               
-003350r 1  A5 14        	lda playerHSpeed
-003352r 1  C9 10        	cmp #MAX_LARRY_SPEED
-003354r 1  F0 05        	beq @DontAdd
-003356r 1  18           	clc
-003357r 1  69 01        	adc #LARRY_ACCEL
-003359r 1  85 14        	sta playerHSpeed
-00335Br 1               @DontAdd:
-00335Br 1  C2 20        	a16
-00335Dr 1  A5 10        	lda scrollX
-00335Fr 1  38           	sec
-003360r 1  E5 14        	sbc playerHSpeed
-003362r 1  85 10        	sta scrollX
-003364r 1  E2 20        	a8
-003366r 1               LeftNotPressed:
-003366r 1               
-003366r 1               ;decelerate player until they stop
-003366r 1  A5 1C        	lda movementState
-003368r 1  C9 04        	cmp #STATE_LEFT_RELEASED
-00336Ar 1  D0 1D        	bne LeftNotReleased
-00336Cr 1               
-00336Cr 1  A5 14        	lda playerHSpeed
-00336Er 1  C9 00        	cmp #$0
-003370r 1  D0 07        	bne @Subtract
-003372r 1  A9 00        	lda #STATE_NONE
-003374r 1  85 1C        	sta movementState
-003376r 1  4C rr rr     	jmp LeftNotReleased
-003379r 1               @Subtract:
-003379r 1  38           	sec
-00337Ar 1  E9 01        	sbc #LARRY_ACCEL
-00337Cr 1  85 14        	sta playerHSpeed
-00337Er 1  C2 20        	a16
-003380r 1  A5 10        	lda scrollX
-003382r 1  38           	sec
-003383r 1  E5 14        	sbc playerHSpeed
-003385r 1  85 10        	sta scrollX
-003387r 1  E2 20        	a8
-003389r 1               LeftNotReleased:
-003389r 1               
-003389r 1               ;animate player based on speed
-003389r 1  A5 16 C5 1D  	PositiveDiff spriteX, lastAnimPoint
-00338Dr 1  B0 08 38 A5  
-003391r 1  1D E5 16 4C  
-00339Ar 1  C9 10        	cmp #MAX_LARRY_SPEED ;if sprite pos is less than max speed, don't animate
-00339Cr 1  90 12        	bcc DontAnimate
-00339Er 1  A5 18        	lda playerTileNum
-0033A0r 1  1A           	ina
-0033A1r 1  1A           	ina
-0033A2r 1  85 18        	sta playerTileNum
-0033A4r 1  C9 0E        	cmp #NUM_LARRY_TILES
-0033A6r 1  D0 08        	bne DontAnimate
-0033A8r 1  A9 02        	lda #$2
+00324Br 1  A9 80 8D 15  	LoadBlockToVRAM BGTilemap, $0000, $2000
+00324Fr 1  21 A2 00 00  
+003253r 1  8E 16 21 A9  
+003261r 1  A2 rr rr 8E  	LoadBlockToWRAM BGTilemap, TilemapMirror, $2000
+003265r 1  02 43 A9 rr  
+003269r 1  8D 04 43 A2  
+003288r 1                   ; Setup Video modes and other stuff, then turn on the screen
+003288r 1  20 rr rr         jsr SetupVideo
+00328Br 1  20 rr rr     	jsr InitSprites
+00328Er 1               ;	DrawBox #$2, #$0, #$11, #$10, #$18
+00328Er 1               ;	DrawBox #$1, #$0, #$11, #$10, #$18
+00328Er 1               ;	DrawBox #$0, #$0, #$11, #$10, #$18
+00328Er 1               ;	DrawBox #$2, #$5, #$11, #$1a, #$18
+00328Er 1  A9 81        	lda #$81
+003290r 1  8D 00 42     	sta $4200 ;enable vblank interrupt and joypad read
+003293r 1  A9 00        	lda #$00 ;idk why but sometimes spc writes crash the cpu without this line, at least on no$sns
+003295r 1               	;did a bit more debugging, looks like it's a conflict b/t loading larrytiles and bgtilemap to vram
+003295r 1  C2 20        	a16
+003297r 1  A9 1B 01     	lda #$11b
+00329Ar 1  85 12        	sta scrollY
+00329Cr 1  E2 20        	sep #$20
+00329Er 1  E2 20        	a8
+0032A0r 1  A9 50        	lda #$50
+0032A2r 1  85 16        	sta spriteX
+0032A4r 1               .define GROUND_Y $B0
+0032A4r 1  A9 B0        	lda #GROUND_Y
+0032A6r 1  85 17        	sta spriteY
+0032A8r 1               
+0032A8r 1               
+0032A8r 1               MainLoop:
+0032A8r 1  AD 19 42     	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
+0032ABr 1  89 01        	bit #JOY_RIGHT
+0032ADr 1  F0 0F        	beq AssignRightReleased ;if it is still being pressed, state=RIGHT_PRESSED
+0032AFr 1  A5 14        	lda playerHSpeed
+0032B1r 1  D0 15        	bne EndRightAssign
+0032B3r 1  A9 01        	lda #STATE_RIGHT_PRESSED
+0032B5r 1  85 1C        	sta movementState
+0032B7r 1  A9 30        	lda #$30 ;max sprite priority
+0032B9r 1  85 19        	sta playerAttrs
+0032BBr 1  4C rr rr     	jmp EndRightAssign
+0032BEr 1               
+0032BEr 1               AssignRightReleased:
+0032BEr 1  A5 1C        	lda movementState
+0032C0r 1  C9 01        	cmp #STATE_RIGHT_PRESSED ;was right pressed last frame?
+0032C2r 1  D0 04        	bne EndRightAssign ;if no, skip
+0032C4r 1  A9 02        	lda #STATE_RIGHT_RELEASED
+0032C6r 1  85 1C        	sta movementState
+0032C8r 1               
+0032C8r 1               EndRightAssign:
+0032C8r 1               
+0032C8r 1  AD 19 42     	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
+0032CBr 1  89 02        	bit #JOY_LEFT
+0032CDr 1  F0 0F        	beq AssignLeftReleased ;if it is still being pressed, state=RIGHT_PRESSED
+0032CFr 1  A5 14        	lda playerHSpeed
+0032D1r 1  D0 15        	bne EndLeftAssign
+0032D3r 1  A9 03        	lda #STATE_LEFT_PRESSED
+0032D5r 1  85 1C        	sta movementState
+0032D7r 1  A9 70        	lda #$70 ;max sprite priority, mirrored
+0032D9r 1  85 19        	sta playerAttrs
+0032DBr 1  4C rr rr     	jmp EndLeftAssign
+0032DEr 1               
+0032DEr 1               AssignLeftReleased:
+0032DEr 1  A5 1C        	lda movementState
+0032E0r 1  C9 03        	cmp #STATE_LEFT_PRESSED ;was right pressed last frame?
+0032E2r 1  D0 04        	bne EndLeftAssign ;if no, skip
+0032E4r 1  A9 04        	lda #STATE_LEFT_RELEASED
+0032E6r 1  85 1C        	sta movementState
+0032E8r 1               
+0032E8r 1               EndLeftAssign:
+0032E8r 1               
+0032E8r 1               ;if player is on ground, assign jump state
+0032E8r 1  AD 19 42     	lda $4219
+0032EBr 1  89 80        	bit #JOY_B
+0032EDr 1  F0 0E        	beq JumpNotPressed
+0032EFr 1  A5 1B        	lda playerState
+0032F1r 1  C9 00        	cmp #STATE_GROUND
+0032F3r 1  D0 08        	bne JumpNotPressed
+0032F5r 1  A9 01        	lda #STATE_JUMP_RISE
+0032F7r 1  85 1B        	sta playerState
+0032F9r 1  A9 12        	lda #MAX_LARRY_JUMP_HEIGHT
+0032FBr 1  85 1A        	sta playerVSpeed
+0032FDr 1               JumpNotPressed:
+0032FDr 1               
+0032FDr 1               EndStateAssigns:
+0032FDr 1               
+0032FDr 1               
+0032FDr 1               ;accelerate player until reaches max speed
+0032FDr 1  A5 1C        	lda movementState
+0032FFr 1  C9 01        	cmp #STATE_RIGHT_PRESSED
+003301r 1  D0 16        	bne RightNotPressed
+003303r 1               
+003303r 1  A5 14        	lda playerHSpeed
+003305r 1  C9 10        	cmp #MAX_LARRY_SPEED
+003307r 1  F0 05        	beq @DontAdd
+003309r 1  18           	clc
+00330Ar 1  69 01        	adc #LARRY_ACCEL
+00330Cr 1  85 14        	sta playerHSpeed
+00330Er 1               @DontAdd:
+00330Er 1  C2 20        	a16
+003310r 1  A5 10        	lda scrollX
+003312r 1  18           	clc
+003313r 1  65 14        	adc playerHSpeed
+003315r 1  85 10        	sta scrollX
+003317r 1  E2 20        	a8
+003319r 1               RightNotPressed:
+003319r 1               
+003319r 1               ;decelerate player right until they stop
+003319r 1  A5 1C        	lda movementState
+00331Br 1  C9 02        	cmp #STATE_RIGHT_RELEASED
+00331Dr 1  D0 1D        	bne RightNotReleased
+00331Fr 1               
+00331Fr 1  A5 14        	lda playerHSpeed
+003321r 1  C9 00        	cmp #$0
+003323r 1  D0 07        	bne @Subtract
+003325r 1  A9 00        	lda #STATE_NONE
+003327r 1  85 1C        	sta movementState
+003329r 1  4C rr rr     	jmp RightNotReleased
+00332Cr 1               @Subtract:
+00332Cr 1  38           	sec
+00332Dr 1  E9 01        	sbc #LARRY_ACCEL
+00332Fr 1  85 14        	sta playerHSpeed
+003331r 1  C2 20        	a16
+003333r 1  A5 10        	lda scrollX
+003335r 1  18           	clc
+003336r 1  65 14        	adc playerHSpeed
+003338r 1  85 10        	sta scrollX
+00333Ar 1  E2 20        	a8
+00333Cr 1               RightNotReleased:
+00333Cr 1               
+00333Cr 1               ;accelerate player until they hit max speed
+00333Cr 1  A5 1C        	lda movementState
+00333Er 1  C9 03        	cmp #STATE_LEFT_PRESSED
+003340r 1  D0 16        	bne LeftNotPressed
+003342r 1               
+003342r 1  A5 14        	lda playerHSpeed
+003344r 1  C9 10        	cmp #MAX_LARRY_SPEED
+003346r 1  F0 05        	beq @DontAdd
+003348r 1  18           	clc
+003349r 1  69 01        	adc #LARRY_ACCEL
+00334Br 1  85 14        	sta playerHSpeed
+00334Dr 1               @DontAdd:
+00334Dr 1  C2 20        	a16
+00334Fr 1  A5 10        	lda scrollX
+003351r 1  38           	sec
+003352r 1  E5 14        	sbc playerHSpeed
+003354r 1  85 10        	sta scrollX
+003356r 1  E2 20        	a8
+003358r 1               LeftNotPressed:
+003358r 1               
+003358r 1               ;decelerate player until they stop
+003358r 1  A5 1C        	lda movementState
+00335Ar 1  C9 04        	cmp #STATE_LEFT_RELEASED
+00335Cr 1  D0 1D        	bne LeftNotReleased
+00335Er 1               
+00335Er 1  A5 14        	lda playerHSpeed
+003360r 1  C9 00        	cmp #$0
+003362r 1  D0 07        	bne @Subtract
+003364r 1  A9 00        	lda #STATE_NONE
+003366r 1  85 1C        	sta movementState
+003368r 1  4C rr rr     	jmp LeftNotReleased
+00336Br 1               @Subtract:
+00336Br 1  38           	sec
+00336Cr 1  E9 01        	sbc #LARRY_ACCEL
+00336Er 1  85 14        	sta playerHSpeed
+003370r 1  C2 20        	a16
+003372r 1  A5 10        	lda scrollX
+003374r 1  38           	sec
+003375r 1  E5 14        	sbc playerHSpeed
+003377r 1  85 10        	sta scrollX
+003379r 1  E2 20        	a8
+00337Br 1               LeftNotReleased:
+00337Br 1               
+00337Br 1               ;animate player based on speed
+00337Br 1  A5 16 C5 1D  	PositiveDiff spriteX, lastAnimPoint
+00337Fr 1  B0 08 38 A5  
+003383r 1  1D E5 16 4C  
+00338Cr 1  C9 10        	cmp #MAX_LARRY_SPEED ;if sprite pos is less than max speed, don't animate
+00338Er 1  90 12        	bcc DontAnimate
+003390r 1  A5 18        	lda playerTileNum
+003392r 1  1A           	ina
+003393r 1  1A           	ina
+003394r 1  85 18        	sta playerTileNum
+003396r 1  C9 0E        	cmp #NUM_LARRY_TILES
+003398r 1  D0 08        	bne DontAnimate
+00339Ar 1  A9 02        	lda #$2
+00339Cr 1  85 18        	sta playerTileNum
+00339Er 1  A5 11        	lda scrollX+1
+0033A0r 1  85 1D        	sta lastAnimPoint
+0033A2r 1               DontAnimate:
+0033A2r 1               
+0033A2r 1  A5 1C        	lda movementState
+0033A4r 1  C9 00        	cmp #STATE_NONE
+0033A6r 1  D0 04        	bne DontStandStill
+0033A8r 1  A9 00        	lda #$0
 0033AAr 1  85 18        	sta playerTileNum
-0033ACr 1  A5 11        	lda scrollX+1
-0033AEr 1  85 1D        	sta lastAnimPoint
-0033B0r 1               DontAnimate:
-0033B0r 1               
-0033B0r 1  A5 1C        	lda movementState
-0033B2r 1  C9 00        	cmp #STATE_NONE
-0033B4r 1  D0 04        	bne DontStandStill
-0033B6r 1  A9 00        	lda #$0
-0033B8r 1  85 18        	sta playerTileNum
-0033BAr 1               DontStandStill:
-0033BAr 1               
-0033BAr 1               ;1. subtract gravity accel value until initial speed is 0
-0033BAr 1               ;2. set state to fall
-0033BAr 1               
-0033BAr 1  A5 1B        	lda playerState
-0033BCr 1  C9 01        	cmp #STATE_JUMP_RISE
-0033BEr 1  D0 17        	bne DontRise
-0033C0r 1  A5 1A        	lda playerVSpeed
-0033C2r 1  D0 07        	bne @SubSpeed ;branch if player v speed isn't 0
-0033C4r 1  A9 02        	lda #STATE_JUMP_FALL
-0033C6r 1  85 1B        	sta playerState
-0033C8r 1  4C rr rr     	jmp DontRise
-0033CBr 1               @SubSpeed:
-0033CBr 1  38           	sec
-0033CCr 1  E9 01        	sbc #LARRY_ACCEL
-0033CEr 1  85 1A        	sta playerVSpeed
-0033D0r 1  A5 17        	lda spriteY
-0033D2r 1  38           	sec
-0033D3r 1  E5 1A        	sbc playerVSpeed
-0033D5r 1  85 17        	sta spriteY
-0033D7r 1               DontRise:
-0033D7r 1               
-0033D7r 1               ;3. add gravity accel value until player touches ground
-0033D7r 1               ;4. set state to ground
-0033D7r 1               
-0033D7r 1  A5 1B        	lda playerState
-0033D9r 1  C9 02        	cmp #STATE_JUMP_FALL
-0033DBr 1  D0 1B        	bne DontFall
-0033DDr 1  A5 17        	lda spriteY
-0033DFr 1  C9 B0        	cmp #GROUND_Y
-0033E1r 1  D0 07        	bne @AddSpeed
-0033E3r 1  A9 00        	lda #STATE_GROUND
-0033E5r 1  85 1B        	sta playerState
-0033E7r 1  4C rr rr     	jmp DontFall
-0033EAr 1               @AddSpeed:
-0033EAr 1  A5 1A        	lda playerVSpeed
-0033ECr 1  18           	clc
-0033EDr 1  69 01        	adc #LARRY_ACCEL
-0033EFr 1  85 1A        	sta playerVSpeed
-0033F1r 1  A5 17        	lda spriteY
-0033F3r 1  18           	clc
-0033F4r 1  65 1A        	adc playerVSpeed
-0033F6r 1  85 17        	sta spriteY
-0033F8r 1               DontFall:
-0033F8r 1               
-0033F8r 1  C2 20 A5 10  	SetHScroll scrollX
-0033FCr 1  E2 20 8D 0D  
-003400r 1  21 EB 8D 0D  
-003405r 1  C2 20 A5 12  	SetVScroll scrollY
-003409r 1  E2 20 8D 0E  
-00340Dr 1  21 EB 8D 0E  
-003412r 1  A5 16 85 04  	HandleLarry spriteX,spriteY,playerTileNum
-003416r 1  A5 17 85 05  
-00341Ar 1  A5 18 85 06  
-0034BBr 1  A9 1A 85 04  	DrawBox #$2, #$5, #$11, #$1a, #$18
-0034BFr 1  A9 11 85 06  
-0034C3r 1  A9 18 85 08  
-00351Br 1  CB           	wai
-00351Cr 1  4C rr rr     	jmp MainLoop
-00351Fr 1               
-00351Fr 1               VBlank:
-00351Fr 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
-003520r 1  DA           	phx ;fucking up
-003521r 1  5A           	phy
-003522r 1  A9 80 8D 15  	WRAMToVRAM $2000, $0000, $2000
-003526r 1  21 A2 00 00  
-00352Ar 1  8E 16 21 A2  
-003548r 1  20 rr rr     	jsr DMASpriteMirror
-00354Br 1  A9 03 8D 0B  	StartDMA
-00354Fr 1  42           
-003550r 1  AD 10 42     	lda $4210 ;clear vblank flag
-003553r 1  7A           	ply
-003554r 1  FA           	plx
-003555r 1  68           	pla
-003556r 1               
-003556r 1  40           	rti
-003557r 1               
-003557r 1               SetupVideo:
-003557r 1  08               php
-003558r 1               
-003558r 1  A9 73        	lda #$73
-00355Ar 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
-00355Dr 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
-003560r 1  9C 03 21     	stz $2103
-003563r 1  A9 01        	lda #$1
-003565r 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
-003568r 1               
-003568r 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
-00356Ar 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
-00356Dr 1               
-00356Dr 1  A9 52        	lda #$52
-00356Fr 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
-003572r 1               
-003572r 1  A9 11            lda #$11            ; Enable BG1 and sprites
-003574r 1  8D 2C 21         sta $212C
-003577r 1               
-003577r 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
-003579r 1  8D 0E 21         sta $210E
-00357Cr 1  8D 0E 21         sta $210E
-00357Fr 1               
-00357Fr 1  A9 0F            lda #$0F
-003581r 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
-003584r 1               
-003584r 1  28               plp
-003585r 1  60               rts
-003586r 1               
-003586r 1               DMASpriteMirror:
-003586r 1  9C 02 21     	stz $2102		; set OAM address to 0
-003589r 1  9C 03 21     	stz $2103
-00358Cr 1               
-00358Cr 1  A0 00 04     	LDY #$0400
-00358Fr 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
-003592r 1  A0 00 04     	LDY #$0400
-003595r 1  8C 02 43     	STY $4302		; source offset
-003598r 1  A0 20 02     	LDY #$0220
-00359Br 1  8C 05 43     	STY $4305		; number of bytes to transfer
-00359Er 1  A9 7E        	LDA #$7E
-0035A0r 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
-0035A3r 1  60           	rts
-0035A3r 1               
+0033ACr 1               DontStandStill:
+0033ACr 1               
+0033ACr 1               ;1. subtract gravity accel value until initial speed is 0
+0033ACr 1               ;2. set state to fall
+0033ACr 1               
+0033ACr 1  A5 1B        	lda playerState
+0033AEr 1  C9 01        	cmp #STATE_JUMP_RISE
+0033B0r 1  D0 17        	bne DontRise
+0033B2r 1  A5 1A        	lda playerVSpeed
+0033B4r 1  D0 07        	bne @SubSpeed ;branch if player v speed isn't 0
+0033B6r 1  A9 02        	lda #STATE_JUMP_FALL
+0033B8r 1  85 1B        	sta playerState
+0033BAr 1  4C rr rr     	jmp DontRise
+0033BDr 1               @SubSpeed:
+0033BDr 1  38           	sec
+0033BEr 1  E9 01        	sbc #LARRY_ACCEL
+0033C0r 1  85 1A        	sta playerVSpeed
+0033C2r 1  A5 17        	lda spriteY
+0033C4r 1  38           	sec
+0033C5r 1  E5 1A        	sbc playerVSpeed
+0033C7r 1  85 17        	sta spriteY
+0033C9r 1               DontRise:
+0033C9r 1               
+0033C9r 1               ;3. add gravity accel value until player touches ground
+0033C9r 1               ;4. set state to ground
+0033C9r 1               
+0033C9r 1  A5 1B        	lda playerState
+0033CBr 1  C9 02        	cmp #STATE_JUMP_FALL
+0033CDr 1  D0 1B        	bne DontFall
+0033CFr 1  A5 17        	lda spriteY
+0033D1r 1  C9 B0        	cmp #GROUND_Y
+0033D3r 1  D0 07        	bne @AddSpeed
+0033D5r 1  A9 00        	lda #STATE_GROUND
+0033D7r 1  85 1B        	sta playerState
+0033D9r 1  4C rr rr     	jmp DontFall
+0033DCr 1               @AddSpeed:
+0033DCr 1  A5 1A        	lda playerVSpeed
+0033DEr 1  18           	clc
+0033DFr 1  69 01        	adc #LARRY_ACCEL
+0033E1r 1  85 1A        	sta playerVSpeed
+0033E3r 1  A5 17        	lda spriteY
+0033E5r 1  18           	clc
+0033E6r 1  65 1A        	adc playerVSpeed
+0033E8r 1  85 17        	sta spriteY
+0033EAr 1               DontFall:
+0033EAr 1  C2 20 A5 10  	SetHScroll scrollX
+0033EEr 1  E2 20 8D 0D  
+0033F2r 1  21 EB 8D 0D  
+0033F7r 1  C2 20 A5 12  	SetVScroll scrollY
+0033FBr 1  E2 20 8D 0E  
+0033FFr 1  21 EB 8D 0E  
+003404r 1  A5 16 85 04  	HandleLarry spriteX,spriteY,playerTileNum
+003408r 1  A5 17 85 05  
+00340Cr 1  A5 18 85 06  
+0034ADr 1               	;DrawLine #$3, #$1, #$2, #$10
+0034ADr 1               ;	WriteTilemap #$2, #$1, #$15, #$01
+0034ADr 1  A9 7E        	lda #$7e
+0034AFr 1  48           	pha
+0034B0r 1  AB           	plb
+0034B1r 1  A9 01        	lda #$01
+0034B3r 1  8D 40 35     	sta $3540
+0034B6r 1  A9 00        	lda #$0
+0034B8r 1  48           	pha
+0034B9r 1  AB           	plb
+0034BAr 1               
+0034BAr 1  CB           	wai
+0034BBr 1  4C rr rr     	jmp MainLoop
+0034BEr 1               
+0034BEr 1               VBlank:
+0034BEr 1  08           	php
+0034BFr 1  8B           	phb
+0034C0r 1  0B           	phd
+0034C1r 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
+0034C2r 1  DA           	phx ;fucking up
+0034C3r 1  5A           	phy
+0034C4r 1  EA           	nop
+0034C5r 1  EA           	nop
+0034C6r 1  EA           	nop
+0034C7r 1  E2 20        	a8
+0034C9r 1  A9 80 8D 15  	DMATilemapMirror #$2
+0034CDr 1  21 C2 20 A9  
+0034D1r 1  02 00 EB 18  
+0034FBr 1               	; WRAMToVRAM $3000, $400, $800
+0034FBr 1  20 rr rr     	jsr DMASpriteMirror
+0034FEr 1  A9 03        	lda #$3
+003500r 1  8D 0B 42     	sta $420b
+003503r 1               ;	StartDMA
+003503r 1  AD 10 42     	lda $4210 ;clear vblank flag
+003506r 1  7A           	ply
+003507r 1  FA           	plx
+003508r 1  68           	pla
+003509r 1  2B           	pld
+00350Ar 1  AB           	plb
+00350Br 1  28           	plp
+00350Cr 1               
+00350Cr 1  40           	rti
+00350Dr 1               
+00350Dr 1               SetupVideo:
+00350Dr 1  08               php
+00350Er 1               
+00350Er 1  A9 73        	lda #$73
+003510r 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
+003513r 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
+003516r 1  9C 03 21     	stz $2103
+003519r 1  A9 01        	lda #$1
+00351Br 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
+00351Er 1               
+00351Er 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
+003520r 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
+003523r 1               
+003523r 1  A9 52        	lda #$52
+003525r 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
+003528r 1               
+003528r 1  A9 11            lda #$11            ; Enable BG1 and sprites
+00352Ar 1  8D 2C 21         sta $212C
+00352Dr 1               
+00352Dr 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
+00352Fr 1  8D 0E 21         sta $210E
+003532r 1  8D 0E 21         sta $210E
+003535r 1               
+003535r 1  A9 0F            lda #$0F
+003537r 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
+00353Ar 1               
+00353Ar 1  28               plp
+00353Br 1  60               rts
+00353Cr 1               
+00353Cr 1               DMASpriteMirror:
+00353Cr 1  9C 02 21     	stz $2102		; set OAM address to 0
+00353Fr 1  9C 03 21     	stz $2103
+003542r 1               
+003542r 1  A0 00 04     	LDY #$0400
+003545r 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
+003548r 1  A0 00 04     	LDY #$0400
+00354Br 1  8C 02 43     	STY $4302		; source offset
+00354Er 1  A0 20 02     	LDY #$0220
+003551r 1  8C 05 43     	STY $4305		; number of bytes to transfer
+003554r 1  A9 7E        	LDA #$7E
+003556r 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
+003559r 1  60           	rts
+00355Ar 1               
+00355Ar 1               
