@@ -22,10 +22,6 @@ Reset:
     ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
 	jsr InitSprites
-;	DrawBox #$2, #$0, #$11, #$10, #$18	
-;	DrawBox #$1, #$0, #$11, #$10, #$18	
-;	DrawBox #$0, #$0, #$11, #$10, #$18
-;	DrawBox #$2, #$5, #$11, #$1a, #$18
 	lda #$81
 	sta $4200 ;enable vblank interrupt and joypad read
 	lda #$00 ;idk why but sometimes spc writes crash the cpu without this line, at least on no$sns
@@ -37,9 +33,15 @@ Reset:
 	a8
 	lda #$50
 	sta spriteX
+;TODO: make 0, this shit's temporary
+	ldx #$3bb
+	stx scrollX
 .define GROUND_Y $B0
 	lda #GROUND_Y
 	sta spriteY
+	
+	lda #$30 ;max sprite priority
+	sta playerAttrs
 	
 	
 MainLoop:
@@ -115,6 +117,7 @@ EndStateAssigns:
 	lda scrollX
 	clc
 	adc playerHSpeed
+	and #$3ff ;limit to 10 bits
 	sta scrollX
 	a8
 RightNotPressed:
@@ -138,6 +141,7 @@ RightNotPressed:
 	lda scrollX
 	clc
 	adc playerHSpeed
+	and #$3ff ;limit to 10 bits
 	sta scrollX
 	a8
 RightNotReleased:
@@ -158,6 +162,7 @@ RightNotReleased:
 	lda scrollX
 	sec
 	sbc playerHSpeed
+	and #$3ff
 	sta scrollX
 	a8
 LeftNotPressed:
@@ -181,14 +186,21 @@ LeftNotPressed:
 	lda scrollX
 	sec
 	sbc playerHSpeed
+	and #$3ff
 	sta scrollX
 	a8
 LeftNotReleased:
 
 ;animate player based on speed
-	PositiveDiff spriteX, lastAnimPoint
-	cmp #MAX_LARRY_SPEED ;if sprite pos is less than max speed, don't animate
-	bcc DontAnimate
+
+	lda movementState
+	cmp #STATE_NONE
+	bne DontStandStill
+	lda #$0
+	sta playerTileNum
+	jmp DontAnimate
+DontStandStill:
+	
 	lda playerTileNum
 	ina
 	ina
@@ -197,17 +209,10 @@ LeftNotReleased:
 	bne DontAnimate
 	lda #$2
 	sta playerTileNum
-	lda scrollX+1
-	sta lastAnimPoint
+	stz playerAnimDelay
 DontAnimate:
 
-	lda movementState
-	cmp #STATE_NONE
-	bne DontStandStill
-	lda #$0
-	sta playerTileNum
-DontStandStill:
-	
+
 ;1. subtract gravity accel value until initial speed is 0
 ;2. set state to fall
 	
@@ -251,19 +256,44 @@ DontRise:
 	adc playerVSpeed
 	sta spriteY
 DontFall:
-	SetHScroll scrollX
-	SetVScroll scrollY
+	
+	;set "absolute" player x and y values
+	a16
+	lda spriteX
+	clc
+	adc scrollX
+	and #$1ff ;snes background = 512 pixels, or $200 binary
+	sta playerX
+	lda spriteY
+	clc
+	adc scrollY
+	and #$1ff
+	sta playerY
+	
+	lda playerX ; reduce the position to a $3f range
+	ror a ;divide by 8
+	ror a
+	ror a
+	and #$3f
+	sta $0
+	lda playerY ;same "formula" as for x, but also needs to be shifted left 6 times
+	rol a
+	rol a
+	rol a 
+	and #$fc0 ;max possible value
+	clc
+	adc $0
+	sta playerTileOffset
+	a8
+	ldx #$2
+	jsr ClearMem
+	
+	ldx playerTileOffset
+	lda CollisionMap, x
+	sta collision
+	
 	HandleLarry spriteX,spriteY,playerTileNum
-	;DrawLine #$3, #$1, #$2, #$10
-;	WriteTilemap #$2, #$1, #$15, #$01
-	lda #$7e
-	pha
-	plb
-	lda #$01
-	sta $3540
-	lda #$0
-	pha
-	plb
+	; DrawLine #$2, #$11, #$15, #$15
 	
 	wai
 	jmp MainLoop
@@ -275,16 +305,13 @@ VBlank:
 	pha ;push regs to stack so if my main loop is ever too long it'll continue without
 	phx ;fucking up
 	phy
-	nop
-	nop
-	nop
 	a8
+	SetHScroll scrollX
+	SetVScroll scrollY
 	DMATilemapMirror #$2
-	; WRAMToVRAM $3000, $400, $800
 	jsr DMASpriteMirror
-	lda #$3
+	lda #$3 ;start dma transfer on channels 1&2
 	sta $420b
-;	StartDMA
 	lda $4210 ;clear vblank flag
 	ply
 	plx

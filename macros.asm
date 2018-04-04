@@ -51,7 +51,6 @@
 	sta $2116 ;vram address to write to
 	rol a
 	ora #$2000
-	lda #$3000
 	sta $4312 ;dma source address
 	a8
 	lda #$7e
@@ -153,13 +152,6 @@
 	ldx #$6
 	jsr ClearMem
 .endscope
-.endmacro
-
-
-.macro StartDMA
-;make sure to modify when i add more shit to dma
-	lda #$3 ;channels 1 and 2
-	sta $420b
 .endmacro
 	
 
