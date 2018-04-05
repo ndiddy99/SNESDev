@@ -238,9 +238,16 @@ DontRise:
 	lda playerState
 	cmp #STATE_JUMP_FALL
 	bne DontFall
-	lda spriteY
-	cmp #GROUND_Y
-	bne @AddSpeed
+	; lda spriteY
+	; cmp #GROUND_Y
+	jsr SetPlayerVals
+	jsr CheckCollisionB
+	beq @AddSpeed
+@EjectLoop:
+	dec spriteY
+	jsr SetPlayerVals
+	jsr CheckCollisionB
+	bne @EjectLoop
 	lda #STATE_GROUND
 	sta playerState
 	jmp DontFall
@@ -270,6 +277,13 @@ DontFall:
 	bne @EjectLoop
 	
 LCollision:
+	jsr CheckCollisionL
+	beq EndCollisionDetect
+@EjectLoop:
+	inc scrollX
+	jsr SetPlayerVals
+	jsr CheckCollisionL
+	bne @EjectLoop
 EndCollisionDetect:
 	
 	HandleLarry spriteX,spriteY,playerTileNum

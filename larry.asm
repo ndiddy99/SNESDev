@@ -62,6 +62,8 @@ SetPlayerVals:
 	clc
 	adc scrollY
 	and #$1ff
+	sec
+	sbc #$5 ;account for sprite's blank space
 	sta playerY
 	lda playerX ; reduce the position to a $3f range
 	ror a ;divide by 8
@@ -85,8 +87,7 @@ SetPlayerVals:
 CheckCollisionR: ;sprite is 16x32 or 2x4 tiles
 	a16
 	lda playerTileOffset ;top right
-	clc
-	adc #$1
+	ina
 	tax
 	lda CollisionMap, x
 	sta collision
@@ -104,15 +105,29 @@ CheckCollisionL:
 	a16
 	ldx playerTileOffset ;top left
 	lda CollisionMap, x
-	sta $0
+	sta collision
 	txa 
 	clc
 	adc #$80 ;bottom left
 	tax
 	lda CollisionMap, x
-	ora $0 
+	ora collision
+	sta collision
 	a8
-	ldx #$2
-	jsr ClearMem
+	rts
+	
+CheckCollisionB: ;for gravity collision detection
+	a16
+	lda playerTileOffset
+	clc
+	adc #$140
+	tax
+	lda CollisionMap, x ;bottom left
+	sta collision
+	inx
+	lda CollisionMap, x ;bottom right
+	ora collision
+	sta collision
+	a8
 	rts
 	
