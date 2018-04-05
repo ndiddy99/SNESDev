@@ -33,9 +33,7 @@ Reset:
 	a8
 	lda #$50
 	sta spriteX
-;TODO: make 0, this shit's temporary
-	ldx #$3bb
-	stx scrollX
+	
 .define GROUND_Y $B0
 	lda #GROUND_Y
 	sta spriteY
@@ -84,7 +82,7 @@ AssignLeftReleased:
 	sta movementState
 	
 EndLeftAssign:
-
+	
 ;if player is on ground, assign jump state
 	lda $4219
 	bit #JOY_B
@@ -287,10 +285,20 @@ DontFall:
 	a8
 	ldx #$2
 	jsr ClearMem
+
+	lda movementState
+	beq EndCollisionDetect ;if player's not moving, don't bather w/ wall collision detection
+	cmp #STATE_LEFT_PRESSED
+	bcs LCollision ;if state is left pressed or left released, branch
+	jsr CheckCollisionR
+	beq EndCollisionDetect
+	sec
+	lda scrollX
+	sbc playerHSpeed
+	sta scrollX
 	
-	ldx playerTileOffset
-	lda CollisionMap, x
-	sta collision
+LCollision:
+EndCollisionDetect:
 	
 	HandleLarry spriteX,spriteY,playerTileNum
 	; DrawLine #$2, #$11, #$15, #$15

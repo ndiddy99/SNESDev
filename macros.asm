@@ -261,5 +261,6 @@ ClearMem:
 	stz $0, x
 	dex
 	bne @ClearLoop
+	stz $0
 	rts
 	

@@ -9,7 +9,7 @@ playerY = playerX+2 ;1c
 playerTileOffset = playerY+2 ;1e
 playerTileNum = playerTileOffset+2 ;20
 collision
-playerAnimDelay
+playerAnimDelay = collision+2
 playerAttrs
 playerVSpeed
 playerState

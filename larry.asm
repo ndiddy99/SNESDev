@@ -49,3 +49,38 @@
 .define STATE_GROUND $0
 .define STATE_JUMP_RISE $1
 .define STATE_JUMP_FALL $2
+
+CheckCollisionR: ;sprite is 16x32 or 2x4 tiles
+	a16
+	lda playerTileOffset ;top right
+	clc
+	adc #$2
+	tax
+	lda CollisionMap, x
+	sta collision
+	txa ;load offset back into a
+	clc
+	adc #$80 ;$40 tiles per row
+	tax
+	lda CollisionMap, x
+	ora collision ;if top or bottom collision
+	sta collision
+	a8
+	rts
+	
+CheckCollisionL:
+	a16
+	ldx playerTileOffset ;top left
+	lda CollisionMap, x
+	sta $0
+	txa 
+	clc
+	adc #$80 ;bottom left
+	tax
+	lda CollisionMap, x
+	ora $0 
+	a8
+	ldx #$2
+	jsr ClearMem
+	rts
+	
