@@ -50,11 +50,43 @@
 .define STATE_JUMP_RISE $1
 .define STATE_JUMP_FALL $2
 
+SetPlayerVals:
+	;set "absolute" player x and y values
+	a16
+	lda spriteX
+	clc
+	adc scrollX
+	and #$1ff ;snes background = 512 pixels, or $200 binary
+	sta playerX
+	lda spriteY
+	clc
+	adc scrollY
+	and #$1ff
+	sta playerY
+	lda playerX ; reduce the position to a $3f range
+	ror a ;divide by 8
+	ror a
+	ror a
+	and #$3f
+	sta $0
+	lda playerY ;same "formula" as for x, but also needs to be shifted left 6 times
+	rol a
+	rol a
+	rol a 
+	and #$fc0 ;max possible value
+	clc
+	adc $0
+	sta playerTileOffset
+	a8
+	ldx #$2
+	jsr ClearMem
+	rts
+
 CheckCollisionR: ;sprite is 16x32 or 2x4 tiles
 	a16
 	lda playerTileOffset ;top right
 	clc
-	adc #$2
+	adc #$1
 	tax
 	lda CollisionMap, x
 	sta collision

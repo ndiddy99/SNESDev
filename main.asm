@@ -255,36 +255,7 @@ DontRise:
 	sta spriteY
 DontFall:
 	
-	;set "absolute" player x and y values
-	a16
-	lda spriteX
-	clc
-	adc scrollX
-	and #$1ff ;snes background = 512 pixels, or $200 binary
-	sta playerX
-	lda spriteY
-	clc
-	adc scrollY
-	and #$1ff
-	sta playerY
-	
-	lda playerX ; reduce the position to a $3f range
-	ror a ;divide by 8
-	ror a
-	ror a
-	and #$3f
-	sta $0
-	lda playerY ;same "formula" as for x, but also needs to be shifted left 6 times
-	rol a
-	rol a
-	rol a 
-	and #$fc0 ;max possible value
-	clc
-	adc $0
-	sta playerTileOffset
-	a8
-	ldx #$2
-	jsr ClearMem
+	jsr SetPlayerVals
 
 	lda movementState
 	beq EndCollisionDetect ;if player's not moving, don't bather w/ wall collision detection
@@ -292,10 +263,11 @@ DontFall:
 	bcs LCollision ;if state is left pressed or left released, branch
 	jsr CheckCollisionR
 	beq EndCollisionDetect
-	sec
-	lda scrollX
-	sbc playerHSpeed
-	sta scrollX
+@EjectLoop:
+	dec scrollX
+	jsr SetPlayerVals
+	jsr CheckCollisionR
+	bne @EjectLoop
 	
 LCollision:
 EndCollisionDetect:
