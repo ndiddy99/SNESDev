@@ -1043,9 +1043,9 @@ Current file: main.asm
 00272Er 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002732r 2  00 00 00 00  
 002736r 2  00 00 00 00  
-00276Er 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+00276Er 2  00 00 00 00  	.word $0,$0,$0,$0,$1,$1,$1,$1,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002772r 2  00 00 00 00  
-002776r 2  00 00 00 00  
+002776r 2  01 00 01 00  
 0027AEr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0027B2r 2  00 00 00 00  
 0027B6r 2  00 00 00 00  
@@ -1337,8 +1337,8 @@ Current file: main.asm
 003F6Er 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003F72r 2  00 00 00 00  
 003F76r 2  00 00 00 00  
-003FAEr 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003FB2r 2  00 00 00 00  
+003FAEr 2  00 00 00 00  	.byte $0,$0,$0,$0,$1,$1,$1,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003FB2r 2  01 01 01 01  
 003FB6r 2  00 00 00 00  
 003FEEr 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003FF2r 2  00 00 00 00  
@@ -1408,8 +1408,9 @@ Current file: main.asm
 00422Er 2               
 00422Er 2               ;sprite constants
 00422Er 2               .define LARRY_ACCEL $1
-00422Er 2               .define MAX_LARRY_SPEED $10
-00422Er 2               .define MAX_LARRY_JUMP_HEIGHT $12
+00422Er 2               .define MAX_LARRY_SPEED $8
+00422Er 2               .define MAX_LARRY_JUMP_HEIGHT $10
+00422Er 2               .define MAX_LARRY_FALL_SPEED $8
 00422Er 2               ;various movement states
 00422Er 2               .define STATE_NONE $0
 00422Er 2               .define STATE_RIGHT_PRESSED $1
@@ -1488,11 +1489,11 @@ Current file: main.asm
 004299r 2  E2 20        	a8
 00429Br 2  60           	rts
 00429Cr 2               
-00429Cr 2               CheckCollisionB: ;for gravity collision detection
+00429Cr 2               CheckCollisionB: ;checks if block below character is solid or not
 00429Cr 2  C2 20        	a16
 00429Er 2  A5 1E        	lda playerTileOffset
 0042A0r 2  18           	clc
-0042A1r 2  69 40 01     	adc #$140
+0042A1r 2  69 80 01     	adc #$180
 0042A4r 2  AA           	tax
 0042A5r 2  BD rr rr     	lda CollisionMap, x ;bottom left
 0042A8r 2  85 21        	sta collision
@@ -1702,7 +1703,7 @@ Current file: main.asm
 0043C0r 1  D0 08        	bne JumpNotPressed
 0043C2r 1  A9 01        	lda #STATE_JUMP_RISE
 0043C4r 1  85 26        	sta playerState
-0043C6r 1  A9 12        	lda #MAX_LARRY_JUMP_HEIGHT
+0043C6r 1  A9 10        	lda #MAX_LARRY_JUMP_HEIGHT
 0043C8r 1  85 25        	sta playerVSpeed
 0043CAr 1               JumpNotPressed:
 0043CAr 1               
@@ -1715,7 +1716,7 @@ Current file: main.asm
 0043CEr 1  D0 19        	bne RightNotPressed
 0043D0r 1               
 0043D0r 1  A5 14        	lda playerHSpeed
-0043D2r 1  C9 10        	cmp #MAX_LARRY_SPEED
+0043D2r 1  C9 08        	cmp #MAX_LARRY_SPEED
 0043D4r 1  F0 05        	beq @DontAdd
 0043D6r 1  18           	clc
 0043D7r 1  69 01        	adc #LARRY_ACCEL
@@ -1760,7 +1761,7 @@ Current file: main.asm
 004413r 1  D0 19        	bne LeftNotPressed
 004415r 1               
 004415r 1  A5 14        	lda playerHSpeed
-004417r 1  C9 10        	cmp #MAX_LARRY_SPEED
+004417r 1  C9 08        	cmp #MAX_LARRY_SPEED
 004419r 1  F0 05        	beq @DontAdd
 00441Br 1  18           	clc
 00441Cr 1  69 01        	adc #LARRY_ACCEL
@@ -1800,7 +1801,6 @@ Current file: main.asm
 004454r 1               LeftNotReleased:
 004454r 1               
 004454r 1               ;animate player based on speed
-004454r 1               
 004454r 1  A5 27        	lda movementState
 004456r 1  C9 00        	cmp #STATE_NONE
 004458r 1  D0 07        	bne DontStandStill
@@ -1820,161 +1820,172 @@ Current file: main.asm
 00446Fr 1  64 23        	stz playerAnimDelay
 004471r 1               DontAnimate:
 004471r 1               
-004471r 1               
-004471r 1               ;1. subtract gravity accel value until initial speed is 0
-004471r 1               ;2. set state to fall
-004471r 1               
+004471r 1               	;if player isn't above solid surface, fall
 004471r 1  A5 26        	lda playerState
-004473r 1  C9 01        	cmp #STATE_JUMP_RISE
-004475r 1  D0 17        	bne DontRise
-004477r 1  A5 25        	lda playerVSpeed
-004479r 1  D0 07        	bne @SubSpeed ;branch if player v speed isn't 0
-00447Br 1  A9 02        	lda #STATE_JUMP_FALL
-00447Dr 1  85 26        	sta playerState
-00447Fr 1  4C rr rr     	jmp DontRise
-004482r 1               @SubSpeed:
-004482r 1  38           	sec
-004483r 1  E9 01        	sbc #LARRY_ACCEL
-004485r 1  85 25        	sta playerVSpeed
-004487r 1  A5 18        	lda spriteY
-004489r 1  38           	sec
-00448Ar 1  E5 25        	sbc playerVSpeed
-00448Cr 1  85 18        	sta spriteY
-00448Er 1               DontRise:
-00448Er 1               
-00448Er 1               ;3. add gravity accel value until player touches ground
-00448Er 1               ;4. set state to ground
-00448Er 1               
-00448Er 1  A5 26        	lda playerState
-004490r 1  C9 02        	cmp #STATE_JUMP_FALL
-004492r 1  D0 27        	bne DontFall
-004494r 1               	; lda spriteY
-004494r 1               	; cmp #GROUND_Y
-004494r 1  20 rr rr     	jsr SetPlayerVals
-004497r 1  20 rr rr     	jsr CheckCollisionB
-00449Ar 1  F0 11        	beq @AddSpeed
-00449Cr 1               @EjectLoop:
-00449Cr 1  C6 18        	dec spriteY
-00449Er 1  20 rr rr     	jsr SetPlayerVals
-0044A1r 1  20 rr rr     	jsr CheckCollisionB
-0044A4r 1  D0 F6        	bne @EjectLoop
-0044A6r 1  A9 00        	lda #STATE_GROUND
-0044A8r 1  85 26        	sta playerState
-0044AAr 1  4C rr rr     	jmp DontFall
-0044ADr 1               @AddSpeed:
-0044ADr 1  A5 25        	lda playerVSpeed
-0044AFr 1  18           	clc
-0044B0r 1  69 01        	adc #LARRY_ACCEL
-0044B2r 1  85 25        	sta playerVSpeed
-0044B4r 1  A5 18        	lda spriteY
-0044B6r 1  18           	clc
-0044B7r 1  65 25        	adc playerVSpeed
-0044B9r 1  85 18        	sta spriteY
-0044BBr 1               DontFall:
-0044BBr 1               
-0044BBr 1  20 rr rr     	jsr SetPlayerVals
-0044BEr 1               
-0044BEr 1  A5 27        	lda movementState
-0044C0r 1  F0 22        	beq EndCollisionDetect ;if player's not moving, don't bather w/ wall collision detection
-0044C2r 1  C9 03        	cmp #STATE_LEFT_PRESSED
-0044C4r 1  B0 0F        	bcs LCollision ;if state is left pressed or left released, branch
-0044C6r 1  20 rr rr     	jsr CheckCollisionR
-0044C9r 1  F0 19        	beq EndCollisionDetect
-0044CBr 1               @EjectLoop:
-0044CBr 1  C6 10        	dec scrollX
-0044CDr 1  20 rr rr     	jsr SetPlayerVals
-0044D0r 1  20 rr rr     	jsr CheckCollisionR
-0044D3r 1  D0 F6        	bne @EjectLoop
-0044D5r 1               
-0044D5r 1               LCollision:
-0044D5r 1  20 rr rr     	jsr CheckCollisionL
-0044D8r 1  F0 0A        	beq EndCollisionDetect
-0044DAr 1               @EjectLoop:
-0044DAr 1  E6 10        	inc scrollX
-0044DCr 1  20 rr rr     	jsr SetPlayerVals
-0044DFr 1  20 rr rr     	jsr CheckCollisionL
-0044E2r 1  D0 F6        	bne @EjectLoop
-0044E4r 1               EndCollisionDetect:
-0044E4r 1               
-0044E4r 1  A5 16 85 04  	HandleLarry spriteX,spriteY,playerTileNum
-0044E8r 1  A5 18 85 05  
-0044ECr 1  A5 20 85 06  
-00458Dr 1               	; DrawLine #$2, #$11, #$15, #$15
-00458Dr 1               
-00458Dr 1  CB           	wai
-00458Er 1  4C rr rr     	jmp MainLoop
-004591r 1               
-004591r 1               VBlank:
-004591r 1  08           	php
-004592r 1  8B           	phb
-004593r 1  0B           	phd
-004594r 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
-004595r 1  DA           	phx ;fucking up
-004596r 1  5A           	phy
-004597r 1  E2 20        	a8
-004599r 1  C2 20 A5 10  	SetHScroll scrollX
-00459Dr 1  E2 20 8D 0D  
-0045A1r 1  21 EB 8D 0D  
-0045A6r 1  C2 20 A5 12  	SetVScroll scrollY
-0045AAr 1  E2 20 8D 0E  
-0045AEr 1  21 EB 8D 0E  
-0045B3r 1  A9 80 8D 15  	DMATilemapMirror #$2
-0045B7r 1  21 C2 20 A9  
-0045BBr 1  02 00 EB 18  
-0045E2r 1  20 rr rr     	jsr DMASpriteMirror
-0045E5r 1  A9 03        	lda #$3 ;start dma transfer on channels 1&2
-0045E7r 1  8D 0B 42     	sta $420b
-0045EAr 1  AD 10 42     	lda $4210 ;clear vblank flag
-0045EDr 1  7A           	ply
-0045EEr 1  FA           	plx
-0045EFr 1  68           	pla
-0045F0r 1  2B           	pld
-0045F1r 1  AB           	plb
-0045F2r 1  28           	plp
-0045F3r 1               
-0045F3r 1  40           	rti
-0045F4r 1               
-0045F4r 1               SetupVideo:
-0045F4r 1  08               php
-0045F5r 1               
-0045F5r 1  A9 73        	lda #$73
-0045F7r 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
-0045FAr 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
-0045FDr 1  9C 03 21     	stz $2103
-004600r 1  A9 01        	lda #$1
-004602r 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
-004605r 1               
-004605r 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
-004607r 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
-00460Ar 1               
-00460Ar 1  A9 52        	lda #$52
-00460Cr 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
-00460Fr 1               
-00460Fr 1  A9 11            lda #$11            ; Enable BG1 and sprites
-004611r 1  8D 2C 21         sta $212C
-004614r 1               
-004614r 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
-004616r 1  8D 0E 21         sta $210E
-004619r 1  8D 0E 21         sta $210E
-00461Cr 1               
-00461Cr 1  A9 0F            lda #$0F
-00461Er 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
-004621r 1               
-004621r 1  28               plp
-004622r 1  60               rts
-004623r 1               
-004623r 1               DMASpriteMirror:
-004623r 1  9C 02 21     	stz $2102		; set OAM address to 0
-004626r 1  9C 03 21     	stz $2103
-004629r 1               
-004629r 1  A0 00 04     	LDY #$0400
-00462Cr 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
-00462Fr 1  A0 00 04     	LDY #$0400
-004632r 1  8C 02 43     	STY $4302		; source offset
-004635r 1  A0 20 02     	LDY #$0220
-004638r 1  8C 05 43     	STY $4305		; number of bytes to transfer
-00463Br 1  A9 7E        	LDA #$7E
-00463Dr 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
-004640r 1  60           	rts
-004641r 1               
-004641r 1               
+004473r 1  C9 00        	cmp #STATE_GROUND
+004475r 1  D0 0C        	bne DontApplyGravity
+004477r 1  20 rr rr     	jsr SetPlayerVals
+00447Ar 1  20 rr rr     	jsr CheckCollisionB
+00447Dr 1  D0 04        	bne DontApplyGravity
+00447Fr 1  A9 02        	lda #STATE_JUMP_FALL
+004481r 1  85 26        	sta playerState
+004483r 1               DontApplyGravity:
+004483r 1               
+004483r 1               ;1. subtract gravity accel value until initial speed is 0
+004483r 1               ;2. set state to fall
+004483r 1               
+004483r 1  A5 26        	lda playerState
+004485r 1  C9 01        	cmp #STATE_JUMP_RISE
+004487r 1  D0 17        	bne DontRise
+004489r 1  A5 25        	lda playerVSpeed
+00448Br 1  D0 07        	bne @SubSpeed ;branch if player v speed isn't 0
+00448Dr 1  A9 02        	lda #STATE_JUMP_FALL
+00448Fr 1  85 26        	sta playerState
+004491r 1  4C rr rr     	jmp DontRise
+004494r 1               @SubSpeed:
+004494r 1  38           	sec
+004495r 1  E9 01        	sbc #LARRY_ACCEL
+004497r 1  85 25        	sta playerVSpeed
+004499r 1  A5 18        	lda spriteY
+00449Br 1  38           	sec
+00449Cr 1  E5 25        	sbc playerVSpeed
+00449Er 1  85 18        	sta spriteY
+0044A0r 1               DontRise:
+0044A0r 1               
+0044A0r 1               ;3. add gravity accel value until player touches ground
+0044A0r 1               ;4. set state to ground
+0044A0r 1               
+0044A0r 1  A5 26        	lda playerState
+0044A2r 1  C9 02        	cmp #STATE_JUMP_FALL
+0044A4r 1  D0 21        	bne DontFall
+0044A6r 1  20 rr rr     	jsr SetPlayerVals
+0044A9r 1  20 rr rr     	jsr CheckCollisionB
+0044ACr 1  F0 07        	beq @AddSpeed
+0044AEr 1               ; @EjectLoop:
+0044AEr 1               	; dec spriteY
+0044AEr 1               	; jsr SetPlayerVals
+0044AEr 1               	; jsr CheckCollisionB
+0044AEr 1               	; bne @EjectLoop
+0044AEr 1  A9 00        	lda #STATE_GROUND
+0044B0r 1  85 26        	sta playerState
+0044B2r 1  4C rr rr     	jmp DontFall
+0044B5r 1               @AddSpeed:
+0044B5r 1  A5 25        	lda playerVSpeed
+0044B7r 1  C9 08        	cmp #MAX_LARRY_FALL_SPEED
+0044B9r 1  B0 05        	bcs @DontAdd
+0044BBr 1  18           	clc
+0044BCr 1  69 01        	adc #LARRY_ACCEL
+0044BEr 1  85 25        	sta playerVSpeed
+0044C0r 1               @DontAdd:
+0044C0r 1  A5 18        	lda spriteY
+0044C2r 1  18           	clc
+0044C3r 1  65 25        	adc playerVSpeed
+0044C5r 1  85 18        	sta spriteY
+0044C7r 1               DontFall:
+0044C7r 1               
+0044C7r 1  20 rr rr     	jsr SetPlayerVals
+0044CAr 1               
+0044CAr 1  A5 27        	lda movementState
+0044CCr 1  F0 22        	beq EndCollisionDetect ;if player's not moving, don't bather w/ wall collision detection
+0044CEr 1  C9 03        	cmp #STATE_LEFT_PRESSED
+0044D0r 1  B0 0F        	bcs LCollision ;if state is left pressed or left released, branch
+0044D2r 1  20 rr rr     	jsr CheckCollisionR
+0044D5r 1  F0 19        	beq EndCollisionDetect
+0044D7r 1               @EjectLoop:
+0044D7r 1  C6 10        	dec scrollX
+0044D9r 1  20 rr rr     	jsr SetPlayerVals
+0044DCr 1  20 rr rr     	jsr CheckCollisionR
+0044DFr 1  D0 F6        	bne @EjectLoop
+0044E1r 1               
+0044E1r 1               LCollision:
+0044E1r 1  20 rr rr     	jsr CheckCollisionL
+0044E4r 1  F0 0A        	beq EndCollisionDetect
+0044E6r 1               @EjectLoop:
+0044E6r 1  E6 10        	inc scrollX
+0044E8r 1  20 rr rr     	jsr SetPlayerVals
+0044EBr 1  20 rr rr     	jsr CheckCollisionL
+0044EEr 1  D0 F6        	bne @EjectLoop
+0044F0r 1               EndCollisionDetect:
+0044F0r 1               
+0044F0r 1  A5 16 85 04  	HandleLarry spriteX,spriteY,playerTileNum
+0044F4r 1  A5 18 85 05  
+0044F8r 1  A5 20 85 06  
+004599r 1               	; DrawLine #$2, #$11, #$15, #$15
+004599r 1               
+004599r 1  CB           	wai
+00459Ar 1  4C rr rr     	jmp MainLoop
+00459Dr 1               
+00459Dr 1               VBlank:
+00459Dr 1  08           	php
+00459Er 1  8B           	phb
+00459Fr 1  0B           	phd
+0045A0r 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
+0045A1r 1  DA           	phx ;fucking up
+0045A2r 1  5A           	phy
+0045A3r 1  E2 20        	a8
+0045A5r 1  C2 20 A5 10  	SetHScroll scrollX
+0045A9r 1  E2 20 8D 0D  
+0045ADr 1  21 EB 8D 0D  
+0045B2r 1  C2 20 A5 12  	SetVScroll scrollY
+0045B6r 1  E2 20 8D 0E  
+0045BAr 1  21 EB 8D 0E  
+0045BFr 1  A9 80 8D 15  	DMATilemapMirror #$2
+0045C3r 1  21 C2 20 A9  
+0045C7r 1  02 00 EB 18  
+0045EEr 1  20 rr rr     	jsr DMASpriteMirror
+0045F1r 1  A9 03        	lda #$3 ;start dma transfer on channels 1&2
+0045F3r 1  8D 0B 42     	sta $420b
+0045F6r 1  AD 10 42     	lda $4210 ;clear vblank flag
+0045F9r 1  7A           	ply
+0045FAr 1  FA           	plx
+0045FBr 1  68           	pla
+0045FCr 1  2B           	pld
+0045FDr 1  AB           	plb
+0045FEr 1  28           	plp
+0045FFr 1               
+0045FFr 1  40           	rti
+004600r 1               
+004600r 1               SetupVideo:
+004600r 1  08               php
+004601r 1               
+004601r 1  A9 73        	lda #$73
+004603r 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
+004606r 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
+004609r 1  9C 03 21     	stz $2103
+00460Cr 1  A9 01        	lda #$1
+00460Er 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
+004611r 1               
+004611r 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
+004613r 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
+004616r 1               
+004616r 1  A9 52        	lda #$52
+004618r 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
+00461Br 1               
+00461Br 1  A9 11            lda #$11            ; Enable BG1 and sprites
+00461Dr 1  8D 2C 21         sta $212C
+004620r 1               
+004620r 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
+004622r 1  8D 0E 21         sta $210E
+004625r 1  8D 0E 21         sta $210E
+004628r 1               
+004628r 1  A9 0F            lda #$0F
+00462Ar 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
+00462Dr 1               
+00462Dr 1  28               plp
+00462Er 1  60               rts
+00462Fr 1               
+00462Fr 1               DMASpriteMirror:
+00462Fr 1  9C 02 21     	stz $2102		; set OAM address to 0
+004632r 1  9C 03 21     	stz $2103
+004635r 1               
+004635r 1  A0 00 04     	LDY #$0400
+004638r 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
+00463Br 1  A0 00 04     	LDY #$0400
+00463Er 1  8C 02 43     	STY $4302		; source offset
+004641r 1  A0 20 02     	LDY #$0220
+004644r 1  8C 05 43     	STY $4305		; number of bytes to transfer
+004647r 1  A9 7E        	LDA #$7E
+004649r 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
+00464Cr 1  60           	rts
+00464Dr 1               
+00464Dr 1               

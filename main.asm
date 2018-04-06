@@ -190,7 +190,6 @@ LeftNotPressed:
 LeftNotReleased:
 
 ;animate player based on speed
-
 	lda movementState
 	cmp #STATE_NONE
 	bne DontStandStill
@@ -210,7 +209,17 @@ DontStandStill:
 	stz playerAnimDelay
 DontAnimate:
 
-
+	;if player isn't above solid surface, fall
+	lda playerState
+	cmp #STATE_GROUND
+	bne DontApplyGravity
+	jsr SetPlayerVals
+	jsr CheckCollisionB
+	bne DontApplyGravity
+	lda #STATE_JUMP_FALL
+	sta playerState
+DontApplyGravity:
+	
 ;1. subtract gravity accel value until initial speed is 0
 ;2. set state to fall
 	
@@ -238,24 +247,25 @@ DontRise:
 	lda playerState
 	cmp #STATE_JUMP_FALL
 	bne DontFall
-	; lda spriteY
-	; cmp #GROUND_Y
 	jsr SetPlayerVals
 	jsr CheckCollisionB
 	beq @AddSpeed
-@EjectLoop:
-	dec spriteY
-	jsr SetPlayerVals
-	jsr CheckCollisionB
-	bne @EjectLoop
+; @EjectLoop:
+	; dec spriteY
+	; jsr SetPlayerVals
+	; jsr CheckCollisionB
+	; bne @EjectLoop
 	lda #STATE_GROUND
 	sta playerState
 	jmp DontFall
 @AddSpeed:
 	lda playerVSpeed
+	cmp #MAX_LARRY_FALL_SPEED
+	bcs @DontAdd
 	clc
 	adc #LARRY_ACCEL
 	sta playerVSpeed
+@DontAdd:
 	lda spriteY
 	clc
 	adc playerVSpeed
@@ -263,7 +273,6 @@ DontRise:
 DontFall:
 	
 	jsr SetPlayerVals
-
 	lda movementState
 	beq EndCollisionDetect ;if player's not moving, don't bather w/ wall collision detection
 	cmp #STATE_LEFT_PRESSED

@@ -36,8 +36,9 @@
 
 ;sprite constants
 .define LARRY_ACCEL $1
-.define MAX_LARRY_SPEED $10
-.define MAX_LARRY_JUMP_HEIGHT $12
+.define MAX_LARRY_SPEED $8
+.define MAX_LARRY_JUMP_HEIGHT $10
+.define MAX_LARRY_FALL_SPEED $8
 ;various movement states
 .define STATE_NONE $0
 .define STATE_RIGHT_PRESSED $1
@@ -116,11 +117,11 @@ CheckCollisionL:
 	a8
 	rts
 	
-CheckCollisionB: ;for gravity collision detection
+CheckCollisionB: ;checks if block below character is solid or not
 	a16
 	lda playerTileOffset
 	clc
-	adc #$140
+	adc #$180
 	tax
 	lda CollisionMap, x ;bottom left
 	sta collision
