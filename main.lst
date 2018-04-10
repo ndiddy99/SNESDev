@@ -1493,7 +1493,7 @@ Current file: main.asm
 00429Cr 2  C2 20        	a16
 00429Er 2  A5 1E        	lda playerTileOffset
 0042A0r 2  18           	clc
-0042A1r 2  69 80 01     	adc #$180
+0042A1r 2  69 40 01     	adc #$140
 0042A4r 2  AA           	tax
 0042A5r 2  BD rr rr     	lda CollisionMap, x ;bottom left
 0042A8r 2  85 21        	sta collision
@@ -1857,135 +1857,136 @@ Current file: main.asm
 0044A0r 1               
 0044A0r 1  A5 26        	lda playerState
 0044A2r 1  C9 02        	cmp #STATE_JUMP_FALL
-0044A4r 1  D0 21        	bne DontFall
+0044A4r 1  D0 2F        	bne DontFall
 0044A6r 1  20 rr rr     	jsr SetPlayerVals
 0044A9r 1  20 rr rr     	jsr CheckCollisionB
-0044ACr 1  F0 07        	beq @AddSpeed
-0044AEr 1               ; @EjectLoop:
-0044AEr 1               	; dec spriteY
-0044AEr 1               	; jsr SetPlayerVals
-0044AEr 1               	; jsr CheckCollisionB
-0044AEr 1               	; bne @EjectLoop
-0044AEr 1  A9 00        	lda #STATE_GROUND
-0044B0r 1  85 26        	sta playerState
-0044B2r 1  4C rr rr     	jmp DontFall
-0044B5r 1               @AddSpeed:
-0044B5r 1  A5 25        	lda playerVSpeed
-0044B7r 1  C9 08        	cmp #MAX_LARRY_FALL_SPEED
-0044B9r 1  B0 05        	bcs @DontAdd
-0044BBr 1  18           	clc
-0044BCr 1  69 01        	adc #LARRY_ACCEL
-0044BEr 1  85 25        	sta playerVSpeed
-0044C0r 1               @DontAdd:
-0044C0r 1  A5 18        	lda spriteY
-0044C2r 1  18           	clc
-0044C3r 1  65 25        	adc playerVSpeed
-0044C5r 1  85 18        	sta spriteY
-0044C7r 1               DontFall:
-0044C7r 1               
-0044C7r 1  20 rr rr     	jsr SetPlayerVals
-0044CAr 1               
-0044CAr 1  A5 27        	lda movementState
-0044CCr 1  F0 22        	beq EndCollisionDetect ;if player's not moving, don't bather w/ wall collision detection
-0044CEr 1  C9 03        	cmp #STATE_LEFT_PRESSED
-0044D0r 1  B0 0F        	bcs LCollision ;if state is left pressed or left released, branch
-0044D2r 1  20 rr rr     	jsr CheckCollisionR
-0044D5r 1  F0 19        	beq EndCollisionDetect
-0044D7r 1               @EjectLoop:
-0044D7r 1  C6 10        	dec scrollX
-0044D9r 1  20 rr rr     	jsr SetPlayerVals
-0044DCr 1  20 rr rr     	jsr CheckCollisionR
-0044DFr 1  D0 F6        	bne @EjectLoop
-0044E1r 1               
-0044E1r 1               LCollision:
-0044E1r 1  20 rr rr     	jsr CheckCollisionL
-0044E4r 1  F0 0A        	beq EndCollisionDetect
-0044E6r 1               @EjectLoop:
-0044E6r 1  E6 10        	inc scrollX
-0044E8r 1  20 rr rr     	jsr SetPlayerVals
-0044EBr 1  20 rr rr     	jsr CheckCollisionL
-0044EEr 1  D0 F6        	bne @EjectLoop
-0044F0r 1               EndCollisionDetect:
-0044F0r 1               
-0044F0r 1  A5 16 85 04  	HandleLarry spriteX,spriteY,playerTileNum
-0044F4r 1  A5 18 85 05  
-0044F8r 1  A5 20 85 06  
-004599r 1               	; DrawLine #$2, #$11, #$15, #$15
-004599r 1               
-004599r 1  CB           	wai
-00459Ar 1  4C rr rr     	jmp MainLoop
-00459Dr 1               
-00459Dr 1               VBlank:
-00459Dr 1  08           	php
-00459Er 1  8B           	phb
-00459Fr 1  0B           	phd
-0045A0r 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
-0045A1r 1  DA           	phx ;fucking up
-0045A2r 1  5A           	phy
-0045A3r 1  E2 20        	a8
-0045A5r 1  C2 20 A5 10  	SetHScroll scrollX
-0045A9r 1  E2 20 8D 0D  
-0045ADr 1  21 EB 8D 0D  
-0045B2r 1  C2 20 A5 12  	SetVScroll scrollY
-0045B6r 1  E2 20 8D 0E  
-0045BAr 1  21 EB 8D 0E  
-0045BFr 1  A9 80 8D 15  	DMATilemapMirror #$2
-0045C3r 1  21 C2 20 A9  
-0045C7r 1  02 00 EB 18  
-0045EEr 1  20 rr rr     	jsr DMASpriteMirror
-0045F1r 1  A9 03        	lda #$3 ;start dma transfer on channels 1&2
-0045F3r 1  8D 0B 42     	sta $420b
-0045F6r 1  AD 10 42     	lda $4210 ;clear vblank flag
-0045F9r 1  7A           	ply
-0045FAr 1  FA           	plx
-0045FBr 1  68           	pla
-0045FCr 1  2B           	pld
-0045FDr 1  AB           	plb
-0045FEr 1  28           	plp
-0045FFr 1               
-0045FFr 1  40           	rti
-004600r 1               
-004600r 1               SetupVideo:
-004600r 1  08               php
-004601r 1               
-004601r 1  A9 73        	lda #$73
-004603r 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
-004606r 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
-004609r 1  9C 03 21     	stz $2103
-00460Cr 1  A9 01        	lda #$1
-00460Er 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
-004611r 1               
-004611r 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
-004613r 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
-004616r 1               
-004616r 1  A9 52        	lda #$52
-004618r 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
-00461Br 1               
-00461Br 1  A9 11            lda #$11            ; Enable BG1 and sprites
-00461Dr 1  8D 2C 21         sta $212C
-004620r 1               
-004620r 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
-004622r 1  8D 0E 21         sta $210E
-004625r 1  8D 0E 21         sta $210E
-004628r 1               
-004628r 1  A9 0F            lda #$0F
-00462Ar 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
-00462Dr 1               
-00462Dr 1  28               plp
-00462Er 1  60               rts
-00462Fr 1               
-00462Fr 1               DMASpriteMirror:
-00462Fr 1  9C 02 21     	stz $2102		; set OAM address to 0
-004632r 1  9C 03 21     	stz $2103
-004635r 1               
-004635r 1  A0 00 04     	LDY #$0400
-004638r 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
-00463Br 1  A0 00 04     	LDY #$0400
-00463Er 1  8C 02 43     	STY $4302		; source offset
-004641r 1  A0 20 02     	LDY #$0220
-004644r 1  8C 05 43     	STY $4305		; number of bytes to transfer
-004647r 1  A9 7E        	LDA #$7E
-004649r 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
-00464Cr 1  60           	rts
-00464Dr 1               
-00464Dr 1               
+0044ACr 1  F0 15        	beq @AddSpeed
+0044AEr 1               @EjectLoop:
+0044AEr 1  C6 18        	dec spriteY
+0044B0r 1  20 rr rr     	jsr SetPlayerVals
+0044B3r 1  20 rr rr     	jsr CheckCollisionB
+0044B6r 1  D0 F6        	bne @EjectLoop
+0044B8r 1  E6 18        	inc spriteY
+0044BAr 1  A9 00        	lda #STATE_GROUND
+0044BCr 1  85 26        	sta playerState
+0044BEr 1  64 25        	stz playerVSpeed
+0044C0r 1  4C rr rr     	jmp DontFall
+0044C3r 1               @AddSpeed:
+0044C3r 1  A5 25        	lda playerVSpeed
+0044C5r 1  C9 08        	cmp #MAX_LARRY_FALL_SPEED
+0044C7r 1  B0 05        	bcs @DontAdd
+0044C9r 1  18           	clc
+0044CAr 1  69 01        	adc #LARRY_ACCEL
+0044CCr 1  85 25        	sta playerVSpeed
+0044CEr 1               @DontAdd:
+0044CEr 1  A5 18        	lda spriteY
+0044D0r 1  18           	clc
+0044D1r 1  65 25        	adc playerVSpeed
+0044D3r 1  85 18        	sta spriteY
+0044D5r 1               DontFall:
+0044D5r 1               
+0044D5r 1  20 rr rr     	jsr SetPlayerVals
+0044D8r 1  A5 27        	lda movementState
+0044DAr 1  F0 22        	beq EndCollisionDetect ;if player's not moving, don't bather w/ wall collision detection
+0044DCr 1  C9 03        	cmp #STATE_LEFT_PRESSED
+0044DEr 1  B0 0F        	bcs LCollision ;if state is left pressed or left released, branch
+0044E0r 1  20 rr rr     	jsr CheckCollisionR
+0044E3r 1  F0 19        	beq EndCollisionDetect
+0044E5r 1               @EjectLoop:
+0044E5r 1  C6 10        	dec scrollX
+0044E7r 1  20 rr rr     	jsr SetPlayerVals
+0044EAr 1  20 rr rr     	jsr CheckCollisionR
+0044EDr 1  D0 F6        	bne @EjectLoop
+0044EFr 1               
+0044EFr 1               LCollision:
+0044EFr 1  20 rr rr     	jsr CheckCollisionL
+0044F2r 1  F0 0A        	beq EndCollisionDetect
+0044F4r 1               @EjectLoop:
+0044F4r 1  E6 10        	inc scrollX
+0044F6r 1  20 rr rr     	jsr SetPlayerVals
+0044F9r 1  20 rr rr     	jsr CheckCollisionL
+0044FCr 1  D0 F6        	bne @EjectLoop
+0044FEr 1               EndCollisionDetect:
+0044FEr 1               
+0044FEr 1  A5 16 85 04  	HandleLarry spriteX,spriteY,playerTileNum
+004502r 1  A5 18 85 05  
+004506r 1  A5 20 85 06  
+0045A7r 1               	; DrawLine #$2, #$11, #$15, #$15
+0045A7r 1               
+0045A7r 1  CB           	wai
+0045A8r 1  4C rr rr     	jmp MainLoop
+0045ABr 1               
+0045ABr 1               VBlank:
+0045ABr 1  08           	php
+0045ACr 1  8B           	phb
+0045ADr 1  0B           	phd
+0045AEr 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
+0045AFr 1  DA           	phx ;fucking up
+0045B0r 1  5A           	phy
+0045B1r 1  E2 20        	a8
+0045B3r 1  C2 20 A5 10  	SetHScroll scrollX
+0045B7r 1  E2 20 8D 0D  
+0045BBr 1  21 EB 8D 0D  
+0045C0r 1  C2 20 A5 12  	SetVScroll scrollY
+0045C4r 1  E2 20 8D 0E  
+0045C8r 1  21 EB 8D 0E  
+0045CDr 1  A9 80 8D 15  	DMATilemapMirror #$2
+0045D1r 1  21 C2 20 A9  
+0045D5r 1  02 00 EB 18  
+0045FCr 1  20 rr rr     	jsr DMASpriteMirror
+0045FFr 1  A9 03        	lda #$3 ;start dma transfer on channels 1&2
+004601r 1  8D 0B 42     	sta $420b
+004604r 1  AD 10 42     	lda $4210 ;clear vblank flag
+004607r 1  7A           	ply
+004608r 1  FA           	plx
+004609r 1  68           	pla
+00460Ar 1  2B           	pld
+00460Br 1  AB           	plb
+00460Cr 1  28           	plp
+00460Dr 1               
+00460Dr 1  40           	rti
+00460Er 1               
+00460Er 1               SetupVideo:
+00460Er 1  08               php
+00460Fr 1               
+00460Fr 1  A9 73        	lda #$73
+004611r 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
+004614r 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
+004617r 1  9C 03 21     	stz $2103
+00461Ar 1  A9 01        	lda #$1
+00461Cr 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
+00461Fr 1               
+00461Fr 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
+004621r 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
+004624r 1               
+004624r 1  A9 52        	lda #$52
+004626r 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
+004629r 1               
+004629r 1  A9 11            lda #$11            ; Enable BG1 and sprites
+00462Br 1  8D 2C 21         sta $212C
+00462Er 1               
+00462Er 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
+004630r 1  8D 0E 21         sta $210E
+004633r 1  8D 0E 21         sta $210E
+004636r 1               
+004636r 1  A9 0F            lda #$0F
+004638r 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
+00463Br 1               
+00463Br 1  28               plp
+00463Cr 1  60               rts
+00463Dr 1               
+00463Dr 1               DMASpriteMirror:
+00463Dr 1  9C 02 21     	stz $2102		; set OAM address to 0
+004640r 1  9C 03 21     	stz $2103
+004643r 1               
+004643r 1  A0 00 04     	LDY #$0400
+004646r 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
+004649r 1  A0 00 04     	LDY #$0400
+00464Cr 1  8C 02 43     	STY $4302		; source offset
+00464Fr 1  A0 20 02     	LDY #$0220
+004652r 1  8C 05 43     	STY $4305		; number of bytes to transfer
+004655r 1  A9 7E        	LDA #$7E
+004657r 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
+00465Ar 1  60           	rts
+00465Br 1               
+00465Br 1               

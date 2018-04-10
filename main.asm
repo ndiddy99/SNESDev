@@ -247,16 +247,18 @@ DontRise:
 	lda playerState
 	cmp #STATE_JUMP_FALL
 	bne DontFall
-	jsr SetPlayerVals
+	jsr SetPlayerVals ;have player fall until they're inside the ground
 	jsr CheckCollisionB
 	beq @AddSpeed
-; @EjectLoop:
-	; dec spriteY
-	; jsr SetPlayerVals
-	; jsr CheckCollisionB
-	; bne @EjectLoop
+@EjectLoop: ;eject player from the ground
+	dec spriteY
+	jsr SetPlayerVals
+	jsr CheckCollisionB
+	bne @EjectLoop
+	inc spriteY ;insert player one pixel into the ground so they won't be constantly falling
 	lda #STATE_GROUND
 	sta playerState
+	stz playerVSpeed
 	jmp DontFall
 @AddSpeed:
 	lda playerVSpeed

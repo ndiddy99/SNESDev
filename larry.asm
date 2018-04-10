@@ -121,7 +121,7 @@ CheckCollisionB: ;checks if block below character is solid or not
 	a16
 	lda playerTileOffset
 	clc
-	adc #$180
+	adc #$140
 	tax
 	lda CollisionMap, x ;bottom left
 	sta collision
