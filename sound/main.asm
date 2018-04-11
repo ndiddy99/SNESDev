@@ -101,9 +101,9 @@ TimerWait:
 	
 Song: //format: pitch, instrument, duration (timer ticks)
 	db $10,$01,$20
-	db $10,$01,$50
-	db $0f,$01,$40
-	db $09,$01,$70
+	db $10,$00,$50
+	db $0f,$02,$40
+	db $09,$02,$70
 	// db $10,$00,$50
 EndSong:
 	

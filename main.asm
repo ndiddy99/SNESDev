@@ -15,12 +15,15 @@ Reset:
 	LoadPalette BGPalette, 0, $100
     LoadPalette SpritePalette, $80, $F
 	; Load Tile data to VRAM
-    LoadBlockToVRAM BGTiles, $2000, $0040	; 2 tiles, 2bpp, = 32 bytes
-	LoadBlockToVRAM LarryTiles, $6000, $2000 ;16x16, 4bpp=128 bytes
+    LoadBlockToVRAM BGTiles, $2000, $0040	
+	LoadBlockToVRAM BG2Tiles, $5000, $200 ;8 tiles, 4bpp
+	LoadBlockToVRAM LarryTiles, $6000, $2000
 	LoadBlockToVRAM BGTilemap, $0000, $2000
+	LoadBlockToVRAM BG2Tilemap, $4000, $800
 	LoadBlockToWRAM BGTilemap, TilemapMirror, $2000	
     ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
+	
 	jsr InitSprites
 	lda #$81
 	sta $4200 ;enable vblank interrupt and joypad read
@@ -339,11 +342,14 @@ SetupVideo:
 
     lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
     sta $2107           ; And the Tile Map size to 64x64
+	
+	lda #$40  ; bg2 tilemap offset: $4000, size: 32x32
+	sta $2108
 
 	lda #$52
     sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
 
-    lda #$11            ; Enable BG1 and sprites
+    lda #$13            ; Enable BG1, BG2, and sprites
     sta $212C
 
     lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
