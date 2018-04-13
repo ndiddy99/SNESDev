@@ -333,6 +333,8 @@ Current file: main.asm
 00011Er 2               .define Oam2Mirror $600
 00011Er 2               .define TilemapMirror $2000
 00011Er 2               
+00011Er 2               .define BG2ScrollTable $620
+00011Er 2               
 00011Er 1               .include "variables.asm"
 00011Er 2               .enum ;start at $10 because first 15 bytes are "scratchpad"
 00011Er 2               scrollX = $10
@@ -1057,8 +1059,8 @@ Current file: main.asm
 0029EEr 2  00 00 01 00  	.word $0,$1,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0029F2r 2  01 00 00 00  
 0029F6r 2  00 00 00 00  
-002A2Er 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-002A32r 2  00 00 00 00  
+002A2Er 2  00 00 01 00  	.word $0,$1,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002A32r 2  01 00 00 00  
 002A36r 2  00 00 00 00  
 002A6Er 2  00 00 01 00  	.word $0,$1,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002A72r 2  01 00 00 00  
@@ -2017,89 +2019,133 @@ Current file: main.asm
 004F25r 1  20 rr rr     	jsr CheckCollisionL
 004F28r 1  D0 F6        	bne @EjectLoop
 004F2Ar 1               EndCollisionDetect:
-004F2Ar 1               
-004F2Ar 1  A5 16 85 04  	HandleLarry spriteX,spriteY,playerTileNum
-004F2Er 1  A5 18 85 05  
-004F32r 1  A5 20 85 06  
-004FD3r 1               	; DrawLine #$2, #$11, #$15, #$15
-004FD3r 1               
-004FD3r 1  CB           	wai
-004FD4r 1  4C rr rr     	jmp MainLoop
-004FD7r 1               
-004FD7r 1               VBlank:
-004FD7r 1  08           	php
-004FD8r 1  8B           	phb
-004FD9r 1  0B           	phd
-004FDAr 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
-004FDBr 1  DA           	phx ;fucking up
-004FDCr 1  5A           	phy
-004FDDr 1  E2 20        	a8
-004FDFr 1  C2 20 A5 10  	SetHScroll scrollX
-004FE3r 1  E2 20 8D 0D  
-004FE7r 1  21 EB 8D 0D  
-004FECr 1  C2 20 A5 12  	SetVScroll scrollY
-004FF0r 1  E2 20 8D 0E  
-004FF4r 1  21 EB 8D 0E  
-004FF9r 1  A9 80 8D 15  	DMATilemapMirror #$2
-004FFDr 1  21 C2 20 A9  
-005001r 1  02 00 EB 18  
-005028r 1  20 rr rr     	jsr DMASpriteMirror
-00502Br 1  A9 03        	lda #$3 ;start dma transfer on channels 1&2
-00502Dr 1  8D 0B 42     	sta $420b
-005030r 1  AD 10 42     	lda $4210 ;clear vblank flag
-005033r 1  7A           	ply
-005034r 1  FA           	plx
-005035r 1  68           	pla
-005036r 1  2B           	pld
-005037r 1  AB           	plb
-005038r 1  28           	plp
-005039r 1               
-005039r 1  40           	rti
-00503Ar 1               
-00503Ar 1               SetupVideo:
-00503Ar 1  08               php
-00503Br 1               
-00503Br 1  A9 73        	lda #$73
-00503Dr 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
-005040r 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
-005043r 1  9C 03 21     	stz $2103
-005046r 1  A9 01        	lda #$1
-005048r 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
-00504Br 1               
-00504Br 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
-00504Dr 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
-005050r 1               
-005050r 1  A9 40        	lda #$40  ; bg2 tilemap offset: $4000, size: 32x32
-005052r 1  8D 08 21     	sta $2108
-005055r 1               
-005055r 1  A9 52        	lda #$52
-005057r 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
-00505Ar 1               
-00505Ar 1  A9 13            lda #$13            ; Enable BG1, BG2, and sprites
-00505Cr 1  8D 2C 21         sta $212C
+004F2Ar 1               	;calculate bg2's scroll
+004F2Ar 1  C2 20        	a16
+004F2Cr 1  A5 10        	lda scrollX
+004F2Er 1  6A           	ror
+004F2Fr 1  29 FF 01     	and #$1ff
+004F32r 1  8D 20 06     	sta BG2ScrollTable
+004F35r 1  6A           	ror
+004F36r 1  29 FF 01     	and #$1ff
+004F39r 1  8D 22 06     	sta BG2ScrollTable+2
+004F3Cr 1  6A           	ror
+004F3Dr 1  29 FF 01     	and #$1ff
+004F40r 1  8D 24 06     	sta BG2ScrollTable+4
+004F43r 1  6A           	ror
+004F44r 1  29 FF 01     	and #$1ff
+004F47r 1  8D 26 06     	sta BG2ScrollTable+6
+004F4Ar 1  A5 16 85 04  	HandleLarry spriteX,spriteY,playerTileNum
+004F4Er 1  A5 18 85 05  
+004F52r 1  A5 20 85 06  
+004FF4r 1               	; DrawLine #$2, #$11, #$15, #$15
+004FF4r 1               
+004FF4r 1  CB           	wai
+004FF5r 1  4C rr rr     	jmp MainLoop
+004FF8r 1               
+004FF8r 1               VBlank:
+004FF8r 1  08           	php
+004FF9r 1  8B           	phb
+004FFAr 1  0B           	phd
+004FFBr 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
+004FFCr 1  DA           	phx ;fucking up
+004FFDr 1  5A           	phy
+004FFEr 1  E2 20        	a8
+005000r 1  C2 20 A5 10  	SetHScroll scrollX
+005004r 1  E2 20 8D 0D  
+005008r 1  21 EB 8D 0D  
+00500Dr 1  C2 20 A5 12  	SetVScroll scrollY
+005011r 1  E2 20 8D 0E  
+005015r 1  21 EB 8D 0E  
+00501Ar 1  A9 80 8D 15  	DMATilemapMirror #$2
+00501Er 1  21 C2 20 A9  
+005022r 1  02 00 EB 18  
+005049r 1  20 rr rr     	jsr DMASpriteMirror
+00504Cr 1  A9 03        	lda #$3 ;start dma transfer on channels 1&2
+00504Er 1  8D 0B 42     	sta $420b
+005051r 1  20 rr rr     	jsr SetupHDMA
+005054r 1  AD 10 42     	lda $4210 ;clear vblank flag
+005057r 1  7A           	ply
+005058r 1  FA           	plx
+005059r 1  68           	pla
+00505Ar 1  2B           	pld
+00505Br 1  AB           	plb
+00505Cr 1  28           	plp
+00505Dr 1               
+00505Dr 1  40           	rti
+00505Er 1               
+00505Er 1               SetupVideo:
+00505Er 1  08               php
 00505Fr 1               
-00505Fr 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
-005061r 1  8D 0E 21         sta $210E
-005064r 1  8D 0E 21         sta $210E
-005067r 1               
-005067r 1  A9 0F            lda #$0F
-005069r 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
-00506Cr 1               
-00506Cr 1  28               plp
-00506Dr 1  60               rts
-00506Er 1               
-00506Er 1               DMASpriteMirror:
-00506Er 1  9C 02 21     	stz $2102		; set OAM address to 0
-005071r 1  9C 03 21     	stz $2103
+00505Fr 1  A9 73        	lda #$73
+005061r 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
+005064r 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
+005067r 1  9C 03 21     	stz $2103
+00506Ar 1  A9 01        	lda #$1
+00506Cr 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
+00506Fr 1               
+00506Fr 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
+005071r 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
 005074r 1               
-005074r 1  A0 00 04     	LDY #$0400
-005077r 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
-00507Ar 1  A0 00 04     	LDY #$0400
-00507Dr 1  8C 02 43     	STY $4302		; source offset
-005080r 1  A0 20 02     	LDY #$0220
-005083r 1  8C 05 43     	STY $4305		; number of bytes to transfer
-005086r 1  A9 7E        	LDA #$7E
-005088r 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
-00508Br 1  60           	rts
-00508Cr 1               
-00508Cr 1               
+005074r 1  A9 40        	lda #$40  ; bg2 tilemap offset: $4000, size: 32x32
+005076r 1  8D 08 21     	sta $2108
+005079r 1               
+005079r 1  A9 52        	lda #$52
+00507Br 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
+00507Er 1               
+00507Er 1  A9 13            lda #$13            ; Enable BG1, BG2, and sprites
+005080r 1  8D 2C 21         sta $212C
+005083r 1               
+005083r 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
+005085r 1  8D 0E 21         sta $210E
+005088r 1  8D 0E 21         sta $210E
+00508Br 1               
+00508Br 1  A9 0F            lda #$0F
+00508Dr 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
+005090r 1               
+005090r 1  28               plp
+005091r 1  60               rts
+005092r 1               
+005092r 1               SetupHDMA:
+005092r 1  A9 42        	lda #%01000010 ;write twice, indexed mode
+005094r 1  8D 30 43     	sta $4330
+005097r 1  A9 0F        	lda #$0f ;write to $210f
+005099r 1  8D 31 43     	sta $4331
+00509Cr 1  C2 20        	a16
+00509Er 1  A9 rr rr     	lda #ScrollTable
+0050A1r 1  8D 32 43     	sta $4332
+0050A4r 1  A9 00 00     	lda #$0
+0050A7r 1  8D 34 43     	sta $4334
+0050AAr 1  E2 20        	a8
+0050ACr 1  A9 7E        	lda #$7e
+0050AEr 1  8D 37 43     	sta $4337 ;ram bank to read from
+0050B1r 1  A9 08        	lda #$8
+0050B3r 1  8D 0C 42     	sta $420c ;enable hdma channel 3
+0050B6r 1  60           	rts
+0050B7r 1               
+0050B7r 1               
+0050B7r 1               ScrollTable:
+0050B7r 1  10           .byte $10
+0050B8r 1  20 06        .word BG2ScrollTable
+0050BAr 1  10           .byte $10
+0050BBr 1  22 06        .word BG2ScrollTable+2
+0050BDr 1  10           .byte $10
+0050BEr 1  24 06        .word BG2ScrollTable+4
+0050C0r 1  10           .byte $10
+0050C1r 1  26 06        .word BG2ScrollTable+6
+0050C3r 1  00           .byte $00
+0050C4r 1               
+0050C4r 1               DMASpriteMirror:
+0050C4r 1  9C 02 21     	stz $2102		; set OAM address to 0
+0050C7r 1  9C 03 21     	stz $2103
+0050CAr 1               
+0050CAr 1  A0 00 04     	LDY #$0400
+0050CDr 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
+0050D0r 1  A0 00 04     	LDY #$0400
+0050D3r 1  8C 02 43     	STY $4302		; source offset
+0050D6r 1  A0 20 02     	LDY #$0220
+0050D9r 1  8C 05 43     	STY $4305		; number of bytes to transfer
+0050DCr 1  A9 7E        	LDA #$7E
+0050DEr 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
+0050E1r 1  60           	rts
+0050E2r 1               
+0050E2r 1               

@@ -299,7 +299,21 @@ LCollision:
 	jsr CheckCollisionL
 	bne @EjectLoop
 EndCollisionDetect:
-	
+	;calculate bg2's scroll
+	a16
+	lda scrollX
+	ror
+	and #$1ff
+	sta BG2ScrollTable
+	ror
+	and #$1ff
+	sta BG2ScrollTable+2
+	ror
+	and #$1ff
+	sta BG2ScrollTable+4
+	ror
+	and #$1ff
+	sta BG2ScrollTable+6
 	HandleLarry spriteX,spriteY,playerTileNum
 	; DrawLine #$2, #$11, #$15, #$15
 	
@@ -320,6 +334,7 @@ VBlank:
 	jsr DMASpriteMirror
 	lda #$3 ;start dma transfer on channels 1&2
 	sta $420b
+	jsr SetupHDMA
 	lda $4210 ;clear vblank flag
 	ply
 	plx
@@ -361,6 +376,35 @@ SetupVideo:
 
     plp
     rts
+	
+SetupHDMA:
+	lda #%01000010 ;write twice, indexed mode
+	sta $4330
+	lda #$0f ;write to $210f
+	sta $4331
+	a16
+	lda #ScrollTable
+	sta $4332
+	lda #$0
+	sta $4334
+	a8
+	lda #$7e
+	sta $4337 ;ram bank to read from
+	lda #$8
+	sta $420c ;enable hdma channel 3
+	rts
+	
+	
+ScrollTable:
+.byte $10
+.word BG2ScrollTable
+.byte $10
+.word BG2ScrollTable+2
+.byte $10
+.word BG2ScrollTable+4
+.byte $10
+.word BG2ScrollTable+6
+.byte $00
 	
 DMASpriteMirror:
 	stz $2102		; set OAM address to 0
