@@ -300,20 +300,37 @@ LCollision:
 	bne @EjectLoop
 EndCollisionDetect:
 	;calculate bg2's scroll
+	; lda scroll2X
+	; clc
+	; adc scrollX
+	; adc #$5
+	; sta scroll2X
 	a16
-	lda scrollX
+	lda playerHSpeed
 	ror
-	and #$1ff
+	sta $0
+	lda scroll2X
+	clc
+	adc $0
+	sta scroll2X
+	stz $0
+	inc scroll2X
+	ror
+	and #$3ff
 	sta BG2ScrollTable
 	ror
-	and #$1ff
+	and #$3ff
 	sta BG2ScrollTable+2
 	ror
-	and #$1ff
+	and #$3ff
 	sta BG2ScrollTable+4
 	ror
-	and #$1ff
+	and #$3ff
 	sta BG2ScrollTable+6
+	ror
+	and #$3ff
+	sta BG2ScrollTable+8
+	a8
 	HandleLarry spriteX,spriteY,playerTileNum
 	; DrawLine #$2, #$11, #$15, #$15
 	
@@ -330,9 +347,10 @@ VBlank:
 	a8
 	SetHScroll scrollX
 	SetVScroll scrollY
-	DMATilemapMirror #$2
+	;DMATilemapMirror #$2
+	a8
 	jsr DMASpriteMirror
-	lda #$3 ;start dma transfer on channels 1&2
+	lda #$1 ;start dma transfer on channel 1 (change to 3 if i reenable dmatilemapmirror)
 	sta $420b
 	jsr SetupHDMA
 	lda $4210 ;clear vblank flag
@@ -396,14 +414,16 @@ SetupHDMA:
 	
 	
 ScrollTable:
-.byte $10
-.word BG2ScrollTable
+.byte $40
+.word BG2ScrollTable+8
+.byte $20
+.word BG2ScrollTable+6
+.byte $20
+.word BG2ScrollTable+4
 .byte $10
 .word BG2ScrollTable+2
 .byte $10
-.word BG2ScrollTable+4
-.byte $10
-.word BG2ScrollTable+6
+.word BG2ScrollTable
 .byte $00
 	
 DMASpriteMirror:
