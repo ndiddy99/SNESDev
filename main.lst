@@ -9,12 +9,14 @@ Current file: main.asm
 000000r 2               .i16    ; X/Y are 16 bits
 000000r 2               .a8     ; A is 8 bits
 000000r 2               
-000000r 2               .define ROM_NAME "zoz"
-000000r 2               
+000000r 2               .define ROM_NAME "zoz zle zozzle       "
+000000r 2                               ;"123456789012345678901"
 000000r 2               .segment "HEADER"     ; +$7FE0 in file
-000000r 2  7A 6F 7A         .byte ROM_NAME
-000003r 2               
-000003r 2               .segment "ROMINFO"    ; +$7FD5 in file
+000000r 2  7A 6F 7A 20      .byte ROM_NAME
+000004r 2  7A 6C 65 20  
+000008r 2  7A 6F 7A 7A  
+000015r 2               
+000015r 2               .segment "ROMINFO"    ; +$7FD5 in file
 000000r 2  30               .byte $30         ; LoROM, fast-capable
 000001r 2  00               .byte 0           ; no battery RAM
 000002r 2  07               .byte $07         ; 128K ROM
@@ -763,7 +765,7 @@ Current file: main.asm
 0001EEr 2               BGPalette:
 0001EEr 2  00 00 01 6D  	.INCBIN ".\art\bgtiles.clr"
 0001F2r 2  87 6E A3 48  
-0001F6r 2  C5 0D 00 00  
+0001F6r 2  A1 71 C5 0D  
 0003EEr 2               
 0003EEr 2               SpritePalette:
 0003EEr 2  00 00 10 00  	.INCBIN ".\art\larry.clr"
@@ -1377,54 +1379,54 @@ Current file: main.asm
 0043F6r 2  01 01 01 01  
 00442Er 2               
 00442Er 2               BG2Tilemap:
-00442Er 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-004432r 2  03 00 04 00  
-004436r 2  01 00 02 00  
-00446Er 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-004472r 2  07 00 08 00  
-004476r 2  05 00 06 00  
-0044AEr 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-0044B2r 2  03 00 04 00  
-0044B6r 2  01 00 02 00  
-0044EEr 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-0044F2r 2  07 00 08 00  
-0044F6r 2  05 00 06 00  
-00452Er 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-004532r 2  03 00 04 00  
-004536r 2  01 00 02 00  
-00456Er 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-004572r 2  07 00 08 00  
-004576r 2  05 00 06 00  
-0045AEr 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-0045B2r 2  03 00 04 00  
-0045B6r 2  01 00 02 00  
-0045EEr 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-0045F2r 2  07 00 08 00  
-0045F6r 2  05 00 06 00  
-00462Er 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-004632r 2  03 00 04 00  
-004636r 2  01 00 02 00  
-00466Er 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-004672r 2  07 00 08 00  
-004676r 2  05 00 06 00  
-0046AEr 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-0046B2r 2  03 00 04 00  
-0046B6r 2  01 00 02 00  
-0046EEr 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-0046F2r 2  07 00 08 00  
-0046F6r 2  05 00 06 00  
-00472Er 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-004732r 2  03 00 04 00  
-004736r 2  01 00 02 00  
-00476Er 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-004772r 2  07 00 08 00  
-004776r 2  05 00 06 00  
-0047AEr 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-0047B2r 2  03 00 04 00  
-0047B6r 2  01 00 02 00  
-0047EEr 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-0047F2r 2  07 00 08 00  
-0047F6r 2  05 00 06 00  
+00442Er 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+004432r 2  00 00 00 00  
+004436r 2  00 00 00 00  
+00446Er 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+004472r 2  00 00 00 00  
+004476r 2  00 00 00 00  
+0044AEr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0044B2r 2  00 00 00 00  
+0044B6r 2  00 00 00 00  
+0044EEr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0044F2r 2  00 00 00 00  
+0044F6r 2  00 00 00 00  
+00452Er 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+004532r 2  00 00 00 00  
+004536r 2  00 00 00 00  
+00456Er 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+004572r 2  00 00 00 00  
+004576r 2  00 00 00 00  
+0045AEr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0045B2r 2  00 00 00 00  
+0045B6r 2  00 00 00 00  
+0045EEr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0045F2r 2  00 00 00 00  
+0045F6r 2  00 00 00 00  
+00462Er 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+004632r 2  00 00 00 00  
+004636r 2  00 00 00 00  
+00466Er 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+004672r 2  00 00 00 00  
+004676r 2  00 00 00 00  
+0046AEr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0046B2r 2  00 00 00 00  
+0046B6r 2  00 00 00 00  
+0046EEr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0046F2r 2  00 00 00 00  
+0046F6r 2  00 00 00 00  
+00472Er 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+004732r 2  00 00 00 00  
+004736r 2  00 00 00 00  
+00476Er 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+004772r 2  00 00 00 00  
+004776r 2  00 00 00 00  
+0047AEr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0047B2r 2  00 00 00 00  
+0047B6r 2  00 00 00 00  
+0047EEr 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0047F2r 2  00 00 00 00  
+0047F6r 2  00 00 00 00  
 00482Er 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
 004832r 2  03 00 04 00  
 004836r 2  01 00 02 00  
@@ -2000,173 +2002,253 @@ Current file: main.asm
 004F01r 1               
 004F01r 1  20 rr rr     	jsr SetPlayerVals
 004F04r 1  A5 29        	lda movementState
-004F06r 1  F0 22        	beq EndCollisionDetect ;if player's not moving, don't bather w/ wall collision detection
+004F06r 1  F0 2C        	beq EndCollisionDetect ;if player's not moving, don't bather w/ wall collision detection
 004F08r 1  C9 03        	cmp #STATE_LEFT_PRESSED
-004F0Ar 1  B0 0F        	bcs LCollision ;if state is left pressed or left released, branch
+004F0Ar 1  B0 14        	bcs LCollision ;if state is left pressed or left released, branch
 004F0Cr 1  20 rr rr     	jsr CheckCollisionR
-004F0Fr 1  F0 19        	beq EndCollisionDetect
+004F0Fr 1  F0 23        	beq EndCollisionDetect
 004F11r 1               @EjectLoop:
 004F11r 1  C6 10        	dec scrollX
 004F13r 1  20 rr rr     	jsr SetPlayerVals
 004F16r 1  20 rr rr     	jsr CheckCollisionR
-004F19r 1  D0 F6        	bne @EjectLoop
-004F1Br 1               
-004F1Br 1               LCollision:
-004F1Br 1  20 rr rr     	jsr CheckCollisionL
-004F1Er 1  F0 0A        	beq EndCollisionDetect
-004F20r 1               @EjectLoop:
-004F20r 1  E6 10        	inc scrollX
-004F22r 1  20 rr rr     	jsr SetPlayerVals
-004F25r 1  20 rr rr     	jsr CheckCollisionL
-004F28r 1  D0 F6        	bne @EjectLoop
-004F2Ar 1               EndCollisionDetect:
-004F2Ar 1               	;calculate bg2's scroll
-004F2Ar 1               	; lda scroll2X
-004F2Ar 1               	; clc
-004F2Ar 1               	; adc scrollX
-004F2Ar 1               	; adc #$5
-004F2Ar 1               	; sta scroll2X
-004F2Ar 1  C2 20        	a16
-004F2Cr 1  A5 16        	lda playerHSpeed
-004F2Er 1  6A           	ror
-004F2Fr 1  85 00        	sta $0
-004F31r 1  A5 14        	lda scroll2X
-004F33r 1  18           	clc
-004F34r 1  65 00        	adc $0
-004F36r 1  85 14        	sta scroll2X
-004F38r 1  64 00        	stz $0
-004F3Ar 1  E6 14        	inc scroll2X
-004F3Cr 1  E6 14        	inc scroll2X
-004F3Er 1  E6 14        	inc scroll2X
-004F40r 1  6A           	ror
-004F41r 1  29 FF 03     	and #$3ff
-004F44r 1  8D 20 06     	sta BG2ScrollTable
-004F47r 1  6A           	ror
-004F48r 1  29 FF 03     	and #$3ff
-004F4Br 1  8D 22 06     	sta BG2ScrollTable+2
-004F4Er 1  6A           	ror
-004F4Fr 1  29 FF 03     	and #$3ff
-004F52r 1  8D 24 06     	sta BG2ScrollTable+4
-004F55r 1  6A           	ror
-004F56r 1  29 FF 03     	and #$3ff
-004F59r 1  8D 26 06     	sta BG2ScrollTable+6
-004F5Cr 1  6A           	ror
-004F5Dr 1  29 FF 03     	and #$3ff
-004F60r 1  8D 28 06     	sta BG2ScrollTable+8
-004F63r 1  E2 20        	a8
-004F65r 1  A5 18 85 04  	HandleLarry spriteX,spriteY,playerTileNum
-004F69r 1  A5 1A 85 05  
-004F6Dr 1  A5 22 85 06  
-00500Er 1               	; DrawLine #$2, #$11, #$15, #$15
-00500Er 1               
-00500Er 1  CB           	wai
-00500Fr 1  4C rr rr     	jmp MainLoop
-005012r 1               
-005012r 1               VBlank:
-005012r 1  08           	php
-005013r 1  8B           	phb
-005014r 1  0B           	phd
-005015r 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
-005016r 1  DA           	phx ;fucking up
-005017r 1  5A           	phy
-005018r 1  E2 20        	a8
-00501Ar 1  C2 20 A5 10  	SetHScroll scrollX
-00501Er 1  E2 20 8D 0D  
-005022r 1  21 EB 8D 0D  
-005027r 1  C2 20 A5 12  	SetVScroll scrollY
-00502Br 1  E2 20 8D 0E  
-00502Fr 1  21 EB 8D 0E  
-005034r 1               	;DMATilemapMirror #$2
-005034r 1  E2 20        	a8
-005036r 1  20 rr rr     	jsr DMASpriteMirror
-005039r 1  A9 01        	lda #$1 ;start dma transfer on channel 1 (change to 3 if i reenable dmatilemapmirror)
-00503Br 1  8D 0B 42     	sta $420b
-00503Er 1  20 rr rr     	jsr SetupHDMA
-005041r 1  AD 10 42     	lda $4210 ;clear vblank flag
-005044r 1  7A           	ply
-005045r 1  FA           	plx
-005046r 1  68           	pla
-005047r 1  2B           	pld
-005048r 1  AB           	plb
-005049r 1  28           	plp
-00504Ar 1               
-00504Ar 1  40           	rti
-00504Br 1               
-00504Br 1               SetupVideo:
-00504Br 1  08               php
-00504Cr 1               
-00504Cr 1  A9 73        	lda #$73
-00504Er 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
-005051r 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
-005054r 1  9C 03 21     	stz $2103
-005057r 1  A9 01        	lda #$1
-005059r 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
+004F19r 1  D0 F6        	bne @EjectLoop ;eject player from the wall until they're out
+004F1Br 1  64 16        	stz playerHSpeed ;if player needs to be ejected, set speed to 0
+004F1Dr 1  4C rr rr     	jmp EndCollisionDetect
+004F20r 1               LCollision:
+004F20r 1  20 rr rr     	jsr CheckCollisionL
+004F23r 1  F0 22        	beq SubtractSpeed
+004F25r 1               @EjectLoop:
+004F25r 1  E6 10        	inc scrollX
+004F27r 1  20 rr rr     	jsr SetPlayerVals
+004F2Ar 1  20 rr rr     	jsr CheckCollisionL
+004F2Dr 1  D0 F6        	bne @EjectLoop
+004F2Fr 1  64 16        	stz playerHSpeed
+004F31r 1  4C rr rr     	jmp SubtractSpeed
+004F34r 1               EndCollisionDetect:
+004F34r 1               	;calculate bg2's scroll
+004F34r 1  C2 20        	a16
+004F36r 1  A5 16        	lda playerHSpeed
+004F38r 1  6A           	ror
+004F39r 1  85 00        	sta $0
+004F3Br 1  A5 14        	lda scroll2X
+004F3Dr 1  18           	clc
+004F3Er 1  65 00        	adc $0
+004F40r 1  85 14        	sta scroll2X
+004F42r 1  64 00        	stz $0
+004F44r 1  4C rr rr     	jmp SetupScrollTable
+004F47r 1               SubtractSpeed:
+004F47r 1  C2 20        	a16
+004F49r 1  A5 16        	lda playerHSpeed
+004F4Br 1  6A           	ror
+004F4Cr 1  85 00        	sta $0
+004F4Er 1  A5 14        	lda scroll2X
+004F50r 1  38           	sec
+004F51r 1  E5 00        	sbc $0
+004F53r 1  85 14        	sta scroll2X
+004F55r 1  64 00        	stz $0
+004F57r 1               SetupScrollTable:
+004F57r 1  18           	clc
+004F58r 1  A5 14        	lda scroll2X
+004F5Ar 1  18           	clc
+004F5Br 1  69 05 00     	adc #$5
+004F5Er 1  85 14        	sta scroll2X
+004F60r 1  6A           	ror
+004F61r 1  8D 20 06     	sta BG2ScrollTable
+004F64r 1  6A           	ror
+004F65r 1  8D 22 06     	sta BG2ScrollTable+2
+004F68r 1  6A           	ror
+004F69r 1  8D 24 06     	sta BG2ScrollTable+4
+004F6Cr 1  6A           	ror
+004F6Dr 1  8D 26 06     	sta BG2ScrollTable+6
+004F70r 1  6A           	ror
+004F71r 1  8D 28 06     	sta BG2ScrollTable+8
+004F74r 1  E2 20        	a8
+004F76r 1  A5 18 85 04  	HandleLarry spriteX,spriteY,playerTileNum
+004F7Ar 1  A5 1A 85 05  
+004F7Er 1  A5 22 85 06  
+00501Fr 1               	; DrawLine #$2, #$11, #$15, #$15
+00501Fr 1               
+00501Fr 1  CB           	wai
+005020r 1  4C rr rr     	jmp MainLoop
+005023r 1               
+005023r 1               VBlank:
+005023r 1  08           	php
+005024r 1  8B           	phb
+005025r 1  0B           	phd
+005026r 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
+005027r 1  DA           	phx ;fucking up
+005028r 1  5A           	phy
+005029r 1  E2 20        	a8
+00502Br 1  C2 20 A5 10  	SetHScroll scrollX
+00502Fr 1  E2 20 8D 0D  
+005033r 1  21 EB 8D 0D  
+005038r 1  C2 20 A5 12  	SetVScroll scrollY
+00503Cr 1  E2 20 8D 0E  
+005040r 1  21 EB 8D 0E  
+005045r 1               	;DMATilemapMirror #$2
+005045r 1  E2 20        	a8
+005047r 1  20 rr rr     	jsr DMASpriteMirror
+00504Ar 1  A9 01        	lda #$1 ;start dma transfer on channel 1 (change to 3 if i reenable dmatilemapmirror)
+00504Cr 1  8D 0B 42     	sta $420b
+00504Fr 1  20 rr rr     	jsr SetupHDMA
+005052r 1  AD 10 42     	lda $4210 ;clear vblank flag
+005055r 1  7A           	ply
+005056r 1  FA           	plx
+005057r 1  68           	pla
+005058r 1  2B           	pld
+005059r 1  AB           	plb
+00505Ar 1  28           	plp
+00505Br 1               
+00505Br 1  40           	rti
 00505Cr 1               
-00505Cr 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
-00505Er 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
-005061r 1               
-005061r 1  A9 40        	lda #$40  ; bg2 tilemap offset: $4000, size: 32x32
-005063r 1  8D 08 21     	sta $2108
-005066r 1               
-005066r 1  A9 52        	lda #$52
-005068r 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
-00506Br 1               
-00506Br 1  A9 13            lda #$13            ; Enable BG1, BG2, and sprites
-00506Dr 1  8D 2C 21         sta $212C
-005070r 1               
-005070r 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
-005072r 1  8D 0E 21         sta $210E
-005075r 1  8D 0E 21         sta $210E
-005078r 1               
-005078r 1  A9 0F            lda #$0F
-00507Ar 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
-00507Dr 1               
-00507Dr 1  28               plp
-00507Er 1  60               rts
-00507Fr 1               
-00507Fr 1               SetupHDMA:
-00507Fr 1  A9 42        	lda #%01000010 ;write twice, indexed mode
-005081r 1  8D 30 43     	sta $4330
-005084r 1  A9 0F        	lda #$0f ;write to $210f
-005086r 1  8D 31 43     	sta $4331
-005089r 1  C2 20        	a16
-00508Br 1  A9 rr rr     	lda #ScrollTable
-00508Er 1  8D 32 43     	sta $4332
-005091r 1  A9 00 00     	lda #$0
-005094r 1  8D 34 43     	sta $4334
-005097r 1  E2 20        	a8
-005099r 1  A9 7E        	lda #$7e
-00509Br 1  8D 37 43     	sta $4337 ;ram bank to read from
-00509Er 1  A9 08        	lda #$8
-0050A0r 1  8D 0C 42     	sta $420c ;enable hdma channel 3
-0050A3r 1  60           	rts
-0050A4r 1               
-0050A4r 1               
-0050A4r 1               ScrollTable:
-0050A4r 1  40           .byte $40
-0050A5r 1  28 06        .word BG2ScrollTable+8
-0050A7r 1  20           .byte $20
-0050A8r 1  26 06        .word BG2ScrollTable+6
-0050AAr 1  20           .byte $20
-0050ABr 1  24 06        .word BG2ScrollTable+4
-0050ADr 1  10           .byte $10
-0050AEr 1  22 06        .word BG2ScrollTable+2
-0050B0r 1  10           .byte $10
-0050B1r 1  20 06        .word BG2ScrollTable
-0050B3r 1  00           .byte $00
-0050B4r 1               
-0050B4r 1               DMASpriteMirror:
-0050B4r 1  9C 02 21     	stz $2102		; set OAM address to 0
-0050B7r 1  9C 03 21     	stz $2103
-0050BAr 1               
-0050BAr 1  A0 00 04     	LDY #$0400
-0050BDr 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
-0050C0r 1  A0 00 04     	LDY #$0400
-0050C3r 1  8C 02 43     	STY $4302		; source offset
-0050C6r 1  A0 20 02     	LDY #$0220
-0050C9r 1  8C 05 43     	STY $4305		; number of bytes to transfer
-0050CCr 1  A9 7E        	LDA #$7E
-0050CEr 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
-0050D1r 1  60           	rts
-0050D2r 1               
-0050D2r 1               
+00505Cr 1               SetupVideo:
+00505Cr 1  08               php
+00505Dr 1               
+00505Dr 1  A9 73        	lda #$73
+00505Fr 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
+005062r 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
+005065r 1  9C 03 21     	stz $2103
+005068r 1  A9 01        	lda #$1
+00506Ar 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
+00506Dr 1               
+00506Dr 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
+00506Fr 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
+005072r 1               
+005072r 1  A9 40        	lda #$40  ; bg2 tilemap offset: $4000, size: 32x32
+005074r 1  8D 08 21     	sta $2108
+005077r 1               
+005077r 1  A9 52        	lda #$52
+005079r 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
+00507Cr 1               
+00507Cr 1  A9 13            lda #$13            ; Enable BG1, BG2, and sprites
+00507Er 1  8D 2C 21         sta $212C
+005081r 1               
+005081r 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
+005083r 1  8D 0E 21         sta $210E
+005086r 1  8D 0E 21         sta $210E
+005089r 1               
+005089r 1  A9 0F            lda #$0F
+00508Br 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
+00508Er 1               
+00508Er 1  28               plp
+00508Fr 1  60               rts
+005090r 1               
+005090r 1               SetupHDMA:
+005090r 1  A9 42        	lda #%01000010 ;write twice, indirect mode
+005092r 1  8D 00 43     	sta $4300
+005095r 1  A9 0F        	lda #$0f ;write to $210f, bg 2 scroll reg
+005097r 1  8D 01 43     	sta $4301
+00509Ar 1  C2 20        	a16
+00509Cr 1  A9 rr rr     	lda #ScrollTable
+00509Fr 1  8D 02 43     	sta $4302
+0050A2r 1  A9 00 00     	lda #$0
+0050A5r 1  8D 04 43     	sta $4304
+0050A8r 1  E2 20        	a8
+0050AAr 1  A9 7E        	lda #$7e
+0050ACr 1  8D 07 43     	sta $4307 ;ram bank to read from for indirect hdma
+0050AFr 1               
+0050AFr 1  A9 02        	lda #$2 ;write twice, direct mode
+0050B1r 1  8D 10 43     	sta $4310
+0050B4r 1  A9 21        	lda #$21 ;write to $2121, cgram palette address reg
+0050B6r 1  8D 11 43     	sta $4311
+0050B9r 1  C2 20        	a16
+0050BBr 1  A9 rr rr     	lda #PaletteIndexTable
+0050BEr 1  8D 12 43     	sta $4312
+0050C1r 1  9C 14 43     	stz $4314
+0050C4r 1  E2 20        	a8
+0050C6r 1               
+0050C6r 1  A9 02        	lda #$2 ;write twice, direct mode
+0050C8r 1  8D 20 43     	sta $4320
+0050CBr 1  A9 22        	lda #$22 ;write to $2122, cgram palette data reg
+0050CDr 1  8D 21 43     	sta $4321
+0050D0r 1  C2 20        	a16
+0050D2r 1  A9 rr rr     	lda #GradientTable
+0050D5r 1  8D 22 43     	sta $4322
+0050D8r 1  9C 24 43     	stz $4324
+0050DBr 1  E2 20        	a8
+0050DDr 1  A9 07        	lda #$7
+0050DFr 1  8D 0C 42     	sta $420c ;enable hdma channels 0-2
+0050E2r 1  60           	rts
+0050E3r 1               
+0050E3r 1               
+0050E3r 1               ScrollTable:
+0050E3r 1  80           	.byte $80
+0050E4r 1  00 00        	.word $0000
+0050E6r 1  10           	.byte $10
+0050E7r 1  28 06        	.word BG2ScrollTable+8
+0050E9r 1  10           	.byte $10
+0050EAr 1  26 06        	.word BG2ScrollTable+6
+0050ECr 1  10           	.byte $10
+0050EDr 1  24 06        	.word BG2ScrollTable+4
+0050EFr 1  10           	.byte $10
+0050F0r 1  22 06        	.word BG2ScrollTable+2
+0050F2r 1  10           	.byte $10
+0050F3r 1  20 06        	.word BG2ScrollTable
+0050F5r 1  00           	.byte $00
+0050F6r 1               
+0050F6r 1               PaletteIndexTable: ;needed because palette index auto-increments after every write
+0050F6r 1  0C           	.byte $C
+0050F7r 1  00 04        	.word $400
+0050F9r 1  0C           	.byte $C
+0050FAr 1  00 04        	.word $400
+0050FCr 1  0C           	.byte $C
+0050FDr 1  00 04        	.word $400
+0050FFr 1  0C           	.byte $C
+005100r 1  00 04        	.word $400
+005102r 1  0C           	.byte $C
+005103r 1  00 04        	.word $400
+005105r 1  0C           	.byte $C
+005106r 1  00 04        	.word $400
+005108r 1  0C           	.byte $C
+005109r 1  00 04        	.word $400
+00510Br 1  0C           	.byte $C
+00510Cr 1  00 04        	.word $400
+00510Er 1  0C           	.byte $C
+00510Fr 1  00 04        	.word $400
+005111r 1  0C           	.byte $C
+005112r 1  00 04        	.word $400
+005114r 1  0C           	.byte $C
+005115r 1  00 04        	.word $400
+005117r 1  00           	.byte $00
+005118r 1               
+005118r 1               
+005118r 1               GradientTable:
+005118r 1  0C           	.byte $C
+005119r 1  C4 71        	.word $71C4; R:4 G:14 B:28
+00511Br 1  0C           	.byte $C
+00511Cr 1  C7 5D        	.word $5DC7; R:7 G:14 B:23
+00511Er 1  0C           	.byte $C
+00511Fr 1  CB 51        	.word $51CB; R:11 G:14 B:20
+005121r 1  0C           	.byte $C
+005122r 1  CD 49        	.word $49CD; R:13 G:14 B:18
+005124r 1  0C           	.byte $C
+005125r 1  F1 41        	.word $41F1; R:17 G:15 B:16
+005127r 1  0C           	.byte $C
+005128r 1  F4 35        	.word $35F4; R:20 G:15 B:13
+00512Ar 1  0C           	.byte $C
+00512Br 1  F7 2D        	.word $2DF7; R:23 G:15 B:11
+00512Dr 1  0C           	.byte $C
+00512Er 1  1A 22        	.word $221A; R:26 G:16 B:8
+005130r 1  0C           	.byte $C
+005131r 1  1C 1A        	.word $1A1C; R:28 G:16 B:6
+005133r 1  0C           	.byte $C
+005134r 1  1F 12        	.word $121F; R:31 G:16 B:4
+005136r 1  0C           	.byte $C
+005137r 1  A1 71        	.word $71A1
+005139r 1  00           	.byte $00
+00513Ar 1               
+00513Ar 1               DMASpriteMirror:
+00513Ar 1  9C 02 21     	stz $2102		; set OAM address to 0
+00513Dr 1  9C 03 21     	stz $2103
+005140r 1               
+005140r 1  A0 00 04     	LDY #$0400
+005143r 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
+005146r 1  A0 00 04     	LDY #$0400
+005149r 1  8C 02 43     	STY $4302		; source offset
+00514Cr 1  A0 20 02     	LDY #$0220
+00514Fr 1  8C 05 43     	STY $4305		; number of bytes to transfer
+005152r 1  A9 7E        	LDA #$7E
+005154r 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
+005157r 1  60           	rts
+005158r 1               
+005158r 1               

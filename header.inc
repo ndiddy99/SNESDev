@@ -4,8 +4,8 @@
 .i16    ; X/Y are 16 bits
 .a8     ; A is 8 bits
 
-.define ROM_NAME "zoz"
-
+.define ROM_NAME "zoz zle zozzle       "
+                ;"123456789012345678901"
 .segment "HEADER"     ; +$7FE0 in file
     .byte ROM_NAME 
 

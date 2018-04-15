@@ -288,23 +288,21 @@ DontFall:
 	dec scrollX
 	jsr SetPlayerVals
 	jsr CheckCollisionR
-	bne @EjectLoop
-	
+	bne @EjectLoop ;eject player from the wall until they're out
+	stz playerHSpeed ;if player needs to be ejected, set speed to 0
+	jmp EndCollisionDetect
 LCollision:
 	jsr CheckCollisionL
-	beq EndCollisionDetect
+	beq SubtractSpeed
 @EjectLoop:
 	inc scrollX
 	jsr SetPlayerVals
 	jsr CheckCollisionL
 	bne @EjectLoop
+	stz playerHSpeed
+	jmp SubtractSpeed
 EndCollisionDetect:
 	;calculate bg2's scroll
-	; lda scroll2X
-	; clc
-	; adc scrollX
-	; adc #$5
-	; sta scroll2X
 	a16
 	lda playerHSpeed
 	ror
@@ -314,21 +312,32 @@ EndCollisionDetect:
 	adc $0
 	sta scroll2X
 	stz $0
-	inc scroll2X
+	jmp SetupScrollTable
+SubtractSpeed:
+	a16
+	lda playerHSpeed
 	ror
-	and #$3ff
+	sta $0
+	lda scroll2X
+	sec
+	sbc $0
+	sta scroll2X
+	stz $0
+SetupScrollTable:
+	clc
+	lda scroll2X
+	clc
+	adc #$5
+	sta scroll2X
+	ror
 	sta BG2ScrollTable
 	ror
-	and #$3ff
 	sta BG2ScrollTable+2
 	ror
-	and #$3ff
 	sta BG2ScrollTable+4
 	ror
-	and #$3ff
 	sta BG2ScrollTable+6
 	ror
-	and #$3ff
 	sta BG2ScrollTable+8
 	a8
 	HandleLarry spriteX,spriteY,playerTileNum
@@ -396,35 +405,108 @@ SetupVideo:
     rts
 	
 SetupHDMA:
-	lda #%01000010 ;write twice, indexed mode
-	sta $4330
-	lda #$0f ;write to $210f
-	sta $4331
+	lda #%01000010 ;write twice, indirect mode
+	sta $4300
+	lda #$0f ;write to $210f, bg 2 scroll reg
+	sta $4301
 	a16
 	lda #ScrollTable
-	sta $4332
+	sta $4302
 	lda #$0
-	sta $4334
+	sta $4304
 	a8
 	lda #$7e
-	sta $4337 ;ram bank to read from
-	lda #$8
-	sta $420c ;enable hdma channel 3
+	sta $4307 ;ram bank to read from for indirect hdma
+	
+	lda #$2 ;write twice, direct mode
+	sta $4310
+	lda #$21 ;write to $2121, cgram palette address reg
+	sta $4311
+	a16
+	lda #PaletteIndexTable
+	sta $4312
+	stz $4314
+	a8
+
+	lda #$2 ;write twice, direct mode
+	sta $4320
+	lda #$22 ;write to $2122, cgram palette data reg
+	sta $4321
+	a16
+	lda #GradientTable
+	sta $4322
+	stz $4324
+	a8	
+	lda #$7
+	sta $420c ;enable hdma channels 0-2
 	rts
 	
 	
 ScrollTable:
-.byte $40
-.word BG2ScrollTable+8
-.byte $20
-.word BG2ScrollTable+6
-.byte $20
-.word BG2ScrollTable+4
-.byte $10
-.word BG2ScrollTable+2
-.byte $10
-.word BG2ScrollTable
-.byte $00
+	.byte $80
+	.word $0000
+	.byte $10
+	.word BG2ScrollTable+8
+	.byte $10
+	.word BG2ScrollTable+6
+	.byte $10
+	.word BG2ScrollTable+4
+	.byte $10
+	.word BG2ScrollTable+2
+	.byte $10
+	.word BG2ScrollTable
+	.byte $00
+
+PaletteIndexTable: ;needed because palette index auto-increments after every write
+	.byte $C
+	.word $400
+	.byte $C
+	.word $400
+	.byte $C
+	.word $400
+	.byte $C
+	.word $400
+	.byte $C
+	.word $400
+	.byte $C
+	.word $400
+	.byte $C
+	.word $400
+	.byte $C
+	.word $400
+	.byte $C
+	.word $400
+	.byte $C
+	.word $400
+	.byte $C
+	.word $400
+	.byte $00
+	
+	
+GradientTable:
+	.byte $C
+	.word $71C4; R:4 G:14 B:28
+	.byte $C
+	.word $5DC7; R:7 G:14 B:23
+	.byte $C
+	.word $51CB; R:11 G:14 B:20
+	.byte $C
+	.word $49CD; R:13 G:14 B:18
+	.byte $C
+	.word $41F1; R:17 G:15 B:16
+	.byte $C
+	.word $35F4; R:20 G:15 B:13
+	.byte $C
+	.word $2DF7; R:23 G:15 B:11
+	.byte $C
+	.word $221A; R:26 G:16 B:8
+	.byte $C
+	.word $1A1C; R:28 G:16 B:6
+	.byte $C
+	.word $121F; R:31 G:16 B:4
+	.byte $C
+	.word $71A1
+	.byte $00
 	
 DMASpriteMirror:
 	stz $2102		; set OAM address to 0
