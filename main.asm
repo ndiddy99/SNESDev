@@ -1,7 +1,6 @@
 .include "header.inc"
 .include "initSNES.inc"
-.include "defines.asm"
-.include "variables.asm"
+.include "constants.asm"
 .include "macros.asm"
 .include "sprites.asm"
 .include "art.asm"
@@ -12,12 +11,13 @@
 Reset:
 	InitSNES
 	jsl LoadSPC
-	LoadPalette BGPalette, 0, $100
+	LoadPalette BGPalette, 0, $10
+	LoadPalette BG2Palette, $10, $10
     LoadPalette SpritePalette, $80, $F
 	; Load Tile data to VRAM
-    LoadBlockToVRAM BGTiles, $2000, $0040	
+    LoadBlockToVRAM BGTiles, $2000, $C0	
 	LoadBlockToVRAM BG2Tiles, $5000, $200 ;8 tiles, 4bpp
-	LoadBlockToVRAM LarryTiles, $6000, $2000
+	LoadBlockToVRAM LarryTiles, $6000, $800
 	LoadBlockToVRAM BGTilemap, $0000, $2000
 	LoadBlockToVRAM BG2Tilemap, $4000, $800
 	LoadBlockToWRAM BGTilemap, TilemapMirror, $2000	
@@ -458,6 +458,7 @@ ScrollTable:
 	.byte $00
 
 PaletteIndexTable: ;needed because palette index auto-increments after every write
+;400 instead of $4 because the endianness of the CGRAM write port is reversed for some reason
 	.byte $C
 	.word $400
 	.byte $C

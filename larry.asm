@@ -36,7 +36,7 @@
 
 ;sprite constants
 .define LARRY_ACCEL $1
-.define MAX_LARRY_SPEED $8
+.define MAX_LARRY_SPEED $6
 .define MAX_LARRY_JUMP_HEIGHT $10
 .define MAX_LARRY_FALL_SPEED $8
 ;various movement states

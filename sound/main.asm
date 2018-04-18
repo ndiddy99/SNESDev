@@ -30,9 +30,14 @@ macro dspRead(variable reg) {
 	base $200
 
 //defines for variables
-variable c0Pitch = $10 
-variable c0Inst = $11 //stands for instrument
-variable numTimerTicks = $12
+constant c0Pitch = $10 
+constant c0Inst = $11 //stands for instrument
+constant c0Counter = $12
+constant c1Pitch = $13
+constant c1Inst = $14
+constant c1Counter = $15
+constant numTimerTicksC0 = $16
+constant numTimerTicksC1 = $17
 	
 start:
 	clp //clear direct page flag (direct page = $0, not $100)
@@ -51,75 +56,157 @@ start:
 	dspWrite($6d,$d0) //echo buffer out of the way
 	dspWrite($0c,$7f) //master vol max
 	dspWrite($1c,$7f)
-	
+	//channel 0 initialization
 	dspWrite($07,$3f) //channel 0 gain
-	dspWrite($00,$7f) //channel 0 vol
-	dspWrite($01,$7f) 
+	dspWrite($00,$30) //channel 0 vol
+	dspWrite($01,$30) 
 	dspWrite($03,$10) //pitch: 32000 hz
 	dspWrite($02,$00) 
+
+	//channel 1 init
+	dspWrite($17,$3f) //channel 0 gain
+	dspWrite($10,$0) //channel 0 vol
+	dspWrite($11,$0) 
+	dspWrite($13,$10) //pitch: 32000 hz
+	dspWrite($12,$00) 
+	
 	dspWrite($5d,$04) //set dir to $400
-	dspWrite($04,$00) //select instrument 0
-	
-	//dspWrite($4c,$01) //channel 0 k on
-	
 	lda #$20 //timer 0 divider around 240 hz
 	sta $fa
 	
 	lda #$01
 	sta $f1 //enable timer 0
 	
-	ldx #$00 //set up counter
-	
-variable SONG_LENGTH = EndSong - Song
+variable SONG_LENGTH_C0 = EndSongC0 - SongC0
+variable SONG_LENGTH_C1 = EndSongC1 - SongC1
+	 
 Main:
-	lda Song,x
+	lda numTimerTicksC0
+	bne DontSetC0
+	jsr WriteNoteC0
+DontSetC0:
+	lda numTimerTicksC1
+	bne DontSetC1
+	jsr WriteNoteC1
+DontSetC1:
+Wait:
+	lda $fd //wait for timer to tick
+	beq Wait
+	inc numTimerTicksC0
+	inc numTimerTicksC1
+	ldx c0Counter
+	lda SongC0,x //load "reference" note duration
+	cmp numTimerTicksC0 //compare to current note duration
+	bne DontWriteC0 //if it's not the same, don't increment note
+	lda #$00 
+	sta numTimerTicksC0 //how we identify which note to write
+	inx
+	stx c0Counter
+	txa
+	cmp #SONG_LENGTH_C0 //if song length's greater than current index, set to beginning
+	bcc DontWriteC0
+	lda #$00
+	sta c0Counter
+DontWriteC0:
+	ldx c1Counter
+	lda SongC1,x
+	cmp numTimerTicksC1
+	bne DontWriteC1
+	lda #$00
+	sta numTimerTicksC1
+	inx
+	stx c1Counter
+	txa
+	cmp #SONG_LENGTH_C1
+	bcc DontWriteC1
+	lda #$00
+	sta c1Counter
+DontWriteC1:
+	jmp Main
+
+	
+	// inc c0Counter
+	// lda c0Counter
+	// cmp #SONG_LENGTH_C0 //if song length < x, loop song
+	// bcc Main
+	// lda #$00
+	// sta c0Counter
+	
+WriteNoteC0:
+	ldx c0Counter
+	lda SongC0,x
 	sta c0Pitch
 	inx
-	lda Song,x
+	lda SongC0,x
 	sta c0Inst
 	dspWritePointer($03,c0Pitch)
 	dspWritePointer($04,c0Inst)
 	dspWrite($4c,$01) //keyon
 	dspWrite($5c,$00) //keyon
 	inx //x points to "note" duration
-TimerWait:
-	lda $fd //wait for timer to tick
-	beq TimerWait
-	inc numTimerTicks
-	lda Song,x
-	cmp numTimerTicks //if number of timer ticks is greater than/equal to 
-	bne TimerWait		//song data, continue, otherwise wait 
-	lda #$00
-	sta numTimerTicks
+	stx c0Counter
+	rts
+	
+WriteNoteC1:
+	ldx c1Counter
+	lda SongC1,x
+	sta c1Pitch
 	inx
-	txa
-	cmp #SONG_LENGTH //if song length < x, loop song
-	bcc Main
-	ldx #$00
-	jmp Main
+	lda SongC1,x
+	sta c1Inst
+	dspWritePointer($13,c1Pitch)
+	dspWritePointer($14,c1Inst)
+	dspWrite($4c,$02) //keyon
+	dspWrite($5c,$00) //keyon
+	inx //x points to "note" duration
+	stx c1Counter
+	rts
 	
+constant drum = $00
+constant hidrum = $01
+
+SongC0: //format: instrument pitch, instrument, duration
+	db $d, drum, $50
+	db $10, hidrum, $50
+	db $d, drum, $20
+	db $d, drum, $30
+	db $10, hidrum, $50
+	db $d, drum, $50
+	db $10, hidrum, $50
+	db $d, drum, $20
+	db $d, drum, $30
+	db $10, hidrum, $50
+	db $d, drum, $50
+	db $10, hidrum, $50
+	db $d, drum, $20
+	db $d, drum, $30
+	db $10, hidrum, $50
 	
-Song: //format: pitch, instrument, duration (timer ticks)
-	db $10,$01,$20
-	db $10,$00,$50
-	db $0f,$02,$40
-	db $09,$02,$70
-	// db $10,$00,$50
-EndSong:
+
+	db $d, drum, $20
+	db $10, drum, $20
+	db $d, hidrum, $70
+	db $10, drum, $30
+	db $10, hidrum, $50
+EndSongC0:
 	
+SongC1:
+	db $10, $00, $20
+	db $12, $00, $20
+EndSongC1:
 
 	origin $200
 	base $400
 Directory:
+	dw Drum
+	dw Drum
+	dw HiDrum
+	dw HiDrum
 	dw Nyaa
 	dw Nyaa
-	dw Cymbal
-	dw Cymbal
-	dw Roland
-	dw Roland
+Drum:
+	insert ".\samples\drum.brr"
+HiDrum:
+	insert ".\samples\hidrum.brr"
 Nyaa:
 	insert ".\samples\nyaa.brr"
-Cymbal:
-	insert ".\samples\cymbal.brr"
-Roland:
-	insert ".\samples\roland.brr"
