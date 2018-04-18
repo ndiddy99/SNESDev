@@ -71,14 +71,12 @@ SetOam2Mirror:
 	php
 	lda $0
 	and #$3 ;check where in the byte to place 1st x bit/sprite size
-	cmp #0
 	beq Sprite0
 	cmp #1
 	beq Sprite1
 	cmp #2
 	beq Sprite2
-	cmp #3
-	beq Sprite3
+	jmp Sprite3
 	
 Sprite0:
 	ldx oam2WriteIndex

@@ -65,8 +65,8 @@ start:
 
 	//channel 1 init
 	dspWrite($17,$3f) //channel 0 gain
-	dspWrite($10,$0) //channel 0 vol
-	dspWrite($11,$0) 
+	dspWrite($10,$30) //channel 0 vol
+	dspWrite($11,$30) 
 	dspWrite($13,$10) //pitch: 32000 hz
 	dspWrite($12,$00) 
 	
@@ -164,6 +164,7 @@ WriteNoteC1:
 	
 constant drum = $00
 constant hidrum = $01
+constant nyaa = $02
 
 SongC0: //format: instrument pitch, instrument, duration
 	db $d, drum, $50
@@ -182,17 +183,22 @@ SongC0: //format: instrument pitch, instrument, duration
 	db $d, drum, $30
 	db $10, hidrum, $50
 	
-
-	db $d, drum, $20
-	db $10, drum, $20
-	db $d, hidrum, $70
-	db $10, drum, $30
+	db $d, drum, $50
+	db $10, hidrum, $50
+	db $d, drum, $30
+	db $10, hidrum, $20
 	db $10, hidrum, $50
 EndSongC0:
 	
 SongC1:
-	db $10, $00, $20
-	db $12, $00, $20
+	db $12, nyaa, $50
+	db $12, nyaa, $50
+	db $10, nyaa, $50
+	db $10, nyaa, $50
+	db $10, nyaa, $30
+	db $12, nyaa, $68
+	db $f, nyaa, $50
+	db $10, nyaa, $50
 EndSongC1:
 
 	origin $200
