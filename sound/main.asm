@@ -171,7 +171,8 @@ SongC0: //format: instrument pitch, instrument, duration
 	db $10, hidrum, $50
 	db $d, drum, $20
 	db $d, drum, $30
-	db $10, hidrum, $50
+	db $10, hidrum, $50 //140 length
+	
 	db $d, drum, $50
 	db $10, hidrum, $50
 	db $d, drum, $20
@@ -191,12 +192,12 @@ SongC0: //format: instrument pitch, instrument, duration
 EndSongC0:
 	
 SongC1:
-	db $12, nyaa, $50
+	db $12, nyaa, $50 //280 length
 	db $12, nyaa, $50
 	db $10, nyaa, $50
 	db $10, nyaa, $50
 	db $10, nyaa, $30
-	db $12, nyaa, $68
+	db $12, nyaa, $70
 	db $f, nyaa, $50
 	db $10, nyaa, $50
 EndSongC1:

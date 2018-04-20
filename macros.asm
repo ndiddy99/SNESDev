@@ -16,16 +16,16 @@
     sta $2115       ; Set VRAM transfer mode to word-access, increment by 1
     ldx #destination         ; DEST
     stx $2116       ; $2116: Word address for accessing VRAM.
-    lda #<.bank(source)        ; SRCBANK
-    ldx #source         ; SRCOFFSET
+    lda #.lobyte(.bank(source))        ; SRCBANK
+    ldx #.loword(source)         ; SRCOFFSET
     ldy #size         ; SIZE
-   jsr LoadVRAM
+    jsr LoadVRAM
 .endmacro
 
 .macro LoadBlockToWRAM source, destination, size
-	ldx #source
+	ldx #.loword(source)
 	stx $4302 ;source address
-	lda #<.bank(source)
+	lda #.lobyte(.bank(source))
 	sta $4304 ;bank
 	ldx #size
 	stx $4305

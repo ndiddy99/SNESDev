@@ -51,6 +51,8 @@
 .define STATE_JUMP_RISE $1
 .define STATE_JUMP_FALL $2
 
+.segment "CODE"
+
 SetPlayerVals:
 	;set "absolute" player x and y values
 	a16
@@ -81,11 +83,14 @@ SetPlayerVals:
 	adc $0
 	sta playerTileOffset
 	a8
-	ldx #$2
-	jsr ClearMem
+	stz $0
 	rts
 
 CheckCollisionR: ;sprite is 16x32 or 2x4 tiles
+	phb
+	lda #.lobyte(.bank(CollisionMap))
+	pha
+	plb
 	a16
 	lda playerTileOffset ;top right
 	ina
@@ -100,9 +105,15 @@ CheckCollisionR: ;sprite is 16x32 or 2x4 tiles
 	ora collision ;if top or bottom collision
 	sta collision
 	a8
+	plb
+	lda collision
 	rts
 	
 CheckCollisionL:
+	phb
+	lda #.lobyte(.bank(CollisionMap))
+	pha
+	plb
 	a16
 	ldx playerTileOffset ;top left
 	lda CollisionMap, x
@@ -115,9 +126,15 @@ CheckCollisionL:
 	ora collision
 	sta collision
 	a8
+	plb
+	lda collision
 	rts
 	
 CheckCollisionB: ;checks if block below character is solid or not
+	phb
+	lda #.lobyte(.bank(CollisionMap))
+	pha
+	plb
 	a16
 	lda playerTileOffset
 	clc
@@ -130,5 +147,7 @@ CheckCollisionB: ;checks if block below character is solid or not
 	ora collision
 	sta collision
 	a8
+	plb
+	lda collision
 	rts
 	

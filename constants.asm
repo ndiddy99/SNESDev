@@ -4,7 +4,7 @@ scrollY = scrollX+2 ;12
 scroll2X = scrollY+2 ;14
 playerHSpeed = scroll2X+2 ;16
 spriteX = playerHSpeed+2 ;18
-spriteY = spriteX+2 ;2a
+spriteY = spriteX+2 ;1a
 playerX = spriteY+2;like sprite x but "relative to tilemap" ;1c
 playerY = playerX+2 ;1e
 playerTileOffset = playerY+2 ;20
@@ -41,3 +41,10 @@ movementState
 .define TilemapMirror $2000
 
 .define BG2ScrollTable $620
+;object list format:
+; x pos (byte)
+; y pos (byte)
+; attributes (byte)
+; status (0=still, 1 = moving, 2 = ready to despawn, etc) (byte)
+; pointer to "handler" function
+.define EntityList $630  

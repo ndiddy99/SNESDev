@@ -11,6 +11,8 @@
 Reset:
 	InitSNES
 	jsl LoadSPC
+	ldx #$0
+	lda #$2
 	LoadPalette BGPalette, 0, $10
 	LoadPalette BG2Palette, $10, $10
     LoadPalette SpritePalette, $80, $F
@@ -20,7 +22,7 @@ Reset:
 	LoadBlockToVRAM LarryTiles, $6000, $800
 	LoadBlockToVRAM BGTilemap, $0000, $2000
 	LoadBlockToVRAM BG2Tilemap, $4000, $800
-	LoadBlockToWRAM BGTilemap, TilemapMirror, $2000	
+	LoadBlockToWRAM BGTilemap, TilemapMirror, $2000
     ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
 	
