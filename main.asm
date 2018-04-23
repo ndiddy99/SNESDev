@@ -48,6 +48,8 @@ Reset:
 	
 	
 MainLoop:
+	lda #$1
+	sta frameStatus ;how we check if the program's done executing
 	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
 	bit #JOY_RIGHT
 	beq AssignRightReleased ;if it is still being pressed, state=RIGHT_PRESSED
@@ -99,6 +101,8 @@ EndLeftAssign:
 	sta playerState
 	lda #MAX_LARRY_JUMP_HEIGHT
 	sta playerVSpeed
+	lda #LARRY_JUMP_FRAME
+	sta playerTileNum
 JumpNotPressed:
 	
 EndStateAssigns:
@@ -195,23 +199,21 @@ LeftNotPressed:
 LeftNotReleased:
 
 ;animate player based on speed
+	lda playerState
+	cmp #STATE_GROUND
+	bne DontAnimate
 	lda movementState
 	cmp #STATE_NONE
-	bne DontStandStill
-	lda #$0
-	sta playerTileNum
-	jmp DontAnimate
-DontStandStill:
+	beq DontAnimate
 	
 	lda playerTileNum
 	ina
 	ina
 	sta playerTileNum
 	cmp #NUM_LARRY_TILES
-	bne DontAnimate
+	bcc DontAnimate
 	lda #$2
 	sta playerTileNum
-	stz playerAnimDelay
 DontAnimate:
 
 	;if player isn't above solid surface, fall
@@ -264,6 +266,7 @@ DontRise:
 	lda #STATE_GROUND
 	sta playerState
 	stz playerVSpeed
+	stz playerTileNum
 	jmp DontFall
 @AddSpeed:
 	lda playerVSpeed
@@ -345,6 +348,7 @@ SetupScrollTable:
 	HandleLarry spriteX,spriteY,playerTileNum
 	; DrawLine #$2, #$11, #$15, #$15
 	
+	stz frameStatus
 	wai
 	jmp MainLoop
 	
@@ -355,16 +359,17 @@ VBlank:
 	pha ;push regs to stack so if my main loop is ever too long it'll continue without
 	phx ;fucking up
 	phy
-	a8
+	lda frameStatus
+	bne SkipVblank
 	SetHScroll scrollX
 	SetVScroll scrollY
 	;DMATilemapMirror #$2
-	a8
 	jsr DMASpriteMirror
 	lda #$1 ;start dma transfer on channel 1 (change to 3 if i reenable dmatilemapmirror)
 	sta $420b
 	jsr SetupHDMA
 	lda $4210 ;clear vblank flag
+SkipVblank:
 	ply
 	plx
 	pla

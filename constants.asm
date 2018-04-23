@@ -10,11 +10,11 @@ playerY = playerX+2 ;1e
 playerTileOffset = playerY+2 ;20
 playerTileNum = playerTileOffset+2 ;22
 collision
-playerAnimDelay = collision+2
-playerAttrs
+playerAttrs = collision+2
 playerVSpeed
 playerState
 movementState
+frameStatus
 .endenum
 
 ;---joypad---

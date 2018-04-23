@@ -1,3 +1,5 @@
+.define LARRY_OFFSET $20
+
 .macro HandleLarry xPos, yPos, tileNum
 ;parameters: pointer to xpos, pointer to ypos, pointer to tile number
 	lda xPos
@@ -50,6 +52,9 @@
 .define STATE_GROUND $0
 .define STATE_JUMP_RISE $1
 .define STATE_JUMP_FALL $2
+
+;animation frames
+.define LARRY_JUMP_FRAME $E
 
 .segment "CODE"
 

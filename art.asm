@@ -11,7 +11,6 @@ SpritePalette:
 .segment "BANK2"
 LarryTiles:
 	.define NUM_LARRY_TILES $E
-	.define LARRY_OFFSET $20
 	.define LARRY_ANIMATION_DELAY $2 ;number of frames between incrementing movement
 	.INCBIN ".\art\larry.pic"
 BGTiles:
