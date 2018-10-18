@@ -9,12 +9,12 @@ Current file: main.asm
 000000r 2               .i16    ; X/Y are 16 bits
 000000r 2               .a8     ; A is 8 bits
 000000r 2               
-000000r 2               .define ROM_NAME "zoz zle zozzle       "
+000000r 2               .define ROM_NAME "physics demo         "
 000000r 2                               ;"123456789012345678901"
 000000r 2               .segment "HEADER"     ; +$7FE0 in file
-000000r 2  7A 6F 7A 20      .byte ROM_NAME
-000004r 2  7A 6C 65 20  
-000008r 2  7A 6F 7A 7A  
+000000r 2  70 68 79 73      .byte ROM_NAME
+000004r 2  69 63 73 20  
+000008r 2  64 65 6D 6F  
 000015r 2               
 000015r 2               .segment "ROMINFO"    ; +$7FD5 in file
 000000r 2  30               .byte $30         ; LoROM, fast-capable
@@ -50,6 +50,512 @@ Current file: main.asm
 000006r 2  40           	rti
 000007r 2               EmptyHandler7:
 000007r 2  40           	rti
+000008r 2               
+000008r 1               .include "snes.inc"
+000008r 2               ;
+000008r 2               ; S-CPU and S-PPU MMIO port definitions for Super NES
+000008r 2               ; and useful 65816 macros
+000008r 2               ;
+000008r 2               ; Copyright 2014-2015 Damian Yerrick
+000008r 2               ;
+000008r 2               ; Copying and distribution of this file, with or without
+000008r 2               ; modification, are permitted in any medium without royalty provided
+000008r 2               ; the copyright notice and this notice are preserved in all source
+000008r 2               ; code copies.  This file is offered as-is, without any warranty.
+000008r 2               ;
+000008r 2               
+000008r 2               ;
+000008r 2               ; This header summarizes some of the Super NES MMIO ports.
+000008r 2               ; For more details, see these web pages:
+000008r 2               ; http://wiki.superfamicom.org/
+000008r 2               ; http://problemkaputt.de/fullsnes.htm
+000008r 2               ;
+000008r 2               ; Names of MMIO ports in this header file may differ from purported
+000008r 2               ; official names for two reasons: to avoid the appearance of
+000008r 2               ; misappropriation, and because sometimes these make more sense.
+000008r 2               ;
+000008r 2               
+000008r 2               .ifndef SNES_H
+000008r 2               .define SNES_H
+000008r 2               
+000008r 2               ; S-PPU configuration ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+000008r 2               
+000008r 2               PPUBRIGHT = $2100
+000008r 2               ; 76543210
+000008r 2               ; |   ++++- brightness (F: max)
+000008r 2               ; +-------- 1: disable rendering
+000008r 2               FORCEBLANK = $80
+000008r 2               
+000008r 2               PPURES = $2133
+000008r 2               ; 76543210
+000008r 2               ; ||  |||+- Screen interlace
+000008r 2               ; ||  ||+-- Shrink sprites vertically during interlace
+000008r 2               ; ||  |+--- 0: show lines 1-224; 1: show lines 1-239
+000008r 2               ; ||  +---- Show subscreen in left half of each pixel
+000008r 2               ; ||        (modes 012347; forced on in modes 56)
+000008r 2               ; |+------- In mode 7, use bit 7 as priority
+000008r 2               ; +-------- External genlock, intended for SFC Titler. Use 0 on SNES.
+000008r 2               INTERLACE    = $01
+000008r 2               INTERLACEOBJ = $02
+000008r 2               BG_TALL      = $04
+000008r 2               SUB_HIRES    = $08
+000008r 2               M7_EXTBG     = $40
+000008r 2               
+000008r 2               PPUSTATUS1 = $213E
+000008r 2               ; 76543210  PPU address generator status
+000008r 2               ; ||  ++++- PPU1 version (always 1)
+000008r 2               ; |+------- 1: sprite overflow (>32 on a line) since the last vblank end
+000008r 2               ; +-------- 1: sliver overflow (>34 on a line) since the last vblank end
+000008r 2               ; this parallels bit 5 of $2002 on NES
+000008r 2               
+000008r 2               PPUSTATUS2 = $213F
+000008r 2               ; 76543210  PPU compositor status
+000008r 2               ; || |++++- PPU2 version (1-3, not counting minor versions of 3)
+000008r 2               ; || +----- 1: PAL
+000008r 2               ; |+------- 1: GETXY has happened since last PPUSTATUS2 read
+000008r 2               ; +-------- Toggles every vblank
+000008r 2               
+000008r 2               ; S-PPU sprites ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+000008r 2               
+000008r 2               OBSEL = $2101
+000008r 2               ; 76543210
+000008r 2               ; ||||| ++- Sprite main pattern table (0=$0000, 1=$2000, 2=$4000, 3=$6000)
+000008r 2               ; |||++---- Alt pattern table offset (0=$1000, 1=$2000, 2=$3000, 3=$4000)
+000008r 2               ; +++------ 0: 8/16; 1: 8/32; 2: 8/64; 3: 16/64; 4: 32/64; 5: 64/64
+000008r 2               ;           (all sprites are square and 2D-mapped)
+000008r 2               OBSIZE_8_16  = $00
+000008r 2               OBSIZE_8_32  = $20
+000008r 2               OBSIZE_8_64  = $40
+000008r 2               OBSIZE_16_32 = $60
+000008r 2               OBSIZE_16_64 = $80
+000008r 2               OBSIZE_32_64 = $A0
+000008r 2               
+000008r 2               OAMADDR = $2102  ; 16-bit, 128 sprites followed by high-X/size table
+000008r 2               OAMDATA = $2104
+000008r 2               OAMDATARD = $2138
+000008r 2               ; Parallels NES $2003, except apparently word-addressed.
+000008r 2               ; OAM random access is working here, unlike on NES.
+000008r 2               ; If bit 15 is set, value at start of frame apparently also
+000008r 2               ; controls which sprites are in front
+000008r 2               
+000008r 2               ; S-PPU background configuration ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+000008r 2               
+000008r 2               BGMODE = $2105
+000008r 2               ; 76543210
+000008r 2               ; |||||+++- 0: 4 planes 2 bpp
+000008r 2               ; |||||     1: 2 planes 4 bpp, 1 plane 2 bpp
+000008r 2               ; |||||     2: 2 planes 4 bpp, OPT
+000008r 2               ; |||||     3: 1 plane 8 bpp, 1 plane 4 bpp
+000008r 2               ; |||||     4: 1 plane 8 bpp, 1 plane 2 bpp, OPT
+000008r 2               ; |||||     5: 1 plane 4 bpp, 1 plane 2 bpp, hires
+000008r 2               ; |||||     6: 1 plane 4 bpp, OPT, hires
+000008r 2               ; |||||     7: 1 plane rot/scale
+000008r 2               ; ||||+---- In mode 1, set plane 2 high-prio in front of all others
+000008r 2               ; |||+----- Plane 0 tile size (0: 8x8, 1: 16x16)
+000008r 2               ; ||+------ Plane 1 tile size (0: 8x8, 1: 16x16)
+000008r 2               ; |+------- Plane 2 tile size (0: 8x8, 1: 16x16)
+000008r 2               ; +-------- Plane 3 tile size (0: 8x8, 1: 16x16)
+000008r 2               ;           Modes 5 and 6 use 16x8 instead of 8x8
+000008r 2               ;           Mode 7 always uses 8x8
+000008r 2               
+000008r 2               MOSAIC = $2106
+000008r 2               ; 76543210
+000008r 2               ; |||||||+- Apply mosaic to plane 0 (or mode 7 high-prio horizontal)
+000008r 2               ; ||||||+-- Apply mosaic to plane 1 (or mode 7 high-prio vertical)
+000008r 2               ; |||||+--- Apply mosaic to plane 2
+000008r 2               ; ||||+---- Apply mosaic to plane 3
+000008r 2               ; ++++----- Pixel size minus 1 (0=1x1, 15=16x16)
+000008r 2               
+000008r 2               NTADDR = $2107  ; through $210A
+000008r 2               ; 76543210
+000008r 2               ;  ||||||+- Nametable width (0: 1 screen, 1: 2 screens)
+000008r 2               ;  |||||+-- Nametable height (0: 1 screen, 1: 2 screens)
+000008r 2               ;  +++++--- Nametable base address in $400 units
+000008r 2               ; Each nametable in modes 0-6 is 32 rows, each 32 spaces long.
+000008r 2               .define NTXY(xc,yc) ((xc)|((yc)<<5))
+000008r 2               
+000008r 2               BGCHRADDR = $210B
+000008r 2               ; FEDCBA98 76543210
+000008r 2               ;  ||| |||  ||| +++- Pattern table base address for plane 0
+000008r 2               ;  ||| |||  +++----- Same for plane 1
+000008r 2               ;  ||| +++---------- Same for plane 2
+000008r 2               ;  +++-------------- Same for plane 3
+000008r 2               
+000008r 2               M7SEL = $211A
+000008r 2               ; 76543210
+000008r 2               ; ||    ||
+000008r 2               ; ||    |+- Flip screen horizontally
+000008r 2               ; ||    +-- Flip screen vertically
+000008r 2               ; ++------- 0: repeat entire mode 7 plane
+000008r 2               ;           2: transparent outside; 3: tile $00 repeating outside
+000008r 2               M7_HFLIP    = $01
+000008r 2               M7_VFLIP    = $02
+000008r 2               M7_WRAP     = $00
+000008r 2               M7_NOWRAP   = $80
+000008r 2               M7_BORDER00 = $C0
+000008r 2               
+000008r 2               ; S-PPU scrolling ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+000008r 2               
+000008r 2               BGSCROLLX = $210D  ; double write low then high (000-3FF m0-6, 000-7FF m7)
+000008r 2               BGSCROLLY = $210E  ; similar. reg 210F-2114 are same for other planes
+000008r 2               ; Hi-res scrolling in modes 5-6 moves by whole (sub+main) pixels in X
+000008r 2               ; but half scanlines in Y.
+000008r 2               ; The top visible line is the line below the value written here.
+000008r 2               ; For example, in 224-line mode, if 12 is written, lines 13 through
+000008r 2               ; 237 of the background are visible.  This differs from the NES.
+000008r 2               ;
+000008r 2               ; Mode 7 uses this value as the center of rotation.  This differs
+000008r 2               ; from the GBA, which fixes the center of rotation at the top left.
+000008r 2               
+000008r 2               ; 211B-2120 control mode 7 matrix; to be documented later
+000008r 2               
+000008r 2               ; S-PPU VRAM data port ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+000008r 2               
+000008r 2               PPUCTRL = $2115
+000008r 2               ; 76543210
+000008r 2               ; |   ||++- VRAM address increment (1, 32, 128, 128)
+000008r 2               ; |   ++--- Rotate low bits of address left by 3 (off, 8, 9, or 10)
+000008r 2               ; +-------- 0: Increment after low data port access; 1: after high
+000008r 2               ; Corresponds to bit 2 of $2000 on NES
+000008r 2               VRAM_DOWN   = $01
+000008r 2               VRAM_M7DOWN = $02
+000008r 2               INC_DATAHI  = $80
+000008r 2               
+000008r 2               PPUADDR = $2116  ; Word address, not double-write anymore
+000008r 2               PPUDATA = $2118
+000008r 2               PPUDATAHI = $2119
+000008r 2               PPUDATARD = $2139  ; Same dummy read as on NES is needed
+000008r 2               PPUDATARDHI = $213A
+000008r 2               
+000008r 2               ; S-PPU palette ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+000008r 2               
+000008r 2               CGADDR = $2121
+000008r 2               CGDATA = $2122  ; 5-bit BGR, write twice, low byte first
+000008r 2               CGDATARD = $213B  ; 5-bit BGR, read twice, low byte first
+000008r 2               .define RGB(r,g,b) ((r)|((g)<<5)|((b)<<10))
+000008r 2               
+000008r 2               ; S-PPU window ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+000008r 2               
+000008r 2               BG12WINDOW = $2123
+000008r 2               BG34WINDOW = $2124
+000008r 2               OBJWINDOW = $2125
+000008r 2               ; 76543210
+000008r 2               ; ||||||++- 0: disable window 1 on BG1/BG3/OBJ; 2: enable; 3: enable outside
+000008r 2               ; ||||++--- 0: disable window 2 on BG1/BG3/OBJ; 2: enable; 3: enable outside
+000008r 2               ; ||++----- 0: disable window 1 on BG2/BG4; 2: enable; 3: enable outside
+000008r 2               ; ++------- 0: disable window 2 on BG2/BG4; 2: enable; 3: enable outside
+000008r 2               
+000008r 2               WINDOW1L = $2126
+000008r 2               WINDOW1R = $2127
+000008r 2               WINDOW2L = $2128
+000008r 2               WINDOW2R = $2129
+000008r 2               
+000008r 2               BGWINDOP = $212A   ; Window op is how windows are combined when both
+000008r 2               OBJWINDOP = $212B  ; windows 1 and 2 are enabled.
+000008r 2               ; 76543210
+000008r 2               ; ||||||++- Window op for plane 0 or sprites (0: or, 1: and, 2: xor, 3: xnor)
+000008r 2               ; ||||++--- Window op for plane 1 or color window
+000008r 2               ; ||++----- Window op for plane 2
+000008r 2               ; ++------- Window op for plane 3
+000008r 2               
+000008r 2               ; S-PPU blending (or "color math") ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+000008r 2               
+000008r 2               ; The main layer enable reg, corresponding to PPUMASK on the NES,
+000008r 2               ; is BLENDMAIN.
+000008r 2               BLENDMAIN  = $212C  ; Layers enabled for main input of blending
+000008r 2               BLENDSUB   = $212D  ; Layers enabled for sub input of blending
+000008r 2               WINDOWMAIN = $212E  ; Windows enabled for main input of blending
+000008r 2               WINDOWSUB  = $212F  ; Windows enabled for sub input of blending
+000008r 2               ; 76543210
+000008r 2               ;    ||||+- plane 0
+000008r 2               ;    |||+-- plane 1
+000008r 2               ;    ||+--- plane 2
+000008r 2               ;    |+---- plane 3
+000008r 2               ;    +----- sprites
+000008r 2               ; BLENDMAIN roughly parallels NES $2001 bits 4-3,
+000008r 2               ; except that turning off both bits doesn't disable rendering.
+000008r 2               ; (Use PPUBRIGHT for that.)
+000008r 2               
+000008r 2               ; PPU1 appears to generate a stream of (main, sub) pairs, which
+000008r 2               ; PPU2 combines to form output colors.
+000008r 2               
+000008r 2               ; Blending parameters not documented yet.  Wait for a future demo.
+000008r 2               
+000008r 2               ; When BGMODE is 0-6 (or during vblank in mode 7), a fast 16x8
+000008r 2               ; signed multiply is available, finishing by the next CPU cycle.
+000008r 2               M7MCAND = $211B    ; write low then high
+000008r 2               M7MUL = $211C      ; 8-bit factor
+000008r 2               M7PRODLO = $2134
+000008r 2               M7PRODHI = $2135
+000008r 2               M7PRODBANK = $2136
+000008r 2               
+000008r 2               GETXY = $2137  ; read while $4201 D7 is set: populate x and y coords
+000008r 2               XCOORD = $213C  ; used with light guns, read twice
+000008r 2               YCOORD = $213D  ; also read twice
+000008r 2               
+000008r 2               ; SPC700 communication ports ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+000008r 2               
+000008r 2               APU0 = $2140
+000008r 2               APU1 = $2141
+000008r 2               APU2 = $2142
+000008r 2               APU3 = $2143
+000008r 2               
+000008r 2               ; S-CPU interrupt control ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+000008r 2               
+000008r 2               PPUNMI = $4200
+000008r 2               ; 76543210
+000008r 2               ; | ||   +- Automatically read controllers in first 4 lines of vblank
+000008r 2               ; | ++----- 0: No IRQ; 1: IRQs at HTIME;
+000008r 2               ; |         2: one IRQ at (0, VTIME); 3: one IRQ at (HTIME, VTIME)
+000008r 2               ; +-------- 1: Enable NMI at start of vblank
+000008r 2               VBLANK_NMI = $80
+000008r 2               HTIME_IRQ  = $10
+000008r 2               VTIME_IRQ  = $20
+000008r 2               HVTIME_IRQ = $30
+000008r 2               AUTOREAD   = $01
+000008r 2               
+000008r 2               HTIME   = $4207
+000008r 2               HTIMEHI = $4208
+000008r 2               VTIME   = $4209
+000008r 2               VTIMEHI = $420A
+000008r 2               
+000008r 2               NMISTATUS = $4210
+000008r 2               ; 76543210
+000008r 2               ; |   ||||
+000008r 2               ; |   ++++- DMA controller version (1, 2) where v1 has an HDMA glitch
+000008r 2               ; +-------- 1: Vblank has started since last read (like $2002.d7 on NES)
+000008r 2               
+000008r 2               TIMESTATUS = $4211  ; Acknowledge htime/vtime IRQ
+000008r 2               VBLSTATUS = $4212
+000008r 2               ; 76543210
+000008r 2               ; ||     +- 0: Controller reading finished; 1: busy
+000008r 2               ; |+------- In hblank
+000008r 2               ; +-------- In vblank
+000008r 2               
+000008r 2               ROMSPEED = $420D  ; 0: slow ROM everywhere; 1: fast ROM in banks 80-FF
+000008r 2                                 ; (requires 120ns or faster PRG ROM)
+000008r 2               
+000008r 2               ; S-CPU controller I/O ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+000008r 2               
+000008r 2               ; Manual controller reading behaves almost exactly as on Famicom.
+000008r 2               ; For games using up to 2 standard controllers, these aren't needed,
+000008r 2               ; as you can enable controller autoreading along with vblank NMIs.
+000008r 2               ; But for games using (multitap, mouse, etc.), you will need to
+000008r 2               ; read the extra bits separately after the autoreader finishes.
+000008r 2               JOY0 = $4016
+000008r 2               JOY1 = $4017
+000008r 2               
+000008r 2               ; In addition to the common strobe, each controller port has an
+000008r 2               ; additional output bit that can be used as, say, a chip select
+000008r 2               ; for SPI peripherals.
+000008r 2               JOYOUT = $4201
+000008r 2               ; 76543210
+000008r 2               ; |+------- Controller 1 pin 6 output
+000008r 2               ; +-------- Controller 2 pin 6 output
+000008r 2               
+000008r 2               ; Results of the autoreader
+000008r 2               JOY1CUR = $4218    ; Bit 0: used by standard controllers
+000008r 2               JOY2CUR = $421A
+000008r 2               JOY1B1CUR = $421C  ; Bit 1: used by multitap and a few oddball
+000008r 2               JOY2B1CUR = $421E  ; input devices
+000008r 2               ; FEDCBA98 76543210
+000008r 2               ; BYSRUDLR AXLRTTTT
+000008r 2               ; |||||||| ||||++++- controller type (0: controller, 1: mouse)
+000008r 2               ; |||||||| ||++----- shoulder buttons
+000008r 2               ; ++-------++------- right face buttons
+000008r 2               ;   ||++++---------- Control Pad
+000008r 2               ;   ++-------------- center face buttons
+000008r 2               KEY_B      = $8000
+000008r 2               KEY_Y      = $4000
+000008r 2               KEY_SELECT = $2000
+000008r 2               KEY_START  = $1000
+000008r 2               KEY_UP     = $0800
+000008r 2               KEY_DOWN   = $0400
+000008r 2               KEY_LEFT   = $0200
+000008r 2               KEY_RIGHT  = $0100
+000008r 2               KEY_A      = $0080
+000008r 2               KEY_X      = $0040
+000008r 2               KEY_L      = $0020
+000008r 2               KEY_R      = $0010
+000008r 2               
+000008r 2               ; S-CPU multiply and divide ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+000008r 2               
+000008r 2               ; Multiply unit.  Also good for shifting pixels when drawing
+000008r 2               ; text in a proportional font.
+000008r 2               CPUMCAND = $4202  ; unchanged by multiplications
+000008r 2               CPUMUL = $4203    ; write here to fill CPUPROD 8 cycles later
+000008r 2               CPUPROD = $4216
+000008r 2               CPUPRODHI = $4217
+000008r 2               
+000008r 2               ; Divide unit
+000008r 2               CPUNUM = $4204
+000008r 2               CPUNUMHI = $4205
+000008r 2               CPUDEN = $4206    ; write divisor to fill CPUQUOT/CPUREM 16 cycles later
+000008r 2               CPUQUOT = $4214
+000008r 2               CPUQUOTHI = $4215
+000008r 2               CPUREM = CPUPROD
+000008r 2               CPUREMHI = CPUPRODHI
+000008r 2               
+000008r 2               ; S-CPU DMA ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+000008r 2               
+000008r 2               COPYSTART = $420B  ; writes of 1 << n start a DMA copy on channel n
+000008r 2               HDMASTART = $420C  ; writes of 1 << n start HDMA on channel n
+000008r 2               ; Don't run a DMA copy while HDMA is enabled, or you might run into
+000008r 2               ; a defect in revision 1 of the S-CPU that causes crashing.
+000008r 2               
+000008r 2               ; There are 8 DMA channels.
+000008r 2               ; Registers for channels 1-7 start at $4310, $4320, ...
+000008r 2               DMAMODE = $4300
+000008r 2               ; 76543210
+000008r 2               ; || ||+++- PPU address offset pattern
+000008r 2               ; || ||     0: 0     1: 01    2: 00    3: 0011  4: 0123  5: 0101
+000008r 2               ; || ++---- Memcpy only: 0: increment; 1: fixed; 2: decrement
+000008r 2               ; |+------- HDMA only: 1: Table contains pointers
+000008r 2               ; +-------- Direction (0: read CPU write PPU; 1: read PPU write CPU)
+000008r 2               DMA_LINEAR   = $00
+000008r 2               DMA_01       = $01
+000008r 2               DMA_00       = $02  ; For HDMA to double write ports; copies can use linear
+000008r 2               DMA_0011     = $03  ; For HDMA to scroll positions and mode 7 matrices
+000008r 2               DMA_0123     = $04  ; For HDMA to window registers
+000008r 2               DMA_0101     = $05  ; Not sure how this would be useful for HDMA
+000008r 2               DMA_FORWARD  = $00
+000008r 2               DMA_CONST    = $08
+000008r 2               DMA_BACKWARD = $10
+000008r 2               DMA_INDIRECT = $40
+000008r 2               DMA_READPPU  = $80
+000008r 2               
+000008r 2               DMAPPUREG = $4301
+000008r 2               DMAADDR = $4302
+000008r 2               DMAADDRHI = $4303
+000008r 2               DMAADDRBANK = $4304
+000008r 2               DMALEN = $4305  ; number of bytes, not number of transfers; 0 means 65536
+000008r 2               DMALENHI = $4306
+000008r 2               
+000008r 2               HDMAINDBANK = $4307
+000008r 2               HDMATABLELO = $4308
+000008r 2               HDMATABLEHI = $4309
+000008r 2               HDMALINE = $430A
+000008r 2               
+000008r 2               ; composite values for use with 16-bit writes to DMAMODE
+000008r 2               DMAMODE_PPULOFILL = (<PPUDATA << 8)       | DMA_LINEAR | DMA_CONST
+000008r 2               DMAMODE_PPUHIFILL = (<(PPUDATA + 1) << 8) | DMA_LINEAR | DMA_CONST
+000008r 2               DMAMODE_PPUFILL   = (<PPUDATA << 8)       | DMA_01     | DMA_CONST
+000008r 2               DMAMODE_PPULODATA = (<PPUDATA << 8)       | DMA_LINEAR | DMA_FORWARD
+000008r 2               DMAMODE_PPUHIDATA = (<(PPUDATA + 1) << 8) | DMA_LINEAR | DMA_FORWARD
+000008r 2               DMAMODE_PPUDATA   = (<PPUDATA << 8)       | DMA_01     | DMA_FORWARD
+000008r 2               DMAMODE_CGDATA    = (<CGDATA << 8)        | DMA_00     | DMA_FORWARD
+000008r 2               DMAMODE_OAMDATA   = (<OAMDATA << 8)       | DMA_00     | DMA_FORWARD
+000008r 2               
+000008r 2               ; FULLSNES NAMES ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+000008r 2               ;
+000008r 2               ; These aliases match the names presented in Fullsnes.
+000008r 2               
+000008r 2               ; S-PPU write
+000008r 2               INIDISP = PPUBRIGHT
+000008r 2               OAMADDL = OAMADDR+0
+000008r 2               OAMADDH = OAMADDR+1
+000008r 2               BG1SC   = NTADDR+0
+000008r 2               BG2SC   = NTADDR+1
+000008r 2               BG3SC   = NTADDR+2
+000008r 2               BG4SC   = NTADDR+3
+000008r 2               BG12NBA = BGCHRADDR+0  ; Welcome to...
+000008r 2               BG34NBA = BGCHRADDR+1  ; BG34NBA JAM!!!
+000008r 2               BG1HOFS = BGSCROLLX+0
+000008r 2               BG1VOFS = BGSCROLLY+0
+000008r 2               BG2HOFS = BGSCROLLX+2
+000008r 2               BG2VOFS = BGSCROLLY+2
+000008r 2               BG3HOFS = BGSCROLLX+4
+000008r 2               BG3VOFS = BGSCROLLY+4
+000008r 2               BG4HOFS = BGSCROLLX+6
+000008r 2               BG4VOFS = BGSCROLLY+6
+000008r 2               VMAIN   = PPUCTRL
+000008r 2               VMADDL  = PPUADDR+0
+000008r 2               VMADDH  = PPUADDR+1
+000008r 2               VMDATAL = PPUDATA+0
+000008r 2               VMDATAH = PPUDATA+1
+000008r 2               M7A     = $211B
+000008r 2               M7B     = $211C
+000008r 2               M7C     = $211D
+000008r 2               M7D     = $211E
+000008r 2               M7X     = $211F
+000008r 2               M7Y     = $2120
+000008r 2               CGADD   = CGADDR
+000008r 2               W12SEL  = BG12WINDOW
+000008r 2               W34SEL  = BG34WINDOW
+000008r 2               WOBJSEL = OBJWINDOW
+000008r 2               WH0     = WINDOW1L
+000008r 2               WH1     = WINDOW1R
+000008r 2               WH2     = WINDOW2L
+000008r 2               WH3     = WINDOW2R
+000008r 2               WBGLOG  = BGWINDOP
+000008r 2               WOBJLOG = OBJWINDOP
+000008r 2               TM      = BLENDMAIN
+000008r 2               TS      = BLENDSUB
+000008r 2               TMW     = WINDOWMAIN
+000008r 2               TSW     = WINDOWSUB
+000008r 2               CGWSEL  = $2130
+000008r 2               CGADSUB = $2131
+000008r 2               COLDATA = $2132
+000008r 2               SETINI  = PPURES
+000008r 2               
+000008r 2               ; S-PPU read
+000008r 2               MPYL    = M7PRODLO
+000008r 2               MPYM    = M7PRODHI
+000008r 2               MPYH    = M7PRODBANK
+000008r 2               SLHV    = GETXY
+000008r 2               RDOAM   = OAMDATARD
+000008r 2               RDVRAML = PPUDATARD
+000008r 2               RDVRAMH = PPUDATARDHI
+000008r 2               RDCGRAM = CGDATARD
+000008r 2               OPHCT   = XCOORD
+000008r 2               OPVCT   = YCOORD
+000008r 2               STAT77  = PPUSTATUS1
+000008r 2               STAT78  = PPUSTATUS2
+000008r 2               
+000008r 2               ; other B bus devices
+000008r 2               APUIO0 = APU0  ; didn't want to use capital O with digit 0
+000008r 2               APUIO1 = APU1
+000008r 2               APUIO2 = APU2
+000008r 2               APUIO3 = APU3
+000008r 2               WMDATA = $2180
+000008r 2               WMADDL = $2181
+000008r 2               WMADDM = $2182
+000008r 2               WMADDH = $2183
+000008r 2               
+000008r 2               ; S-CPU I/O write
+000008r 2               NMITIMEN = $4200
+000008r 2               WRIO     = $4201
+000008r 2               WRMPYA   = CPUMCAND
+000008r 2               WRMPYB   = CPUMUL
+000008r 2               WRDIVL   = CPUNUM
+000008r 2               WRDIVH   = CPUNUMHI
+000008r 2               WRDIVB   = CPUDEN
+000008r 2               HTIMEL   = HTIME
+000008r 2               HTIMEH   = HTIMEHI
+000008r 2               VTIMEL   = VTIME
+000008r 2               VTIMEH   = VTIMEHI
+000008r 2               MDMAEN   = COPYSTART  ; where I come from MDMA is a drug
+000008r 2               HDMAEN   = HDMASTART
+000008r 2               MEMSEL   = ROMSPEED
+000008r 2               
+000008r 2               ; S-CPU I/O read
+000008r 2               RDNMI  = NMISTATUS
+000008r 2               TIMEUP = TIMESTATUS
+000008r 2               HVBJOY = VBLSTATUS
+000008r 2               RDIO   = $4213
+000008r 2               RDDIVL = CPUQUOT
+000008r 2               RDDIVH = CPUQUOT+1
+000008r 2               RDMPYL = CPUPROD
+000008r 2               RDMPYH = CPUPROD+1
+000008r 2               JOY1L  = JOY1CUR+0
+000008r 2               JOY1H  = JOY1CUR+1
+000008r 2               JOY2L  = JOY2CUR+0
+000008r 2               JOY2H  = JOY2CUR+1
+000008r 2               JOY3L  = JOY1B1CUR+0
+000008r 2               JOY3H  = JOY1B1CUR+1
+000008r 2               JOY4L  = JOY2B1CUR+0
+000008r 2               JOY4H  = JOY2B1CUR+1
+000008r 2               .endif
 000008r 2               
 000008r 1               .include "initSNES.inc"
 000008r 2               ;------------------------------------------------------------------------
@@ -312,36 +818,6 @@ Current file: main.asm
 00011Er 2               
 00011Er 2               
 00011Er 1               .include "constants.asm"
-00011Er 2               .enum ;start at $10 because first 15 bytes are "scratchpad"
-00011Er 2               scrollX = $10
-00011Er 2               scrollY = scrollX+2 ;12
-00011Er 2               scroll2X = scrollY+2 ;14
-00011Er 2               playerHSpeed = scroll2X+2 ;16
-00011Er 2               spriteX = playerHSpeed+2 ;18
-00011Er 2               spriteY = spriteX+2 ;1a
-00011Er 2               playerX = spriteY+2;like sprite x but "relative to tilemap" ;1c
-00011Er 2               playerY = playerX+2 ;1e
-00011Er 2               playerTileOffset = playerY+2 ;20
-00011Er 2               playerTileNum = playerTileOffset+2 ;22
-00011Er 2               collision
-00011Er 2               playerAttrs = collision+2
-00011Er 2               playerVSpeed
-00011Er 2               playerState
-00011Er 2               movementState
-00011Er 2               frameStatus
-00011Er 2               .endenum
-00011Er 2               
-00011Er 2               ;---joypad---
-00011Er 2               
-00011Er 2               .define JOY_B $80
-00011Er 2               .define JOY_Y $40
-00011Er 2               .define JOY_SELECT $20
-00011Er 2               .define JOY_START $10
-00011Er 2               .define JOY_UP $8
-00011Er 2               .define JOY_DOWN $4
-00011Er 2               .define JOY_LEFT $2
-00011Er 2               .define JOY_RIGHT $1
-00011Er 2               
 00011Er 2               ;---oam pt 2 write masks---
 00011Er 2               
 00011Er 2               .define SPRITE3_MASK %00111111
@@ -633,49 +1109,33 @@ Current file: main.asm
 00015Er 2               
 00015Er 1               .include "sprites.asm"
 00015Er 2               spriteNum = $0
-00015Er 2               oam2Data = $1
-00015Er 2               oam2WriteIndex = $2
+00015Er 2               xPos = $1
+00015Er 2               yPos = $3
+00015Er 2               tileNum = $4
+00015Er 2               sprAttrs = $5
+00015Er 2               oam2Data = $6
+00015Er 2               oam2WriteIndex = $7
 00015Er 2               
-00015Er 2               .macro LoadSprite sprite, xOffset, yOffset, tileNum, attributes, xBit, size
-00015Er 2               ;parameters: sprite num, pointer to x coord, pointer to y coord, pointer to tile num, attributes,first bit of x coordinate, big/small
+00015Er 2               
+00015Er 2               .macro LoadSprite sprite, tile, xOffset, yOffset, attributes
+00015Er 2               ;parameters: sprite num, pointer to x coord, pointer to y coord, pointer to tile num, attributes, big/small
 00015Er 2               ;shoutout to nintendo for making me go through all this bullshit, can't have
 00015Er 2               ; all the memory together or something sane
+00015Er 2               	php
 00015Er 2               	lda sprite
 00015Er 2               	sta spriteNum
 00015Er 2               	a16
-00015Er 2               	lda sprite
-00015Er 2               	clc
-00015Er 2               	rol a
-00015Er 2               	rol a ;multiply sprite num by 4 because each index in oam table is 4 bytes
-00015Er 2               	tax
-00015Er 2               	a8
 00015Er 2               	lda xOffset
-00015Er 2               	sta OamMirror,x
-00015Er 2               	inx
+00015Er 2               	sta xPos
+00015Er 2               	a8
 00015Er 2               	lda yOffset
-00015Er 2               	sta OamMirror,x
-00015Er 2               	inx
-00015Er 2               	lda tileNum
-00015Er 2               	sta OamMirror,x
-00015Er 2               	inx
+00015Er 2               	sta yPos
+00015Er 2               	lda tile
+00015Er 2               	sta tileNum
 00015Er 2               	lda attributes
-00015Er 2               	sta OamMirror,x
-00015Er 2               
-00015Er 2               	lda xBit
-00015Er 2               	and #$1 ;make sure only 1 bit
-00015Er 2               	sta oam2Data ;mess around with first bit of x coordinate b/c nintendo stored it separately
-00015Er 2               	lda size
-00015Er 2               	and #$1 ;combine sprite size and msb of xpos
-00015Er 2               	ror a
-00015Er 2               	ora oam2Data
-00015Er 2               	sta oam2Data
-00015Er 2               	lda spriteNum
-00015Er 2               	clc
-00015Er 2               	ror a ;4 sprites per oam table byte
-00015Er 2               	ror a
-00015Er 2               	and #$7F
-00015Er 2               	sta oam2WriteIndex
-00015Er 2               	jsr SetOam2Mirror
+00015Er 2               	sta sprAttrs
+00015Er 2               	jsr SetOamMirror
+00015Er 2               	plp
 00015Er 2               .endmacro
 00015Er 2               
 00015Er 2               .segment "CODE"
@@ -701,204 +1161,144 @@ Current file: main.asm
 00017Er 2  28           	plp
 00017Fr 2  60           	rts
 000180r 2               
-000180r 2               SetOam2Mirror:
-000180r 2  08           	php
-000181r 2  A5 00        	lda $0
-000183r 2  29 03        	and #$3 ;check where in the byte to place 1st x bit/sprite size
-000185r 2  F0 0B        	beq Sprite0
-000187r 2  C9 01        	cmp #1
-000189r 2  F0 16        	beq Sprite1
-00018Br 2  C9 02        	cmp #2
-00018Dr 2  F0 26        	beq Sprite2
-00018Fr 2  4C rr rr     	jmp Sprite3
-000192r 2               
-000192r 2               Sprite0:
-000192r 2  A6 02        	ldx oam2WriteIndex
-000194r 2  BD 00 06     	lda Oam2Mirror,x
-000197r 2  29 FC        	and #SPRITE0_MASK
-000199r 2  05 01        	ora oam2Data
-00019Br 2  9D 00 06     	sta Oam2Mirror,x
-00019Er 2  4C rr rr     	jmp EndBitStuff
-0001A1r 2               
-0001A1r 2               Sprite1:
-0001A1r 2  18           	clc
-0001A2r 2  66 01        	ror oam2Data
-0001A4r 2  66 01        	ror oam2Data
-0001A6r 2               
-0001A6r 2  A6 02        	ldx oam2WriteIndex
-0001A8r 2  BD 00 06     	lda Oam2Mirror,x
-0001ABr 2  29 F3        	and #SPRITE1_MASK
-0001ADr 2  05 01        	ora oam2Data
-0001AFr 2  9D 00 06     	sta Oam2Mirror,x
-0001B2r 2  4C rr rr     	jmp EndBitStuff
-0001B5r 2               Sprite2:
-0001B5r 2  18           	clc
-0001B6r 2  66 01        	ror oam2Data
-0001B8r 2  66 01        	ror oam2Data
-0001BAr 2  66 01        	ror oam2Data
-0001BCr 2  66 01        	ror oam2Data
-0001BEr 2               
-0001BEr 2  A6 02        	ldx oam2WriteIndex
-0001C0r 2  BD 00 06     	lda Oam2Mirror,x
-0001C3r 2  29 CF        	and #SPRITE2_MASK
-0001C5r 2  05 01        	ora oam2Data
-0001C7r 2  9D 00 06     	sta Oam2Mirror,x
-0001CAr 2  4C rr rr     	jmp EndBitStuff
-0001CDr 2               Sprite3:
-0001CDr 2  18           	clc
-0001CEr 2  66 01        	ror oam2Data
-0001D0r 2  66 01        	ror oam2Data
-0001D2r 2  66 01        	ror oam2Data
-0001D4r 2  66 01        	ror oam2Data
-0001D6r 2  66 01        	ror oam2Data
-0001D8r 2  66 01        	ror oam2Data
+000180r 2               SetOamMirror: ;OAM handler function
+000180r 2  E2 20        	a8
+000182r 2  A5 00        	lda spriteNum
+000184r 2  EB           	xba
+000185r 2  A9 00        	lda #$0
+000187r 2  EB           	xba
+000188r 2  C2 20        	a16
+00018Ar 2  18           	clc
+00018Br 2  2A           	rol a ;we multiply by 4 because each sprite has 4 bytes of data in OAM table
+00018Cr 2  2A           	rol a
+00018Dr 2  AA           	tax
+00018Er 2  A5 01        	lda xPos
+000190r 2  E2 20        	a8
+000192r 2  9D 00 04     	sta OamMirror,x
+000195r 2  EB           	xba ;high byte of sprite x position
+000196r 2  29 01        	and #$1 ;SNES only cares about bit 9
+000198r 2  85 06        	sta oam2Data ;data to write to OAM part 2
+00019Ar 2  E8           	inx
+00019Br 2  A5 03        	lda yPos
+00019Dr 2  9D 00 04     	sta OamMirror,x
+0001A0r 2  E8           	inx
+0001A1r 2  A5 04        	lda tileNum
+0001A3r 2  9D 00 04     	sta OamMirror,x
+0001A6r 2  E8           	inx
+0001A7r 2  A5 05        	lda sprAttrs
+0001A9r 2  9D 00 04     	sta OamMirror,x
+0001ACr 2               
+0001ACr 2               	; lda size ;i don't care about size at the moment, might enable later if I do
+0001ACr 2               	; and #$1 ;combine sprite size and msb of xpos
+0001ACr 2               	; ror a
+0001ACr 2               	; ora oam2Data
+0001ACr 2               	; sta oam2Data
+0001ACr 2  A5 00        	lda spriteNum
+0001AEr 2  18           	clc
+0001AFr 2  6A           	ror a ;4 sprites per oam table byte
+0001B0r 2  6A           	ror a
+0001B1r 2  29 7F        	and #$7F
+0001B3r 2  85 07        	sta oam2WriteIndex
+0001B5r 2               
+0001B5r 2  A5 00        	lda spriteNum
+0001B7r 2  29 03        	and #%00000011 ;only care if it's 0 to 3 since there's 4 bytes in OAM pt 2
+0001B9r 2  F0 0B        	beq Sprite0 ;check where in the byte to place 1st x bit/sprite size
+0001BBr 2  C9 01        	cmp #$1
+0001BDr 2  F0 16        	beq Sprite1
+0001BFr 2  C9 02        	cmp #$2
+0001C1r 2  F0 26        	beq Sprite2
+0001C3r 2  4C rr rr     	jmp Sprite3
+0001C6r 2               
+0001C6r 2               Sprite0:
+0001C6r 2  A6 07        	ldx oam2WriteIndex
+0001C8r 2  BD 00 06     	lda Oam2Mirror,x
+0001CBr 2  29 FC        	and #SPRITE0_MASK
+0001CDr 2  05 06        	ora oam2Data
+0001CFr 2  9D 00 06     	sta Oam2Mirror,x
+0001D2r 2  4C rr rr     	jmp EndBitStuff
+0001D5r 2               
+0001D5r 2               Sprite1:
+0001D5r 2  18           	clc
+0001D6r 2  66 06        	ror oam2Data
+0001D8r 2  66 06        	ror oam2Data
 0001DAr 2               
-0001DAr 2  A6 02        	ldx oam2WriteIndex
+0001DAr 2  A6 07        	ldx oam2WriteIndex
 0001DCr 2  BD 00 06     	lda Oam2Mirror,x
-0001DFr 2  29 3F        	and #SPRITE3_MASK
-0001E1r 2  05 01        	ora oam2Data
+0001DFr 2  29 F3        	and #SPRITE1_MASK
+0001E1r 2  05 06        	ora oam2Data
 0001E3r 2  9D 00 06     	sta Oam2Mirror,x
 0001E6r 2  4C rr rr     	jmp EndBitStuff
 0001E9r 2               
-0001E9r 2               EndBitStuff:
-0001E9r 2  28           	plp
-0001EAr 2  60           	rts
-0001EBr 2               
-0001EBr 2               
-0001EBr 1               .include "art.asm"
-0001EBr 2               .segment "CODE"
-0001EBr 2               
-0001EBr 2               BGPalette:
-0001EBr 2  00 00 01 6D  	.INCBIN ".\art\bgtiles.clr"
-0001EFr 2  87 6E A3 48  
-0001F3r 2  A1 71 DE 46  
-0003EBr 2               
-0003EBr 2               BG2Palette:
-0003EBr 2  00 00 01 6D  	.INCBIN ".\art\bg2tiles.clr"
-0003EFr 2  87 6E A3 48  
-0003F3r 2  A1 71 C5 0D  
-0005EBr 2               
-0005EBr 2               SpritePalette:
-0005EBr 2  00 00 10 00  	.INCBIN ".\art\larry.clr"
-0005EFr 2  9F 5F 66 72  
-0005F3r 2  C5 0D 1D 6F  
-0007EBr 2               .segment "BANK2"
-000000r 2               LarryTiles:
+0001E9r 2               Sprite2:
+0001E9r 2  18           	clc
+0001EAr 2  66 06        	ror oam2Data
+0001ECr 2  66 06        	ror oam2Data
+0001EEr 2  66 06        	ror oam2Data
+0001F0r 2  66 06        	ror oam2Data
+0001F2r 2               
+0001F2r 2  A6 07        	ldx oam2WriteIndex
+0001F4r 2  BD 00 06     	lda Oam2Mirror,x
+0001F7r 2  29 CF        	and #SPRITE2_MASK
+0001F9r 2  05 06        	ora oam2Data
+0001FBr 2  9D 00 06     	sta Oam2Mirror,x
+0001FEr 2  4C rr rr     	jmp EndBitStuff
+000201r 2               
+000201r 2               Sprite3:
+000201r 2  18           	clc
+000202r 2  66 06        	ror oam2Data
+000204r 2  66 06        	ror oam2Data
+000206r 2  66 06        	ror oam2Data
+000208r 2  66 06        	ror oam2Data
+00020Ar 2  66 06        	ror oam2Data
+00020Cr 2  66 06        	ror oam2Data
+00020Er 2               
+00020Er 2  A6 07        	ldx oam2WriteIndex
+000210r 2  BD 00 06     	lda Oam2Mirror,x
+000213r 2  29 3F        	and #SPRITE3_MASK
+000215r 2  05 06        	ora oam2Data
+000217r 2  9D 00 06     	sta Oam2Mirror,x
+00021Ar 2  4C rr rr     	jmp EndBitStuff
+00021Dr 2               
+00021Dr 2               EndBitStuff:
+00021Dr 2  60           	rts
+00021Er 2               
+00021Er 2               
+00021Er 1               .include "art.asm"
+00021Er 2               .segment "CODE"
+00021Er 2               
+00021Er 2               BGPalette:
+00021Er 2  00 00 01 6D  	.INCBIN ".\art\bgtiles.clr"
+000222r 2  87 6E A3 48  
+000226r 2  A1 71 DE 46  
+00041Er 2               
+00041Er 2               BG2Palette:
+00041Er 2  00 00 01 6D  	.INCBIN ".\art\bg2tiles.clr"
+000422r 2  87 6E A3 48  
+000426r 2  A1 71 C5 0D  
+00061Er 2               
+00061Er 2               PlayerPalette:
+00061Er 2  00 00 C0 00  	.INCBIN ".\art\player.clr"
+000622r 2  26 1B 0C 00  
+000626r 2  9F 1A FF 7F  
+00081Er 2               .segment "BANK2"
+000000r 2               PlayerTiles:
 000000r 2               	.define NUM_LARRY_TILES $E
 000000r 2               	.define LARRY_ANIMATION_DELAY $2 ;number of frames between incrementing movement
-000000r 2  00 00 00 00  	.INCBIN ".\art\larry.pic"
+000000r 2  00 00 00 00  	.INCBIN ".\art\player.pic"
 000004r 2  00 00 00 00  
-000008r 2  00 0F 00 1F  
-000800r 2               BGTiles:
-000800r 2  00 00 00 00  	.incbin ".\art\bgtiles.pic"
-000804r 2  00 00 00 00  
-000808r 2  00 00 00 00  
-000C00r 2               
-000C00r 2               BG2Tiles:
-000C00r 2  00 00 00 00  	.incbin ".\art\bg2tiles.pic"
-000C04r 2  00 00 00 00  
-000C08r 2  00 00 00 00  
-000E00r 2               
-000E00r 2               BGTilemap:
-000E00r 2               	;top left screen
-000E00r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-000E04r 2  00 00 00 00  
-000E08r 2  00 00 00 00  
-000E40r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-000E44r 2  00 00 00 00  
-000E48r 2  00 00 00 00  
-000E80r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-000E84r 2  00 00 00 00  
-000E88r 2  00 00 00 00  
-000EC0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-000EC4r 2  00 00 00 00  
-000EC8r 2  00 00 00 00  
-000F00r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-000F04r 2  00 00 00 00  
-000F08r 2  00 00 00 00  
-000F40r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-000F44r 2  00 00 00 00  
-000F48r 2  00 00 00 00  
-000F80r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-000F84r 2  00 00 00 00  
-000F88r 2  00 00 00 00  
-000FC0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-000FC4r 2  00 00 00 00  
-000FC8r 2  00 00 00 00  
-001000r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+000008r 2  00 00 00 00  
+001000r 2               BGTiles:
+001000r 2  00 00 00 00  	.incbin ".\art\bgtiles.pic"
 001004r 2  00 00 00 00  
 001008r 2  00 00 00 00  
-001040r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001044r 2  00 00 00 00  
-001048r 2  00 00 00 00  
-001080r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001084r 2  00 00 00 00  
-001088r 2  00 00 00 00  
-0010C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-0010C4r 2  00 00 00 00  
-0010C8r 2  00 00 00 00  
-001100r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001104r 2  00 00 00 00  
-001108r 2  00 00 00 00  
-001140r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001144r 2  00 00 00 00  
-001148r 2  00 00 00 00  
-001180r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001184r 2  00 00 00 00  
-001188r 2  00 00 00 00  
-0011C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-0011C4r 2  00 00 00 00  
-0011C8r 2  00 00 00 00  
-001200r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001204r 2  00 00 00 00  
-001208r 2  00 00 00 00  
-001240r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001244r 2  00 00 00 00  
-001248r 2  00 00 00 00  
-001280r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001284r 2  00 00 00 00  
-001288r 2  00 00 00 00  
-0012C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-0012C4r 2  00 00 00 00  
-0012C8r 2  00 00 00 00  
-001300r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001304r 2  00 00 00 00  
-001308r 2  00 00 00 00  
-001340r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001344r 2  00 00 00 00  
-001348r 2  00 00 00 00  
-001380r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001384r 2  00 00 00 00  
-001388r 2  00 00 00 00  
-0013C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-0013C4r 2  00 00 00 00  
-0013C8r 2  00 00 00 00  
-001400r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001400r 2               
+001400r 2               BG2Tiles:
+001400r 2  00 00 00 00  	.incbin ".\art\bg2tiles.pic"
 001404r 2  00 00 00 00  
 001408r 2  00 00 00 00  
-001440r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001444r 2  00 00 00 00  
-001448r 2  00 00 00 00  
-001480r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001484r 2  00 00 00 00  
-001488r 2  00 00 00 00  
-0014C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-0014C4r 2  00 00 00 00  
-0014C8r 2  00 00 00 00  
-001500r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001504r 2  00 00 00 00  
-001508r 2  00 00 00 00  
-001540r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001544r 2  00 00 00 00  
-001548r 2  00 00 00 00  
-001580r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-001584r 2  00 00 00 00  
-001588r 2  00 00 00 00  
-0015C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-0015C4r 2  00 00 00 00  
-0015C8r 2  00 00 00 00  
 001600r 2               
-001600r 2               	;top right screen
+001600r 2               BGTilemap:
+001600r 2               	;top left screen
 001600r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 001604r 2  00 00 00 00  
 001608r 2  00 00 00 00  
@@ -926,7 +1326,7 @@ Current file: main.asm
 001800r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 001804r 2  00 00 00 00  
 001808r 2  00 00 00 00  
-001840r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$0,$0,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001840r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 001844r 2  00 00 00 00  
 001848r 2  00 00 00 00  
 001880r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
@@ -935,7 +1335,7 @@ Current file: main.asm
 0018C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0018C4r 2  00 00 00 00  
 0018C8r 2  00 00 00 00  
-001900r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$1,$1,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001900r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 001904r 2  00 00 00 00  
 001908r 2  00 00 00 00  
 001940r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
@@ -996,7 +1396,7 @@ Current file: main.asm
 001DC4r 2  00 00 00 00  
 001DC8r 2  00 00 00 00  
 001E00r 2               
-001E00r 2               	;bottom left screen
+001E00r 2               	;top right screen
 001E00r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 001E04r 2  00 00 00 00  
 001E08r 2  00 00 00 00  
@@ -1024,7 +1424,7 @@ Current file: main.asm
 002000r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002004r 2  00 00 00 00  
 002008r 2  00 00 00 00  
-002040r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002040r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$0,$0,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002044r 2  00 00 00 00  
 002048r 2  00 00 00 00  
 002080r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
@@ -1033,7 +1433,7 @@ Current file: main.asm
 0020C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0020C4r 2  00 00 00 00  
 0020C8r 2  00 00 00 00  
-002100r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002100r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$1,$1,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002104r 2  00 00 00 00  
 002108r 2  00 00 00 00  
 002140r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
@@ -1057,15 +1457,15 @@ Current file: main.asm
 0022C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0022C4r 2  00 00 00 00  
 0022C8r 2  00 00 00 00  
-002300r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$1,$1,$1,$1,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002300r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002304r 2  00 00 00 00  
 002308r 2  00 00 00 00  
 002340r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002344r 2  00 00 00 00  
 002348r 2  00 00 00 00  
-002380r 2  00 00 00 00  	.word $0,$0,$0,$0,$1,$1,$1,$1,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002380r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002384r 2  00 00 00 00  
-002388r 2  01 00 01 00  
+002388r 2  00 00 00 00  
 0023C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0023C4r 2  00 00 00 00  
 0023C8r 2  00 00 00 00  
@@ -1084,16 +1484,17 @@ Current file: main.asm
 002500r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002504r 2  00 00 00 00  
 002508r 2  00 00 00 00  
-002540r 2  01 00 01 00  	.word $1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1
-002544r 2  01 00 01 00  
-002548r 2  01 00 01 00  
-002580r 2  02 00 02 00  	.word $2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2
-002584r 2  02 00 02 00  
-002588r 2  02 00 02 00  
-0025C0r 2  02 00 02 00  	.word $2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2
-0025C4r 2  02 00 02 00  
-0025C8r 2  02 00 02 00  
-002600r 2               	;bottom right screen
+002540r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002544r 2  00 00 00 00  
+002548r 2  00 00 00 00  
+002580r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002584r 2  00 00 00 00  
+002588r 2  00 00 00 00  
+0025C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0025C4r 2  00 00 00 00  
+0025C8r 2  00 00 00 00  
+002600r 2               
+002600r 2               	;bottom left screen
 002600r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002604r 2  00 00 00 00  
 002608r 2  00 00 00 00  
@@ -1154,15 +1555,15 @@ Current file: main.asm
 002AC0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002AC4r 2  00 00 00 00  
 002AC8r 2  00 00 00 00  
-002B00r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002B00r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$1,$1,$1,$1,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002B04r 2  00 00 00 00  
 002B08r 2  00 00 00 00  
 002B40r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002B44r 2  00 00 00 00  
 002B48r 2  00 00 00 00  
-002B80r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002B80r 2  00 00 00 00  	.word $0,$0,$0,$0,$1,$1,$1,$1,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002B84r 2  00 00 00 00  
-002B88r 2  00 00 00 00  
+002B88r 2  01 00 01 00  
 002BC0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002BC4r 2  00 00 00 00  
 002BC8r 2  00 00 00 00  
@@ -1190,465 +1591,205 @@ Current file: main.asm
 002DC0r 2  02 00 02 00  	.word $2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2
 002DC4r 2  02 00 02 00  
 002DC8r 2  02 00 02 00  
-002E00r 2               
-002E00r 2               CollisionMap: ;like bg map but in a more "friendly" format
-002E00r 2  01 00 00 00  	.byte $1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002E00r 2               	;bottom right screen
+002E00r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002E04r 2  00 00 00 00  
 002E08r 2  00 00 00 00  
-002E40r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002E40r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002E44r 2  00 00 00 00  
 002E48r 2  00 00 00 00  
-002E80r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002E80r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002E84r 2  00 00 00 00  
 002E88r 2  00 00 00 00  
-002EC0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002EC0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002EC4r 2  00 00 00 00  
 002EC8r 2  00 00 00 00  
-002F00r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002F00r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002F04r 2  00 00 00 00  
 002F08r 2  00 00 00 00  
-002F40r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002F40r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002F44r 2  00 00 00 00  
 002F48r 2  00 00 00 00  
-002F80r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002F80r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002F84r 2  00 00 00 00  
 002F88r 2  00 00 00 00  
-002FC0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+002FC0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 002FC4r 2  00 00 00 00  
 002FC8r 2  00 00 00 00  
-003000r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003000r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003004r 2  00 00 00 00  
 003008r 2  00 00 00 00  
-003040r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003040r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003044r 2  00 00 00 00  
 003048r 2  00 00 00 00  
-003080r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003080r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003084r 2  00 00 00 00  
 003088r 2  00 00 00 00  
-0030C0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0030C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0030C4r 2  00 00 00 00  
 0030C8r 2  00 00 00 00  
-003100r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003100r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003104r 2  00 00 00 00  
 003108r 2  00 00 00 00  
-003140r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003140r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003144r 2  00 00 00 00  
 003148r 2  00 00 00 00  
-003180r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003180r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003184r 2  00 00 00 00  
 003188r 2  00 00 00 00  
-0031C0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0031C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0031C4r 2  00 00 00 00  
 0031C8r 2  00 00 00 00  
-003200r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003200r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003204r 2  00 00 00 00  
 003208r 2  00 00 00 00  
-003240r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003240r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003244r 2  00 00 00 00  
 003248r 2  00 00 00 00  
-003280r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003280r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003284r 2  00 00 00 00  
 003288r 2  00 00 00 00  
-0032C0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0032C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0032C4r 2  00 00 00 00  
 0032C8r 2  00 00 00 00  
-003300r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003300r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003304r 2  00 00 00 00  
 003308r 2  00 00 00 00  
-003340r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003340r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003344r 2  00 00 00 00  
 003348r 2  00 00 00 00  
-003380r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003380r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003384r 2  00 00 00 00  
 003388r 2  00 00 00 00  
-0033C0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0033C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0033C4r 2  00 00 00 00  
 0033C8r 2  00 00 00 00  
-003400r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003400r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003404r 2  00 00 00 00  
 003408r 2  00 00 00 00  
-003440r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003440r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003444r 2  00 00 00 00  
 003448r 2  00 00 00 00  
-003480r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003480r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003484r 2  00 00 00 00  
 003488r 2  00 00 00 00  
-0034C0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0034C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0034C4r 2  00 00 00 00  
 0034C8r 2  00 00 00 00  
-003500r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003500r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003504r 2  00 00 00 00  
 003508r 2  00 00 00 00  
-003540r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003544r 2  00 00 00 00  
-003548r 2  00 00 00 00  
-003580r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003584r 2  00 00 00 00  
-003588r 2  00 00 00 00  
-0035C0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-0035C4r 2  00 00 00 00  
-0035C8r 2  00 00 00 00  
-003600r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003540r 2  01 00 01 00  	.word $1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1
+003544r 2  01 00 01 00  
+003548r 2  01 00 01 00  
+003580r 2  02 00 02 00  	.word $2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2
+003584r 2  02 00 02 00  
+003588r 2  02 00 02 00  
+0035C0r 2  02 00 02 00  	.word $2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2
+0035C4r 2  02 00 02 00  
+0035C8r 2  02 00 02 00  
+003600r 2               
+003600r 2               BG2Tilemap:
+003600r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003604r 2  00 00 00 00  
 003608r 2  00 00 00 00  
-003640r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003640r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003644r 2  00 00 00 00  
 003648r 2  00 00 00 00  
-003680r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003680r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003684r 2  00 00 00 00  
 003688r 2  00 00 00 00  
-0036C0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0036C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0036C4r 2  00 00 00 00  
 0036C8r 2  00 00 00 00  
-003700r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003700r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003704r 2  00 00 00 00  
 003708r 2  00 00 00 00  
-003740r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003740r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003744r 2  00 00 00 00  
 003748r 2  00 00 00 00  
-003780r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003780r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003784r 2  00 00 00 00  
 003788r 2  00 00 00 00  
-0037C0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0037C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0037C4r 2  00 00 00 00  
 0037C8r 2  00 00 00 00  
-003800r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003800r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003804r 2  00 00 00 00  
 003808r 2  00 00 00 00  
-003840r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003840r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003844r 2  00 00 00 00  
 003848r 2  00 00 00 00  
-003880r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003880r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003884r 2  00 00 00 00  
 003888r 2  00 00 00 00  
-0038C0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0038C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0038C4r 2  00 00 00 00  
 0038C8r 2  00 00 00 00  
-003900r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003900r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003904r 2  00 00 00 00  
 003908r 2  00 00 00 00  
-003940r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003940r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003944r 2  00 00 00 00  
 003948r 2  00 00 00 00  
-003980r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+003980r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 003984r 2  00 00 00 00  
 003988r 2  00 00 00 00  
-0039C0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+0039C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 0039C4r 2  00 00 00 00  
 0039C8r 2  00 00 00 00  
-003A00r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003A04r 2  00 00 00 00  
-003A08r 2  00 00 00 00  
-003A40r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003A44r 2  00 00 00 00  
-003A48r 2  00 00 00 00  
-003A80r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003A84r 2  00 00 00 00  
-003A88r 2  00 00 00 00  
-003AC0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003AC4r 2  00 00 00 00  
-003AC8r 2  00 00 00 00  
-003B00r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003B04r 2  00 00 00 00  
-003B08r 2  00 00 00 00  
-003B40r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$1,$1,$1,$1,$1,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003B44r 2  00 00 00 00  
-003B48r 2  00 00 01 01  
-003B80r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003B84r 2  00 00 00 00  
-003B88r 2  00 00 00 00  
-003BC0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$1,$1,$1,$1,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003BC4r 2  01 01 01 01  
-003BC8r 2  00 00 00 00  
-003C00r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003C04r 2  00 00 00 00  
-003C08r 2  00 00 00 00  
-003C40r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003C44r 2  00 00 00 00  
-003C48r 2  00 00 00 00  
-003C80r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003C84r 2  00 00 00 00  
-003C88r 2  00 00 00 00  
-003CC0r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003CC4r 2  00 00 00 00  
-003CC8r 2  00 00 00 00  
-003D00r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003D04r 2  00 00 00 00  
-003D08r 2  00 00 00 00  
-003D40r 2  00 00 00 00  	.byte $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003D44r 2  00 00 00 00  
-003D48r 2  00 00 00 00  
-003D80r 2  01 01 01 01  	.byte $1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1
-003D84r 2  01 01 01 01  
-003D88r 2  01 01 01 01  
-003DC0r 2  01 01 01 01  	.byte $1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1
-003DC4r 2  01 01 01 01  
-003DC8r 2  01 01 01 01  
-003E00r 2  01 01 01 01  	.byte $1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1,$1
-003E04r 2  01 01 01 01  
-003E08r 2  01 01 01 01  
-003E40r 2               
-003E40r 2               BG2Tilemap:
-003E40r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003E44r 2  00 00 00 00  
-003E48r 2  00 00 00 00  
-003E80r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003E84r 2  00 00 00 00  
-003E88r 2  00 00 00 00  
-003EC0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003EC4r 2  00 00 00 00  
-003EC8r 2  00 00 00 00  
-003F00r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003F04r 2  00 00 00 00  
-003F08r 2  00 00 00 00  
-003F40r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003F44r 2  00 00 00 00  
-003F48r 2  00 00 00 00  
-003F80r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003F84r 2  00 00 00 00  
-003F88r 2  00 00 00 00  
-003FC0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-003FC4r 2  00 00 00 00  
-003FC8r 2  00 00 00 00  
-004000r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-004004r 2  00 00 00 00  
-004008r 2  00 00 00 00  
-004040r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-004044r 2  00 00 00 00  
-004048r 2  00 00 00 00  
-004080r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-004084r 2  00 00 00 00  
-004088r 2  00 00 00 00  
-0040C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-0040C4r 2  00 00 00 00  
-0040C8r 2  00 00 00 00  
-004100r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-004104r 2  00 00 00 00  
-004108r 2  00 00 00 00  
-004140r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-004144r 2  00 00 00 00  
-004148r 2  00 00 00 00  
-004180r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-004184r 2  00 00 00 00  
-004188r 2  00 00 00 00  
-0041C0r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-0041C4r 2  00 00 00 00  
-0041C8r 2  00 00 00 00  
-004200r 2  00 00 00 00  	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
-004204r 2  00 00 00 00  
-004208r 2  00 00 00 00  
-004240r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-004244r 2  03 00 04 00  
-004248r 2  01 00 02 00  
-004280r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-004284r 2  07 00 08 00  
-004288r 2  05 00 06 00  
-0042C0r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-0042C4r 2  03 00 04 00  
-0042C8r 2  01 00 02 00  
-004300r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-004304r 2  07 00 08 00  
-004308r 2  05 00 06 00  
-004340r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-004344r 2  03 00 04 00  
-004348r 2  01 00 02 00  
-004380r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-004384r 2  07 00 08 00  
-004388r 2  05 00 06 00  
-0043C0r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-0043C4r 2  03 00 04 00  
-0043C8r 2  01 00 02 00  
-004400r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-004404r 2  07 00 08 00  
-004408r 2  05 00 06 00  
-004440r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-004444r 2  03 00 04 00  
-004448r 2  01 00 02 00  
-004480r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-004484r 2  07 00 08 00  
-004488r 2  05 00 06 00  
-0044C0r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-0044C4r 2  03 00 04 00  
-0044C8r 2  01 00 02 00  
-004500r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-004504r 2  07 00 08 00  
-004508r 2  05 00 06 00  
-004540r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-004544r 2  03 00 04 00  
-004548r 2  01 00 02 00  
-004580r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-004584r 2  07 00 08 00  
-004588r 2  05 00 06 00  
-0045C0r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
-0045C4r 2  03 00 04 00  
-0045C8r 2  01 00 02 00  
-004600r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
-004604r 2  07 00 08 00  
-004608r 2  05 00 06 00  
-004640r 2               
-004640r 2               
-004640r 1               .include "larry.asm"
-004640r 2               .define LARRY_OFFSET $20
-004640r 2               
-004640r 2               .macro HandleLarry xPos, yPos, tileNum
-004640r 2               ;parameters: pointer to xpos, pointer to ypos, pointer to tile number
-004640r 2               	lda xPos
-004640r 2               	sta $4
-004640r 2               	lda yPos
-004640r 2               	sta $5
-004640r 2               	lda tileNum
-004640r 2               	sta $6
-004640r 2               	LoadSprite #0, $4, $5, $6, playerAttrs, #0, #0
-004640r 2               	lda $5 ;add $10 to sprite y pos because second 16x16 sprite is directly below first
-004640r 2               	clc
-004640r 2               	adc #$10
-004640r 2               	sta $5
-004640r 2               
-004640r 2               	lda $6
-004640r 2               	clc
-004640r 2               	adc #LARRY_OFFSET
-004640r 2               	sta $6
-004640r 2               	LoadSprite #1, $4, $5, $6, playerAttrs, #0, #0
-004640r 2               	ldx $7
-004640r 2               	ClearMemRange $0, #$7
-004640r 2               .endmacro
-004640r 2               
-004640r 2               .macro ClearMemRange start, range
-004640r 2               ;start-address to start clearing
-004640r 2               ;range-num of bytes to clear
-004640r 2               .scope
-004640r 2               	ldx #$0
-004640r 2               	@loop:
-004640r 2               	stz start,x
-004640r 2               	inx
-004640r 2               	cpx range
-004640r 2               	bne @loop
-004640r 2               .endscope
-004640r 2               .endmacro
-004640r 2               
-004640r 2               ;sprite constants
-004640r 2               .define LARRY_ACCEL $1
-004640r 2               .define MAX_LARRY_SPEED $6
-004640r 2               .define MAX_LARRY_JUMP_HEIGHT $10
-004640r 2               .define MAX_LARRY_FALL_SPEED $8
-004640r 2               ;various movement states
-004640r 2               .define STATE_NONE $0
-004640r 2               .define STATE_RIGHT_PRESSED $1
-004640r 2               .define STATE_RIGHT_RELEASED $2
-004640r 2               .define STATE_LEFT_PRESSED $3
-004640r 2               .define STATE_LEFT_RELEASED $4
-004640r 2               
-004640r 2               ;player states
-004640r 2               .define STATE_GROUND $0
-004640r 2               .define STATE_JUMP_RISE $1
-004640r 2               .define STATE_JUMP_FALL $2
-004640r 2               
-004640r 2               ;animation frames
-004640r 2               .define LARRY_JUMP_FRAME $E
-004640r 2               
-004640r 2               .segment "CODE"
-0007EBr 2               
-0007EBr 2               SetPlayerVals:
-0007EBr 2               	;set "absolute" player x and y values
-0007EBr 2  C2 20        	a16
-0007EDr 2  A5 18        	lda spriteX
-0007EFr 2  18           	clc
-0007F0r 2  65 10        	adc scrollX
-0007F2r 2  29 FF 01     	and #$1ff ;snes background = 512 pixels, or $200 binary
-0007F5r 2  85 1C        	sta playerX
-0007F7r 2  A5 1A        	lda spriteY
-0007F9r 2  18           	clc
-0007FAr 2  65 12        	adc scrollY
-0007FCr 2  29 FF 01     	and #$1ff
-0007FFr 2  38           	sec
-000800r 2  E9 05 00     	sbc #$5 ;account for sprite's blank space
-000803r 2  85 1E        	sta playerY
-000805r 2  A5 1C        	lda playerX ; reduce the position to a $3f range
-000807r 2  6A           	ror a ;divide by 8
-000808r 2  6A           	ror a
-000809r 2  6A           	ror a
-00080Ar 2  29 3F 00     	and #$3f
-00080Dr 2  85 00        	sta $0
-00080Fr 2  A5 1E        	lda playerY ;same "formula" as for x, but also needs to be shifted left 6 times
-000811r 2  2A           	rol a
-000812r 2  2A           	rol a
-000813r 2  2A           	rol a
-000814r 2  29 C0 0F     	and #$fc0 ;max possible value
-000817r 2  18           	clc
-000818r 2  65 00        	adc $0
-00081Ar 2  85 20        	sta playerTileOffset
-00081Cr 2  E2 20        	a8
-00081Er 2  64 00        	stz $0
-000820r 2  60           	rts
-000821r 2               
-000821r 2               CheckCollisionR: ;sprite is 16x32 or 2x4 tiles
-000821r 2  8B           	phb
-000822r 2  A9 rr        	lda #.lobyte(.bank(CollisionMap))
-000824r 2  48           	pha
-000825r 2  AB           	plb
-000826r 2  C2 20        	a16
-000828r 2  A5 20        	lda playerTileOffset ;top right
-00082Ar 2  1A           	ina
-00082Br 2  AA           	tax
-00082Cr 2  BD rr rr     	lda CollisionMap, x
-00082Fr 2  85 23        	sta collision
-000831r 2  8A           	txa ;load offset back into a
-000832r 2  18           	clc
-000833r 2  69 80 00     	adc #$80 ;$40 tiles per row
-000836r 2  AA           	tax
-000837r 2  BD rr rr     	lda CollisionMap, x
-00083Ar 2  05 23        	ora collision ;if top or bottom collision
-00083Cr 2  85 23        	sta collision
-00083Er 2  E2 20        	a8
-000840r 2  AB           	plb
-000841r 2  A5 23        	lda collision
-000843r 2  60           	rts
-000844r 2               
-000844r 2               CheckCollisionL:
-000844r 2  8B           	phb
-000845r 2  A9 rr        	lda #.lobyte(.bank(CollisionMap))
-000847r 2  48           	pha
-000848r 2  AB           	plb
-000849r 2  C2 20        	a16
-00084Br 2  A6 20        	ldx playerTileOffset ;top left
-00084Dr 2  BD rr rr     	lda CollisionMap, x
-000850r 2  85 23        	sta collision
-000852r 2  8A           	txa
-000853r 2  18           	clc
-000854r 2  69 80 00     	adc #$80 ;bottom left
-000857r 2  AA           	tax
-000858r 2  BD rr rr     	lda CollisionMap, x
-00085Br 2  05 23        	ora collision
-00085Dr 2  85 23        	sta collision
-00085Fr 2  E2 20        	a8
-000861r 2  AB           	plb
-000862r 2  A5 23        	lda collision
-000864r 2  60           	rts
-000865r 2               
-000865r 2               CheckCollisionB: ;checks if block below character is solid or not
-000865r 2  8B           	phb
-000866r 2  A9 rr        	lda #.lobyte(.bank(CollisionMap))
-000868r 2  48           	pha
-000869r 2  AB           	plb
-00086Ar 2  C2 20        	a16
-00086Cr 2  A5 20        	lda playerTileOffset
-00086Er 2  18           	clc
-00086Fr 2  69 40 01     	adc #$140
-000872r 2  AA           	tax
-000873r 2  BD rr rr     	lda CollisionMap, x ;bottom left
-000876r 2  85 23        	sta collision
-000878r 2  E8           	inx
-000879r 2  BD rr rr     	lda CollisionMap, x ;bottom right
-00087Cr 2  05 23        	ora collision
-00087Er 2  85 23        	sta collision
-000880r 2  E2 20        	a8
-000882r 2  AB           	plb
-000883r 2  A5 23        	lda collision
-000885r 2  60           	rts
-000886r 2               
-000886r 2               
-000886r 1               .include "sound.asm"
-000886r 2               .segment "BANK1"
+003A00r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
+003A04r 2  03 00 04 00  
+003A08r 2  01 00 02 00  
+003A40r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
+003A44r 2  07 00 08 00  
+003A48r 2  05 00 06 00  
+003A80r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
+003A84r 2  03 00 04 00  
+003A88r 2  01 00 02 00  
+003AC0r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
+003AC4r 2  07 00 08 00  
+003AC8r 2  05 00 06 00  
+003B00r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
+003B04r 2  03 00 04 00  
+003B08r 2  01 00 02 00  
+003B40r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
+003B44r 2  07 00 08 00  
+003B48r 2  05 00 06 00  
+003B80r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
+003B84r 2  03 00 04 00  
+003B88r 2  01 00 02 00  
+003BC0r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
+003BC4r 2  07 00 08 00  
+003BC8r 2  05 00 06 00  
+003C00r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
+003C04r 2  03 00 04 00  
+003C08r 2  01 00 02 00  
+003C40r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
+003C44r 2  07 00 08 00  
+003C48r 2  05 00 06 00  
+003C80r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
+003C84r 2  03 00 04 00  
+003C88r 2  01 00 02 00  
+003CC0r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
+003CC4r 2  07 00 08 00  
+003CC8r 2  05 00 06 00  
+003D00r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
+003D04r 2  03 00 04 00  
+003D08r 2  01 00 02 00  
+003D40r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
+003D44r 2  07 00 08 00  
+003D48r 2  05 00 06 00  
+003D80r 2  01 00 02 00  	.word $1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4,$1,$2,$3,$4
+003D84r 2  03 00 04 00  
+003D88r 2  01 00 02 00  
+003DC0r 2  05 00 06 00  	.word $5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8,$5,$6,$7,$8
+003DC4r 2  07 00 08 00  
+003DC8r 2  05 00 06 00  
+003E00r 2               
+003E00r 2               
+003E00r 1               .include "sound.asm"
+003E00r 2               .segment "BANK1"
 000000r 2               
 000000r 2               SPCPrg:
 000000r 2  20 CD EF BD  	.incbin ".\sound\sound.bin"
@@ -1657,7 +1798,7 @@ Current file: main.asm
 003ACAr 2               SPCPrgEnd:
 003ACAr 2               
 003ACAr 2               SPC_LENGTH = SPCPrgEnd-SPCPrg
-003ACAr 2               NUM_SPC_BLOCKS = SPC_LENGTH/256
+003ACAr 2               NUM_SPC_BLOCKS = (SPC_LENGTH / 256) + 1
 003ACAr 2               .define copyAddr $0 ;address to copy to (word)
 003ACAr 2               .define copyIndex $2 ;index within one block (byte)
 003ACAr 2               .define blockIndex $3 ;what block's being copied (byte)
@@ -1666,9 +1807,8 @@ Current file: main.asm
 003ACAr 2               LoadSPC:
 003ACAr 2  8B           	phb
 003ACBr 2  08           	php
-003ACCr 2               
 003ACCr 2  C2 20        	a16
-003ACEr 2  A9 3A 00     	lda #NUM_SPC_BLOCKS
+003ACEr 2  A9 3B 00     	lda #NUM_SPC_BLOCKS
 003AD1r 2  A9 00 02     	lda #$200
 003AD4r 2  85 00        	sta copyAddr ;set up copy address
 003AD6r 2  64 03        	stz blockIndex
@@ -1726,7 +1866,7 @@ Current file: main.asm
 003B2Fr 2  29 7F        	and #$7f ;kick=previous kick "+2 to 127" -ninty
 003B31r 2  85 04        	sta kick
 003B33r 2  A5 03        	lda blockIndex
-003B35r 2  C9 3A        	cmp #NUM_SPC_BLOCKS
+003B35r 2  C9 3B        	cmp #NUM_SPC_BLOCKS
 003B37r 2  D0 B0        	bne CopyLoop
 003B39r 2               
 003B39r 2  C2 20        	a16
@@ -1746,554 +1886,304 @@ Current file: main.asm
 003B55r 2  AB           	plb
 003B56r 2  6B           	rtl
 003B57r 2               
+003B57r 1               .include "variables.asm"
+003B57r 2               .enum ;start at $10 because first 15 bytes are "scratchpad"
+003B57r 2               joypad = $10
+003B57r 2               scrollX = joypad+2
+003B57r 2               scrollY = scrollX+2 ;12
+003B57r 2               scroll2X = scrollY+2 ;14
+003B57r 2               playerHSpeed = scroll2X+2 ;16
+003B57r 2               spriteX = playerHSpeed+2 ;18
+003B57r 2               spriteY = spriteX+2 ;1a
+003B57r 2               playerX = spriteY+2;like sprite x but "relative to tilemap" ;1c
+003B57r 2               playerY = playerX+2 ;1e
+003B57r 2               playerTileOffset = playerY+2 ;20
+003B57r 2               playerTileNum = playerTileOffset+2 ;22
+003B57r 2               collision
+003B57r 2               playerAttrs = collision+2
+003B57r 2               playerVSpeed
+003B57r 2               playerState
+003B57r 2               movementState
+003B57r 2               frameStatus
+003B57r 2               .endenum
+003B57r 2               
 003B57r 1               
 003B57r 1               .segment "CODE"
-000886r 1               Reset:
-000886r 1  78 18 FB C2  	InitSNES
-00088Ar 1  38 A2 FF 1F  
-00088Er 1  9A 22 rr rr  
-000895r 1  22 rr rr rr  	jsl LoadSPC
-000899r 1  A2 00 00     	ldx #$0
-00089Cr 1  A9 02        	lda #$2
-00089Er 1  A9 00 8D 21  	LoadPalette BGPalette, 0, $10
-0008A2r 1  21 A9 rr A2  
-0008A6r 1  rr rr A0 20  
-0008AEr 1  A9 10 8D 21  	LoadPalette BG2Palette, $10, $10
-0008B2r 1  21 A9 rr A2  
-0008B6r 1  rr rr A0 20  
-0008BEr 1  A9 80 8D 21      LoadPalette SpritePalette, $80, $F
-0008C2r 1  21 A9 rr A2  
-0008C6r 1  rr rr A0 1E  
-0008CEr 1               	; Load Tile data to VRAM
-0008CEr 1  A9 80 8D 15      LoadBlockToVRAM BGTiles, $2000, $C0
-0008D2r 1  21 A2 00 20  
-0008D6r 1  8E 16 21 A9  
-0008E4r 1  A9 80 8D 15  	LoadBlockToVRAM BG2Tiles, $5000, $200 ;8 tiles, 4bpp
-0008E8r 1  21 A2 00 50  
-0008ECr 1  8E 16 21 A9  
-0008FAr 1  A9 80 8D 15  	LoadBlockToVRAM LarryTiles, $6000, $800
-0008FEr 1  21 A2 00 60  
-000902r 1  8E 16 21 A9  
-000910r 1  A9 80 8D 15  	LoadBlockToVRAM BGTilemap, $0000, $2000
-000914r 1  21 A2 00 00  
-000918r 1  8E 16 21 A9  
-000926r 1  A9 80 8D 15  	LoadBlockToVRAM BG2Tilemap, $4000, $800
-00092Ar 1  21 A2 00 40  
-00092Er 1  8E 16 21 A9  
-00093Cr 1  A2 rr rr 8E  	LoadBlockToWRAM BGTilemap, TilemapMirror, $2000
-000940r 1  02 43 A9 rr  
-000944r 1  8D 04 43 A2  
-000963r 1                   ; Setup Video modes and other stuff, then turn on the screen
-000963r 1  20 rr rr         jsr SetupVideo
-000966r 1               
-000966r 1  20 rr rr     	jsr InitSprites
-000969r 1  A9 81        	lda #$81
-00096Br 1  8D 00 42     	sta $4200 ;enable vblank interrupt and joypad read
-00096Er 1  A9 00        	lda #$00 ;idk why but sometimes spc writes crash the cpu without this line, at least on no$sns
-000970r 1               	;did a bit more debugging, looks like it's a conflict b/t loading larrytiles and bgtilemap to vram
-000970r 1  C2 20        	a16
-000972r 1  A9 1B 01     	lda #$11b
-000975r 1  85 12        	sta scrollY
-000977r 1  E2 20        	sep #$20
-000979r 1  E2 20        	a8
-00097Br 1  A9 50        	lda #$50
-00097Dr 1  85 18        	sta spriteX
-00097Fr 1               
-00097Fr 1               .define GROUND_Y $B0
-00097Fr 1  A9 B0        	lda #GROUND_Y
-000981r 1  85 1A        	sta spriteY
-000983r 1               
-000983r 1  A9 30        	lda #$30 ;max sprite priority
-000985r 1  85 25        	sta playerAttrs
-000987r 1               
-000987r 1               
-000987r 1               MainLoop:
-000987r 1  A9 01        	lda #$1
-000989r 1  85 29        	sta frameStatus ;how we check if the program's done executing
-00098Br 1  AD 19 42     	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
-00098Er 1  89 01        	bit #JOY_RIGHT
-000990r 1  F0 0F        	beq AssignRightReleased ;if it is still being pressed, state=RIGHT_PRESSED
-000992r 1  A5 16        	lda playerHSpeed
-000994r 1  D0 15        	bne EndRightAssign
-000996r 1  A9 01        	lda #STATE_RIGHT_PRESSED
-000998r 1  85 28        	sta movementState
-00099Ar 1  A9 30        	lda #$30 ;max sprite priority
-00099Cr 1  85 25        	sta playerAttrs
-00099Er 1  4C rr rr     	jmp EndRightAssign
-0009A1r 1               
-0009A1r 1               AssignRightReleased:
-0009A1r 1  A5 28        	lda movementState
-0009A3r 1  C9 01        	cmp #STATE_RIGHT_PRESSED ;was right pressed last frame?
-0009A5r 1  D0 04        	bne EndRightAssign ;if no, skip
-0009A7r 1  A9 02        	lda #STATE_RIGHT_RELEASED
-0009A9r 1  85 28        	sta movementState
-0009ABr 1               
-0009ABr 1               EndRightAssign:
-0009ABr 1               
-0009ABr 1  AD 19 42     	lda $4219 ;p1 joypad read address ;if yes but it is no longer pressed, state=RIGHT_RELEASED
-0009AEr 1  89 02        	bit #JOY_LEFT
-0009B0r 1  F0 0F        	beq AssignLeftReleased ;if it is still being pressed, state=RIGHT_PRESSED
-0009B2r 1  A5 16        	lda playerHSpeed
-0009B4r 1  D0 15        	bne EndLeftAssign
-0009B6r 1  A9 03        	lda #STATE_LEFT_PRESSED
-0009B8r 1  85 28        	sta movementState
-0009BAr 1  A9 70        	lda #$70 ;max sprite priority, mirrored
-0009BCr 1  85 25        	sta playerAttrs
-0009BEr 1  4C rr rr     	jmp EndLeftAssign
-0009C1r 1               
-0009C1r 1               AssignLeftReleased:
-0009C1r 1  A5 28        	lda movementState
-0009C3r 1  C9 03        	cmp #STATE_LEFT_PRESSED ;was right pressed last frame?
-0009C5r 1  D0 04        	bne EndLeftAssign ;if no, skip
-0009C7r 1  A9 04        	lda #STATE_LEFT_RELEASED
-0009C9r 1  85 28        	sta movementState
-0009CBr 1               
-0009CBr 1               EndLeftAssign:
-0009CBr 1               
-0009CBr 1               ;if player is on ground, assign jump state
-0009CBr 1  AD 19 42     	lda $4219
-0009CEr 1  89 80        	bit #JOY_B
-0009D0r 1  F0 12        	beq JumpNotPressed
-0009D2r 1  A5 27        	lda playerState
-0009D4r 1  C9 00        	cmp #STATE_GROUND
-0009D6r 1  D0 0C        	bne JumpNotPressed
-0009D8r 1  A9 01        	lda #STATE_JUMP_RISE
-0009DAr 1  85 27        	sta playerState
-0009DCr 1  A9 10        	lda #MAX_LARRY_JUMP_HEIGHT
-0009DEr 1  85 26        	sta playerVSpeed
-0009E0r 1  A9 0E        	lda #LARRY_JUMP_FRAME
-0009E2r 1  85 22        	sta playerTileNum
-0009E4r 1               JumpNotPressed:
-0009E4r 1               
-0009E4r 1               EndStateAssigns:
-0009E4r 1               
-0009E4r 1               
-0009E4r 1               ;accelerate player until reaches max speed
-0009E4r 1  A5 28        	lda movementState
-0009E6r 1  C9 01        	cmp #STATE_RIGHT_PRESSED
-0009E8r 1  D0 19        	bne RightNotPressed
-0009EAr 1               
-0009EAr 1  A5 16        	lda playerHSpeed
-0009ECr 1  C9 06        	cmp #MAX_LARRY_SPEED
-0009EEr 1  F0 05        	beq @DontAdd
-0009F0r 1  18           	clc
-0009F1r 1  69 01        	adc #LARRY_ACCEL
-0009F3r 1  85 16        	sta playerHSpeed
-0009F5r 1               @DontAdd:
-0009F5r 1  C2 20        	a16
-0009F7r 1  A5 10        	lda scrollX
-0009F9r 1  18           	clc
-0009FAr 1  65 16        	adc playerHSpeed
-0009FCr 1  29 FF 03     	and #$3ff ;limit to 10 bits
-0009FFr 1  85 10        	sta scrollX
-000A01r 1  E2 20        	a8
-000A03r 1               RightNotPressed:
-000A03r 1               
-000A03r 1               ;decelerate player right until they stop
-000A03r 1  A5 28        	lda movementState
-000A05r 1  C9 02        	cmp #STATE_RIGHT_RELEASED
-000A07r 1  D0 20        	bne RightNotReleased
+00081Er 1               Reset:
+00081Er 1  78 18 FB C2  	InitSNES
+000822r 1  38 A2 FF 1F  
+000826r 1  9A 22 rr rr  
+00082Dr 1  22 rr rr rr  	jsl LoadSPC
+000831r 1  A9 00 8D 21  	LoadPalette BGPalette, $0, $10
+000835r 1  21 A9 rr A2  
+000839r 1  rr rr A0 20  
+000841r 1  A9 10 8D 21  	LoadPalette BG2Palette, $10, $10
+000845r 1  21 A9 rr A2  
+000849r 1  rr rr A0 20  
+000851r 1  A9 80 8D 21      LoadPalette PlayerPalette, $80, $10
+000855r 1  21 A9 rr A2  
+000859r 1  rr rr A0 20  
+000861r 1               	; Load Tile data to VRAM
+000861r 1  A9 80 8D 15      LoadBlockToVRAM BGTiles, $2000, $C0
+000865r 1  21 A2 00 20  
+000869r 1  8E 16 21 A9  
+000877r 1  A9 80 8D 15  	LoadBlockToVRAM BG2Tiles, $5000, $200 ;8 tiles, 4bpp
+00087Br 1  21 A2 00 50  
+00087Fr 1  8E 16 21 A9  
+00088Dr 1  A9 80 8D 15  	LoadBlockToVRAM PlayerTiles, $6000, $1000
+000891r 1  21 A2 00 60  
+000895r 1  8E 16 21 A9  
+0008A3r 1  A9 80 8D 15  	LoadBlockToVRAM BGTilemap, $0000, $2000
+0008A7r 1  21 A2 00 00  
+0008ABr 1  8E 16 21 A9  
+0008B9r 1  A9 80 8D 15  	LoadBlockToVRAM BG2Tilemap, $4000, $800
+0008BDr 1  21 A2 00 40  
+0008C1r 1  8E 16 21 A9  
+0008CFr 1  A2 rr rr 8E  	LoadBlockToWRAM BGTilemap, TilemapMirror, $2000
+0008D3r 1  02 43 A9 rr  
+0008D7r 1  8D 04 43 A2  
+0008F6r 1                   ; Setup Video modes and other stuff, then turn on the screen
+0008F6r 1  20 rr rr         jsr SetupVideo
+0008F9r 1               
+0008F9r 1  20 rr rr     	jsr InitSprites
+0008FCr 1  A9 81        	lda #VBLANK_NMI | AUTOREAD
+0008FEr 1  8D 00 42     	sta PPUNMI ;enable vblank interrupt and joypad read
+000901r 1  C2 20        	a16
+000903r 1  A9 1B 01     	lda #$11b
+000906r 1  85 14        	sta scrollY
+000908r 1  E2 20        	sep #$20
+00090Ar 1  E2 20        	a8
+00090Cr 1  A9 50        	lda #$50
+00090Er 1  85 1A        	sta spriteX
+000910r 1               
+000910r 1               
+000910r 1               .define GROUND_Y $A0
+000910r 1  A9 A0        	lda #GROUND_Y
+000912r 1  85 1C        	sta spriteY
+000914r 1               
+000914r 1  A9 30        	lda #$30 ;max sprite priority
+000916r 1  85 27        	sta playerAttrs
+000918r 1               
+000918r 1               
+000918r 1               MainLoop:
+000918r 1  E2 20        	a8
+00091Ar 1  A9 01        	lda #$1
+00091Cr 1  85 2B        	sta frameStatus ;how we check if the program's done executing
+00091Er 1  C2 20        	a16
+000920r 1  AD 18 42     	lda JOY1CUR ;p1 joypad read address
+000923r 1  85 10        	sta joypad
+000925r 1               
+000925r 1               	; cmp #KEY_RIGHT
+000925r 1               	; bne NotRight
+000925r 1               	; inc scrollX
+000925r 1               ; NotRight:
+000925r 1  08 A9 00 00  	LoadSprite #$0, #$20, spriteX, spriteY, #%00110000
+000929r 1  85 00 C2 20  
+00092Dr 1  A5 1A 85 01  
+000943r 1  C2 20        	a16
+000945r 1               
+000945r 1               SetupScrollTable:
+000945r 1  18           	clc
+000946r 1  A5 16        	lda scroll2X
+000948r 1  18           	clc
+000949r 1  69 05 00     	adc #$5
+00094Cr 1  85 16        	sta scroll2X
+00094Er 1  6A           	ror
+00094Fr 1  8D 20 06     	sta BG2ScrollTable
+000952r 1  6A           	ror
+000953r 1  8D 22 06     	sta BG2ScrollTable+2
+000956r 1  6A           	ror
+000957r 1  8D 24 06     	sta BG2ScrollTable+4
+00095Ar 1  6A           	ror
+00095Br 1  8D 26 06     	sta BG2ScrollTable+6
+00095Er 1  6A           	ror
+00095Fr 1  8D 28 06     	sta BG2ScrollTable+8
+000962r 1  E2 20        	a8
+000964r 1               
+000964r 1  64 2B        	stz frameStatus
+000966r 1  CB           	wai
+000967r 1  4C rr rr     	jmp MainLoop
+00096Ar 1               
+00096Ar 1               VBlank:
+00096Ar 1  08           	php
+00096Br 1  8B           	phb
+00096Cr 1  0B           	phd
+00096Dr 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
+00096Er 1  DA           	phx ;fucking up
+00096Fr 1  5A           	phy
+000970r 1  A5 2B        	lda frameStatus
+000972r 1  D0 28        	bne SkipVblank
+000974r 1  C2 20 A5 12  	SetHScroll scrollX
+000978r 1  E2 20 8D 0D  
+00097Cr 1  21 EB 8D 0D  
+000981r 1  C2 20 A5 14  	SetVScroll scrollY
+000985r 1  E2 20 8D 0E  
+000989r 1  21 EB 8D 0E  
+00098Er 1               	;DMATilemapMirror #$2
+00098Er 1  20 rr rr     	jsr DMASpriteMirror
+000991r 1  A9 01        	lda #$1 ;start dma transfer on channel 1 (change to 3 if i reenable dmatilemapmirror)
+000993r 1  8D 0B 42     	sta $420b
+000996r 1  20 rr rr     	jsr SetupHDMA
+000999r 1  AD 10 42     	lda $4210 ;clear vblank flag
+00099Cr 1               SkipVblank:
+00099Cr 1  7A           	ply
+00099Dr 1  FA           	plx
+00099Er 1  68           	pla
+00099Fr 1  2B           	pld
+0009A0r 1  AB           	plb
+0009A1r 1  28           	plp
+0009A2r 1               
+0009A2r 1  40           	rti
+0009A3r 1               
+0009A3r 1               SetupVideo:
+0009A3r 1  08               php
+0009A4r 1               
+0009A4r 1  A9 63        	lda #OBSIZE_16_32 | $3
+0009A6r 1  8D 01 21     	sta OBSEL ;16x16 or 32x32 sprites, sprite data @ $6000
+0009A9r 1  9C 02 21     	stz OAMADDR ;set OAM write cursor to $0
+0009ACr 1  9C 03 21     	stz OAMADDR+1
+0009AFr 1  A9 01        	lda #$1
+0009B1r 1  8D 05 21         sta BGMODE ;mode 1, 8x8 tiles
+0009B4r 1               
+0009B4r 1  A9 03            lda #$03 ;bg1 tilemap 0ffset $0, size 64x64
+0009B6r 1  8D 07 21         sta NTADDR
+0009B9r 1               
+0009B9r 1  A9 40        	lda #$40  ; bg2 tilemap offset: $4000, size: 32x32
+0009BBr 1  8D 08 21     	sta NTADDR+1
+0009BEr 1               
+0009BEr 1  A9 52        	lda #$52
+0009C0r 1  8D 0B 21         sta BGCHRADDR ;bg2 chr vram addr to $5000, bg1 chr vram offset $2000
+0009C3r 1               
+0009C3r 1  A9 13            lda #%00010011 ;enable bg0, bg1, and sprites
+0009C5r 1  8D 2C 21         sta BLENDMAIN
+0009C8r 1               
+0009C8r 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
+0009CAr 1  8D 0E 21         sta BGSCROLLY
+0009CDr 1  8D 0E 21         sta BGSCROLLY
+0009D0r 1               
+0009D0r 1  A9 0F            lda #$F ;max brightness
+0009D2r 1  8D 00 21         sta PPUBRIGHT
+0009D5r 1               
+0009D5r 1  28               plp
+0009D6r 1  60               rts
+0009D7r 1               
+0009D7r 1               SetupHDMA:
+0009D7r 1  A9 42        	lda #DMA_INDIRECT | DMA_00 ;write twice, indirect mode
+0009D9r 1  8D 00 43     	sta DMAMODE
+0009DCr 1  A9 0F        	lda #$0f ;write to $210f, bg 2 scroll reg
+0009DEr 1  8D 01 43     	sta DMAPPUREG
+0009E1r 1  C2 20        	a16
+0009E3r 1  A9 rr rr     	lda #ScrollTable
+0009E6r 1  8D 02 43     	sta DMAADDR
+0009E9r 1  A9 00 00     	lda #$0
+0009ECr 1  8D 04 43     	sta DMAADDRBANK
+0009EFr 1  E2 20        	a8
+0009F1r 1  A9 7E        	lda #$7e
+0009F3r 1  8D 07 43     	sta HDMAINDBANK ;ram bank to read from for indirect hdma
+0009F6r 1               
+0009F6r 1  A9 02        	lda #DMA_00 ;write twice, direct mode
+0009F8r 1  8D 10 43     	sta $4310
+0009FBr 1  A9 21        	lda #$21 ;write to $2121, cgram palette address reg
+0009FDr 1  8D 11 43     	sta $4311
+000A00r 1  A0 rr rr     	ldy #PaletteIndexTable
+000A03r 1  8C 12 43     	sty $4312
+000A06r 1  9C 14 43     	stz $4314
 000A09r 1               
-000A09r 1  A5 16        	lda playerHSpeed
-000A0Br 1  C9 00        	cmp #$0
-000A0Dr 1  D0 07        	bne @Subtract
-000A0Fr 1  A9 00        	lda #STATE_NONE
-000A11r 1  85 28        	sta movementState
-000A13r 1  4C rr rr     	jmp RightNotReleased
-000A16r 1               @Subtract:
-000A16r 1  38           	sec
-000A17r 1  E9 01        	sbc #LARRY_ACCEL
-000A19r 1  85 16        	sta playerHSpeed
-000A1Br 1  C2 20        	a16
-000A1Dr 1  A5 10        	lda scrollX
-000A1Fr 1  18           	clc
-000A20r 1  65 16        	adc playerHSpeed
-000A22r 1  29 FF 03     	and #$3ff ;limit to 10 bits
-000A25r 1  85 10        	sta scrollX
-000A27r 1  E2 20        	a8
-000A29r 1               RightNotReleased:
-000A29r 1               
-000A29r 1               ;accelerate player until they hit max speed
-000A29r 1  A5 28        	lda movementState
-000A2Br 1  C9 03        	cmp #STATE_LEFT_PRESSED
-000A2Dr 1  D0 19        	bne LeftNotPressed
-000A2Fr 1               
-000A2Fr 1  A5 16        	lda playerHSpeed
-000A31r 1  C9 06        	cmp #MAX_LARRY_SPEED
-000A33r 1  F0 05        	beq @DontAdd
-000A35r 1  18           	clc
-000A36r 1  69 01        	adc #LARRY_ACCEL
-000A38r 1  85 16        	sta playerHSpeed
-000A3Ar 1               @DontAdd:
-000A3Ar 1  C2 20        	a16
-000A3Cr 1  A5 10        	lda scrollX
-000A3Er 1  38           	sec
-000A3Fr 1  E5 16        	sbc playerHSpeed
-000A41r 1  29 FF 03     	and #$3ff
-000A44r 1  85 10        	sta scrollX
-000A46r 1  E2 20        	a8
-000A48r 1               LeftNotPressed:
-000A48r 1               
-000A48r 1               ;decelerate player until they stop
-000A48r 1  A5 28        	lda movementState
-000A4Ar 1  C9 04        	cmp #STATE_LEFT_RELEASED
-000A4Cr 1  D0 20        	bne LeftNotReleased
-000A4Er 1               
-000A4Er 1  A5 16        	lda playerHSpeed
-000A50r 1  C9 00        	cmp #$0
-000A52r 1  D0 07        	bne @Subtract
-000A54r 1  A9 00        	lda #STATE_NONE
-000A56r 1  85 28        	sta movementState
-000A58r 1  4C rr rr     	jmp LeftNotReleased
-000A5Br 1               @Subtract:
-000A5Br 1  38           	sec
-000A5Cr 1  E9 01        	sbc #LARRY_ACCEL
-000A5Er 1  85 16        	sta playerHSpeed
-000A60r 1  C2 20        	a16
-000A62r 1  A5 10        	lda scrollX
-000A64r 1  38           	sec
-000A65r 1  E5 16        	sbc playerHSpeed
-000A67r 1  29 FF 03     	and #$3ff
-000A6Ar 1  85 10        	sta scrollX
-000A6Cr 1  E2 20        	a8
-000A6Er 1               LeftNotReleased:
-000A6Er 1               
-000A6Er 1               ;animate player based on speed
-000A6Er 1  A5 27        	lda playerState
-000A70r 1  C9 00        	cmp #STATE_GROUND
-000A72r 1  D0 14        	bne DontAnimate
-000A74r 1  A5 28        	lda movementState
-000A76r 1  C9 00        	cmp #STATE_NONE
-000A78r 1  F0 0E        	beq DontAnimate
-000A7Ar 1               
-000A7Ar 1  A5 22        	lda playerTileNum
-000A7Cr 1  1A           	ina
-000A7Dr 1  1A           	ina
-000A7Er 1  85 22        	sta playerTileNum
-000A80r 1  C9 0E        	cmp #NUM_LARRY_TILES
-000A82r 1  90 04        	bcc DontAnimate
-000A84r 1  A9 02        	lda #$2
-000A86r 1  85 22        	sta playerTileNum
-000A88r 1               DontAnimate:
-000A88r 1               
-000A88r 1               	;if player isn't above solid surface, fall
-000A88r 1  A5 27        	lda playerState
-000A8Ar 1  C9 00        	cmp #STATE_GROUND
-000A8Cr 1  D0 0C        	bne DontApplyGravity
-000A8Er 1  20 rr rr     	jsr SetPlayerVals
-000A91r 1  20 rr rr     	jsr CheckCollisionB
-000A94r 1  D0 04        	bne DontApplyGravity
-000A96r 1  A9 02        	lda #STATE_JUMP_FALL
-000A98r 1  85 27        	sta playerState
-000A9Ar 1               DontApplyGravity:
-000A9Ar 1               
-000A9Ar 1               ;1. subtract gravity accel value until initial speed is 0
-000A9Ar 1               ;2. set state to fall
-000A9Ar 1               
-000A9Ar 1  A5 27        	lda playerState
-000A9Cr 1  C9 01        	cmp #STATE_JUMP_RISE
-000A9Er 1  D0 17        	bne DontRise
-000AA0r 1  A5 26        	lda playerVSpeed
-000AA2r 1  D0 07        	bne @SubSpeed ;branch if player v speed isn't 0
-000AA4r 1  A9 02        	lda #STATE_JUMP_FALL
-000AA6r 1  85 27        	sta playerState
-000AA8r 1  4C rr rr     	jmp DontRise
-000AABr 1               @SubSpeed:
-000AABr 1  38           	sec
-000AACr 1  E9 01        	sbc #LARRY_ACCEL
-000AAEr 1  85 26        	sta playerVSpeed
-000AB0r 1  A5 1A        	lda spriteY
-000AB2r 1  38           	sec
-000AB3r 1  E5 26        	sbc playerVSpeed
-000AB5r 1  85 1A        	sta spriteY
-000AB7r 1               DontRise:
-000AB7r 1               
-000AB7r 1               ;3. add gravity accel value until player touches ground
-000AB7r 1               ;4. set state to ground
-000AB7r 1               
-000AB7r 1  A5 27        	lda playerState
-000AB9r 1  C9 02        	cmp #STATE_JUMP_FALL
-000ABBr 1  D0 31        	bne DontFall
-000ABDr 1  20 rr rr     	jsr SetPlayerVals ;have player fall until they're inside the ground
-000AC0r 1  20 rr rr     	jsr CheckCollisionB
-000AC3r 1  F0 17        	beq @AddSpeed
-000AC5r 1               @EjectLoop: ;eject player from the ground
-000AC5r 1  C6 1A        	dec spriteY
-000AC7r 1  20 rr rr     	jsr SetPlayerVals
-000ACAr 1  20 rr rr     	jsr CheckCollisionB
-000ACDr 1  D0 F6        	bne @EjectLoop
-000ACFr 1  E6 1A        	inc spriteY ;insert player one pixel into the ground so they won't be constantly falling
-000AD1r 1  A9 00        	lda #STATE_GROUND
-000AD3r 1  85 27        	sta playerState
-000AD5r 1  64 26        	stz playerVSpeed
-000AD7r 1  64 22        	stz playerTileNum
-000AD9r 1  4C rr rr     	jmp DontFall
-000ADCr 1               @AddSpeed:
-000ADCr 1  A5 26        	lda playerVSpeed
-000ADEr 1  C9 08        	cmp #MAX_LARRY_FALL_SPEED
-000AE0r 1  B0 05        	bcs @DontAdd
-000AE2r 1  18           	clc
-000AE3r 1  69 01        	adc #LARRY_ACCEL
-000AE5r 1  85 26        	sta playerVSpeed
-000AE7r 1               @DontAdd:
-000AE7r 1  A5 1A        	lda spriteY
-000AE9r 1  18           	clc
-000AEAr 1  65 26        	adc playerVSpeed
-000AECr 1  85 1A        	sta spriteY
-000AEEr 1               DontFall:
-000AEEr 1               
-000AEEr 1  20 rr rr     	jsr SetPlayerVals
-000AF1r 1  A5 28        	lda movementState
-000AF3r 1  F0 2C        	beq EndCollisionDetect ;if player's not moving, don't bather w/ wall collision detection
-000AF5r 1  C9 03        	cmp #STATE_LEFT_PRESSED
-000AF7r 1  B0 14        	bcs LCollision ;if state is left pressed or left released, branch
-000AF9r 1  20 rr rr     	jsr CheckCollisionR
-000AFCr 1  F0 23        	beq EndCollisionDetect
-000AFEr 1               @EjectLoop:
-000AFEr 1  C6 10        	dec scrollX
-000B00r 1  20 rr rr     	jsr SetPlayerVals
-000B03r 1  20 rr rr     	jsr CheckCollisionR
-000B06r 1  D0 F6        	bne @EjectLoop ;eject player from the wall until they're out
-000B08r 1  64 16        	stz playerHSpeed ;if player needs to be ejected, set speed to 0
-000B0Ar 1  4C rr rr     	jmp EndCollisionDetect
-000B0Dr 1               LCollision:
-000B0Dr 1  20 rr rr     	jsr CheckCollisionL
-000B10r 1  F0 22        	beq SubtractSpeed
-000B12r 1               @EjectLoop:
-000B12r 1  E6 10        	inc scrollX
-000B14r 1  20 rr rr     	jsr SetPlayerVals
-000B17r 1  20 rr rr     	jsr CheckCollisionL
-000B1Ar 1  D0 F6        	bne @EjectLoop
-000B1Cr 1  64 16        	stz playerHSpeed
-000B1Er 1  4C rr rr     	jmp SubtractSpeed
-000B21r 1               EndCollisionDetect:
-000B21r 1               	;calculate bg2's scroll
-000B21r 1  C2 20        	a16
-000B23r 1  A5 16        	lda playerHSpeed
-000B25r 1  6A           	ror
-000B26r 1  85 00        	sta $0
-000B28r 1  A5 14        	lda scroll2X
-000B2Ar 1  18           	clc
-000B2Br 1  65 00        	adc $0
-000B2Dr 1  85 14        	sta scroll2X
-000B2Fr 1  64 00        	stz $0
-000B31r 1  4C rr rr     	jmp SetupScrollTable
-000B34r 1               SubtractSpeed:
-000B34r 1  C2 20        	a16
-000B36r 1  A5 16        	lda playerHSpeed
-000B38r 1  6A           	ror
-000B39r 1  85 00        	sta $0
-000B3Br 1  A5 14        	lda scroll2X
-000B3Dr 1  38           	sec
-000B3Er 1  E5 00        	sbc $0
-000B40r 1  85 14        	sta scroll2X
-000B42r 1  64 00        	stz $0
-000B44r 1               SetupScrollTable:
-000B44r 1  18           	clc
-000B45r 1  A5 14        	lda scroll2X
-000B47r 1  18           	clc
-000B48r 1  69 05 00     	adc #$5
-000B4Br 1  85 14        	sta scroll2X
-000B4Dr 1  6A           	ror
-000B4Er 1  8D 20 06     	sta BG2ScrollTable
-000B51r 1  6A           	ror
-000B52r 1  8D 22 06     	sta BG2ScrollTable+2
-000B55r 1  6A           	ror
-000B56r 1  8D 24 06     	sta BG2ScrollTable+4
-000B59r 1  6A           	ror
-000B5Ar 1  8D 26 06     	sta BG2ScrollTable+6
-000B5Dr 1  6A           	ror
-000B5Er 1  8D 28 06     	sta BG2ScrollTable+8
-000B61r 1  E2 20        	a8
-000B63r 1  A5 18 85 04  	HandleLarry spriteX,spriteY,playerTileNum
-000B67r 1  A5 1A 85 05  
-000B6Br 1  A5 22 85 06  
-000C0Cr 1               	; DrawLine #$2, #$11, #$15, #$15
-000C0Cr 1               
-000C0Cr 1  64 29        	stz frameStatus
-000C0Er 1  CB           	wai
-000C0Fr 1  4C rr rr     	jmp MainLoop
-000C12r 1               
-000C12r 1               VBlank:
-000C12r 1  08           	php
-000C13r 1  8B           	phb
-000C14r 1  0B           	phd
-000C15r 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
-000C16r 1  DA           	phx ;fucking up
-000C17r 1  5A           	phy
-000C18r 1  A5 29        	lda frameStatus
-000C1Ar 1  D0 28        	bne SkipVblank
-000C1Cr 1  C2 20 A5 10  	SetHScroll scrollX
-000C20r 1  E2 20 8D 0D  
-000C24r 1  21 EB 8D 0D  
-000C29r 1  C2 20 A5 12  	SetVScroll scrollY
-000C2Dr 1  E2 20 8D 0E  
-000C31r 1  21 EB 8D 0E  
-000C36r 1               	;DMATilemapMirror #$2
-000C36r 1  20 rr rr     	jsr DMASpriteMirror
-000C39r 1  A9 01        	lda #$1 ;start dma transfer on channel 1 (change to 3 if i reenable dmatilemapmirror)
-000C3Br 1  8D 0B 42     	sta $420b
-000C3Er 1  20 rr rr     	jsr SetupHDMA
-000C41r 1  AD 10 42     	lda $4210 ;clear vblank flag
-000C44r 1               SkipVblank:
-000C44r 1  7A           	ply
-000C45r 1  FA           	plx
-000C46r 1  68           	pla
-000C47r 1  2B           	pld
-000C48r 1  AB           	plb
-000C49r 1  28           	plp
-000C4Ar 1               
-000C4Ar 1  40           	rti
-000C4Br 1               
-000C4Br 1               SetupVideo:
-000C4Br 1  08               php
-000C4Cr 1               
-000C4Cr 1  A9 73        	lda #$73
-000C4Er 1  8D 01 21     	sta $2101 ;16x16 or 32x32 sprites, sprite data @ $6000
-000C51r 1  9C 02 21     	stz $2102 ;oam starts at $0 vram
-000C54r 1  9C 03 21     	stz $2103
-000C57r 1  A9 01        	lda #$1
-000C59r 1  8D 05 21         sta $2105           ; Set Video mode 1, 8x8 tiles
-000C5Cr 1               
-000C5Cr 1  A9 03            lda #$03           ; Set BG1's Tile Map offset to $0000 (Word address)
-000C5Er 1  8D 07 21         sta $2107           ; And the Tile Map size to 64x64
-000C61r 1               
-000C61r 1  A9 40        	lda #$40  ; bg2 tilemap offset: $4000, size: 32x32
-000C63r 1  8D 08 21     	sta $2108
-000C66r 1               
-000C66r 1  A9 52        	lda #$52
-000C68r 1  8D 0B 21         sta $210B           ; Set BG1's Character VRAM offset to $2000 (word address), BG2's to $5000
-000C6Br 1               
-000C6Br 1  A9 13            lda #$13            ; Enable BG1, BG2, and sprites
-000C6Dr 1  8D 2C 21         sta $212C
-000C70r 1               
-000C70r 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
-000C72r 1  8D 0E 21         sta $210E
-000C75r 1  8D 0E 21         sta $210E
-000C78r 1               
-000C78r 1  A9 0F            lda #$0F
-000C7Ar 1  8D 00 21         sta $2100           ; Turn on screen, full Brightness
-000C7Dr 1               
-000C7Dr 1  28               plp
-000C7Er 1  60               rts
-000C7Fr 1               
-000C7Fr 1               SetupHDMA:
-000C7Fr 1  A9 42        	lda #%01000010 ;write twice, indirect mode
-000C81r 1  8D 00 43     	sta $4300
-000C84r 1  A9 0F        	lda #$0f ;write to $210f, bg 2 scroll reg
-000C86r 1  8D 01 43     	sta $4301
-000C89r 1  C2 20        	a16
-000C8Br 1  A9 rr rr     	lda #ScrollTable
-000C8Er 1  8D 02 43     	sta $4302
-000C91r 1  A9 00 00     	lda #$0
-000C94r 1  8D 04 43     	sta $4304
-000C97r 1  E2 20        	a8
-000C99r 1  A9 7E        	lda #$7e
-000C9Br 1  8D 07 43     	sta $4307 ;ram bank to read from for indirect hdma
-000C9Er 1               
-000C9Er 1  A9 02        	lda #$2 ;write twice, direct mode
-000CA0r 1  8D 10 43     	sta $4310
-000CA3r 1  A9 21        	lda #$21 ;write to $2121, cgram palette address reg
-000CA5r 1  8D 11 43     	sta $4311
-000CA8r 1  C2 20        	a16
-000CAAr 1  A9 rr rr     	lda #PaletteIndexTable
-000CADr 1  8D 12 43     	sta $4312
-000CB0r 1  9C 14 43     	stz $4314
-000CB3r 1  E2 20        	a8
-000CB5r 1               
-000CB5r 1  A9 02        	lda #$2 ;write twice, direct mode
-000CB7r 1  8D 20 43     	sta $4320
-000CBAr 1  A9 22        	lda #$22 ;write to $2122, cgram palette data reg
-000CBCr 1  8D 21 43     	sta $4321
-000CBFr 1  C2 20        	a16
-000CC1r 1  A9 rr rr     	lda #GradientTable
-000CC4r 1  8D 22 43     	sta $4322
-000CC7r 1  9C 24 43     	stz $4324
-000CCAr 1  E2 20        	a8
-000CCCr 1  A9 07        	lda #$7
-000CCEr 1  8D 0C 42     	sta $420c ;enable hdma channels 0-2
-000CD1r 1  60           	rts
-000CD2r 1               
-000CD2r 1               
-000CD2r 1               ScrollTable:
-000CD2r 1  80           	.byte $80
-000CD3r 1  00 00        	.word $0000
-000CD5r 1  10           	.byte $10
-000CD6r 1  28 06        	.word BG2ScrollTable+8
-000CD8r 1  10           	.byte $10
-000CD9r 1  26 06        	.word BG2ScrollTable+6
-000CDBr 1  10           	.byte $10
-000CDCr 1  24 06        	.word BG2ScrollTable+4
-000CDEr 1  10           	.byte $10
-000CDFr 1  22 06        	.word BG2ScrollTable+2
-000CE1r 1  10           	.byte $10
-000CE2r 1  20 06        	.word BG2ScrollTable
-000CE4r 1  00           	.byte $00
-000CE5r 1               
-000CE5r 1               PaletteIndexTable: ;needed because palette index auto-increments after every write
-000CE5r 1               ;400 instead of $4 because the endianness of the CGRAM write port is reversed for some reason
-000CE5r 1  0C           	.byte $C
-000CE6r 1  00 04        	.word $400
-000CE8r 1  0C           	.byte $C
-000CE9r 1  00 04        	.word $400
-000CEBr 1  0C           	.byte $C
-000CECr 1  00 04        	.word $400
-000CEEr 1  0C           	.byte $C
-000CEFr 1  00 04        	.word $400
-000CF1r 1  0C           	.byte $C
-000CF2r 1  00 04        	.word $400
-000CF4r 1  0C           	.byte $C
-000CF5r 1  00 04        	.word $400
-000CF7r 1  0C           	.byte $C
-000CF8r 1  00 04        	.word $400
-000CFAr 1  0C           	.byte $C
-000CFBr 1  00 04        	.word $400
-000CFDr 1  0C           	.byte $C
-000CFEr 1  00 04        	.word $400
-000D00r 1  0C           	.byte $C
-000D01r 1  00 04        	.word $400
-000D03r 1  0C           	.byte $C
-000D04r 1  00 04        	.word $400
-000D06r 1  00           	.byte $00
-000D07r 1               
-000D07r 1               
-000D07r 1               GradientTable:
-000D07r 1  0C           	.byte $C
-000D08r 1  C4 71        	.word $71C4; R:4 G:14 B:28
-000D0Ar 1  0C           	.byte $C
-000D0Br 1  C7 5D        	.word $5DC7; R:7 G:14 B:23
-000D0Dr 1  0C           	.byte $C
-000D0Er 1  CB 51        	.word $51CB; R:11 G:14 B:20
-000D10r 1  0C           	.byte $C
-000D11r 1  CD 49        	.word $49CD; R:13 G:14 B:18
-000D13r 1  0C           	.byte $C
-000D14r 1  F1 41        	.word $41F1; R:17 G:15 B:16
-000D16r 1  0C           	.byte $C
-000D17r 1  F4 35        	.word $35F4; R:20 G:15 B:13
-000D19r 1  0C           	.byte $C
-000D1Ar 1  F7 2D        	.word $2DF7; R:23 G:15 B:11
-000D1Cr 1  0C           	.byte $C
-000D1Dr 1  1A 22        	.word $221A; R:26 G:16 B:8
-000D1Fr 1  0C           	.byte $C
-000D20r 1  1C 1A        	.word $1A1C; R:28 G:16 B:6
-000D22r 1  0C           	.byte $C
-000D23r 1  1F 12        	.word $121F; R:31 G:16 B:4
-000D25r 1  0C           	.byte $C
-000D26r 1  A1 71        	.word $71A1
-000D28r 1  00           	.byte $00
-000D29r 1               
-000D29r 1               DMASpriteMirror:
-000D29r 1  9C 02 21     	stz $2102		; set OAM address to 0
-000D2Cr 1  9C 03 21     	stz $2103
-000D2Fr 1               
-000D2Fr 1  A0 00 04     	LDY #$0400
-000D32r 1  8C 00 43     	STY $4300		; CPU -> PPU, auto increment, write 1 reg, $2104 (OAM data write)
-000D35r 1  A0 00 04     	LDY #$0400
-000D38r 1  8C 02 43     	STY $4302		; source offset
-000D3Br 1  A0 20 02     	LDY #$0220
-000D3Er 1  8C 05 43     	STY $4305		; number of bytes to transfer
-000D41r 1  A9 7E        	LDA #$7E
-000D43r 1  8D 04 43     	STA $4304		; bank address = $7E  (work RAM)
-000D46r 1  60           	rts
-000D47r 1               
-000D47r 1               
+000A09r 1  A9 02        	lda #DMA_00 ;write twice, direct mode
+000A0Br 1  8D 20 43     	sta $4320
+000A0Er 1  A9 22        	lda #$22 ;write to $2122, cgram palette data reg
+000A10r 1  8D 21 43     	sta $4321
+000A13r 1  C2 20        	a16
+000A15r 1  A9 rr rr     	lda #GradientTable
+000A18r 1  8D 22 43     	sta $4322
+000A1Br 1  9C 24 43     	stz $4324
+000A1Er 1  E2 20        	a8
+000A20r 1  A9 07        	lda #%00000111
+000A22r 1  8D 0C 42     	sta HDMASTART ;enable hdma channels 0-2
+000A25r 1  60           	rts
+000A26r 1               
+000A26r 1               
+000A26r 1               ScrollTable:
+000A26r 1  80           	.byte $80
+000A27r 1  00 00        	.word $0000
+000A29r 1  10           	.byte $10
+000A2Ar 1  28 06        	.word BG2ScrollTable+8
+000A2Cr 1  10           	.byte $10
+000A2Dr 1  26 06        	.word BG2ScrollTable+6
+000A2Fr 1  10           	.byte $10
+000A30r 1  24 06        	.word BG2ScrollTable+4
+000A32r 1  10           	.byte $10
+000A33r 1  22 06        	.word BG2ScrollTable+2
+000A35r 1  10           	.byte $10
+000A36r 1  20 06        	.word BG2ScrollTable
+000A38r 1  00           	.byte $00
+000A39r 1               
+000A39r 1               PaletteIndexTable: ;needed because palette index auto-increments after every write
+000A39r 1               ;400 instead of $4 because the endianness of the CGRAM write port is reversed for some reason
+000A39r 1  0C           	.byte $C
+000A3Ar 1  00 04        	.word $400
+000A3Cr 1  0C           	.byte $C
+000A3Dr 1  00 04        	.word $400
+000A3Fr 1  0C           	.byte $C
+000A40r 1  00 04        	.word $400
+000A42r 1  0C           	.byte $C
+000A43r 1  00 04        	.word $400
+000A45r 1  0C           	.byte $C
+000A46r 1  00 04        	.word $400
+000A48r 1  0C           	.byte $C
+000A49r 1  00 04        	.word $400
+000A4Br 1  0C           	.byte $C
+000A4Cr 1  00 04        	.word $400
+000A4Er 1  0C           	.byte $C
+000A4Fr 1  00 04        	.word $400
+000A51r 1  0C           	.byte $C
+000A52r 1  00 04        	.word $400
+000A54r 1  0C           	.byte $C
+000A55r 1  00 04        	.word $400
+000A57r 1  0C           	.byte $C
+000A58r 1  00 04        	.word $400
+000A5Ar 1  00           	.byte $00
+000A5Br 1               
+000A5Br 1               
+000A5Br 1               GradientTable:
+000A5Br 1  0C           	.byte $C
+000A5Cr 1  C4 71        	.word $71C4; R:4 G:14 B:28
+000A5Er 1  0C           	.byte $C
+000A5Fr 1  C7 5D        	.word $5DC7; R:7 G:14 B:23
+000A61r 1  0C           	.byte $C
+000A62r 1  CB 51        	.word $51CB; R:11 G:14 B:20
+000A64r 1  0C           	.byte $C
+000A65r 1  CD 49        	.word $49CD; R:13 G:14 B:18
+000A67r 1  0C           	.byte $C
+000A68r 1  F1 41        	.word $41F1; R:17 G:15 B:16
+000A6Ar 1  0C           	.byte $C
+000A6Br 1  F4 35        	.word $35F4; R:20 G:15 B:13
+000A6Dr 1  0C           	.byte $C
+000A6Er 1  F7 2D        	.word $2DF7; R:23 G:15 B:11
+000A70r 1  0C           	.byte $C
+000A71r 1  1A 22        	.word $221A; R:26 G:16 B:8
+000A73r 1  0C           	.byte $C
+000A74r 1  1C 1A        	.word $1A1C; R:28 G:16 B:6
+000A76r 1  0C           	.byte $C
+000A77r 1  1F 12        	.word $121F; R:31 G:16 B:4
+000A79r 1  0C           	.byte $C
+000A7Ar 1  A1 71        	.word $71A1
+000A7Cr 1  00           	.byte $00
+000A7Dr 1               
+000A7Dr 1               DMASpriteMirror:
+000A7Dr 1  9C 02 21     	stz OAMADDR		; set OAM write cursor to 0
+000A80r 1  9C 03 21     	stz OAMADDR+1
+000A83r 1               
+000A83r 1  A9 00        	lda #DMA_LINEAR
+000A85r 1  8D 00 43     	sta DMAMODE
+000A88r 1  A9 04        	lda #$04 ;write to $2104 (OAMDATA)
+000A8Ar 1  8D 01 43     	sta DMAPPUREG
+000A8Dr 1  A0 00 04     	ldy #OamMirror
+000A90r 1  8C 02 43     	sty DMAADDR		; source offset
+000A93r 1  A9 7E        	lda #$7E
+000A95r 1  8D 04 43     	sta DMAADDRBANK		; bank address = $7E  (work RAM)
+000A98r 1  A0 20 02     	ldy #$0220
+000A9Br 1  8C 05 43     	sty DMALEN		; number of bytes to transfer
+000A9Er 1  60           	rts
+000A9Fr 1               
+000A9Fr 1               

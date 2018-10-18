@@ -1,47 +1,31 @@
 spriteNum = $0
-oam2Data = $1
-oam2WriteIndex = $2
+xPos = $1
+yPos = $3
+tileNum = $4
+sprAttrs = $5
+oam2Data = $6
+oam2WriteIndex = $7
 
-.macro LoadSprite sprite, xOffset, yOffset, tileNum, attributes, xBit, size
-;parameters: sprite num, pointer to x coord, pointer to y coord, pointer to tile num, attributes,first bit of x coordinate, big/small
+
+.macro LoadSprite sprite, tile, xOffset, yOffset, attributes
+;parameters: sprite num, pointer to x coord, pointer to y coord, pointer to tile num, attributes, big/small
 ;shoutout to nintendo for making me go through all this bullshit, can't have
 ; all the memory together or something sane
+	php
 	lda sprite
 	sta spriteNum
 	a16
-	lda sprite
-	clc
-	rol a
-	rol a ;multiply sprite num by 4 because each index in oam table is 4 bytes
-	tax
-	a8
 	lda xOffset
-	sta OamMirror,x
-	inx
+	sta xPos
+	a8
 	lda yOffset
-	sta OamMirror,x
-	inx
-	lda tileNum
-	sta OamMirror,x
-	inx
+	sta yPos
+	lda tile
+	sta tileNum
 	lda attributes
-	sta OamMirror,x
-	
-	lda xBit
-	and #$1 ;make sure only 1 bit
-	sta oam2Data ;mess around with first bit of x coordinate b/c nintendo stored it separately
-	lda size
-	and #$1 ;combine sprite size and msb of xpos
-	ror a
-	ora oam2Data
-	sta oam2Data
-	lda spriteNum
-	clc
-	ror a ;4 sprites per oam table byte
-	ror a
-	and #$7F
-	sta oam2WriteIndex
-	jsr SetOam2Mirror
+	sta sprAttrs
+	jsr SetOamMirror
+	plp
 .endmacro
 
 .segment "CODE"
@@ -67,14 +51,51 @@ Oam2InitLoop:
 	plp
 	rts
 	
-SetOam2Mirror:
-	php
-	lda $0
-	and #$3 ;check where in the byte to place 1st x bit/sprite size
-	beq Sprite0
-	cmp #1
+SetOamMirror: ;OAM handler function
+	a8
+	lda spriteNum
+	xba
+	lda #$0
+	xba
+	a16
+	clc
+	rol a ;we multiply by 4 because each sprite has 4 bytes of data in OAM table
+	rol a
+	tax
+	lda xPos
+	a8
+	sta OamMirror,x
+	xba ;high byte of sprite x position
+	and #$1 ;SNES only cares about bit 9
+	sta oam2Data ;data to write to OAM part 2
+	inx
+	lda yPos
+	sta OamMirror,x
+	inx
+	lda tileNum
+	sta OamMirror,x
+	inx
+	lda sprAttrs
+	sta OamMirror,x
+	
+	; lda size ;i don't care about size at the moment, might enable later if I do
+	; and #$1 ;combine sprite size and msb of xpos
+	; ror a
+	; ora oam2Data
+	; sta oam2Data
+	lda spriteNum
+	clc
+	ror a ;4 sprites per oam table byte
+	ror a
+	and #$7F
+	sta oam2WriteIndex
+	
+	lda spriteNum
+	and #%00000011 ;only care if it's 0 to 3 since there's 4 bytes in OAM pt 2
+	beq Sprite0 ;check where in the byte to place 1st x bit/sprite size
+	cmp #$1
 	beq Sprite1
-	cmp #2
+	cmp #$2
 	beq Sprite2
 	jmp Sprite3
 	
@@ -97,6 +118,7 @@ Sprite1:
 	ora oam2Data
 	sta Oam2Mirror,x
 	jmp EndBitStuff
+	
 Sprite2:
 	clc
 	ror oam2Data
@@ -110,6 +132,7 @@ Sprite2:
 	ora oam2Data
 	sta Oam2Mirror,x
 	jmp EndBitStuff
+	
 Sprite3:
 	clc
 	ror oam2Data
@@ -127,6 +150,5 @@ Sprite3:
 	jmp EndBitStuff
 	
 EndBitStuff:
-	plp
 	rts
 	

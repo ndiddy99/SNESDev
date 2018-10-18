@@ -5,7 +5,7 @@ SPCPrg:
 SPCPrgEnd:
 
 SPC_LENGTH = SPCPrgEnd-SPCPrg
-NUM_SPC_BLOCKS = SPC_LENGTH/256
+NUM_SPC_BLOCKS = (SPC_LENGTH / 256) + 1
 .define copyAddr $0 ;address to copy to (word)
 .define copyIndex $2 ;index within one block (byte)
 .define blockIndex $3 ;what block's being copied (byte)
@@ -14,7 +14,6 @@ NUM_SPC_BLOCKS = SPC_LENGTH/256
 LoadSPC:
 	phb
 	php
-	
 	a16
 	lda #NUM_SPC_BLOCKS
 	lda #$200

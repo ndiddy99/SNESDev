@@ -1,11 +1,11 @@
 Modules list:
 -------------
 main.o:
-    CODE              Offs=000000  Size=000D47  Align=00001  Fill=0000
+    CODE              Offs=000000  Size=000A9F  Align=00001  Fill=0000
     HEADER            Offs=000000  Size=000015  Align=00001  Fill=0000
     ROMINFO           Offs=000000  Size=00000B  Align=00001  Fill=0000
     VECTORS           Offs=000000  Size=000020  Align=00001  Fill=0000
-    BANK2             Offs=000000  Size=004640  Align=00001  Fill=0000
+    BANK2             Offs=000000  Size=003E00  Align=00001  Fill=0000
     BANK1             Offs=000000  Size=003B57  Align=00001  Fill=0000
 
 
@@ -13,12 +13,12 @@ Segment list:
 -------------
 Name                   Start     End    Size  Align
 ----------------------------------------------------
-CODE                  008000  008D46  000D47  00001
+CODE                  008000  008A9E  000A9F  00001
 HEADER                00FFC0  00FFD4  000015  00001
 ROMINFO               00FFD5  00FFDF  00000B  00001
 VECTORS               00FFE0  00FFFF  000020  00001
 BANK1                 018000  01BB56  003B57  00001
-BANK2                 028000  02C63F  004640  00001
+BANK2                 028000  02BDFF  003E00  00001
 
 
 Exports list by name:
