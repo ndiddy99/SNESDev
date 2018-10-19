@@ -2,11 +2,12 @@
 .include "snes.inc"
 .include "initSNES.inc"
 .include "constants.asm"
+.include "variables.asm"
 .include "macros.asm"
 .include "sprites.asm"
+.include "player.asm"
 .include "art.asm"
 .include "sound.asm"
-.include "variables.asm"
 
 .segment "CODE"
 Reset:
@@ -34,12 +35,12 @@ Reset:
 	sep #$20
 	a8
 	lda #$50
-	sta spriteX
+	sta playerX
 	
 	
 .define GROUND_Y $A0
 	lda #GROUND_Y
-	sta spriteY
+	sta playerY
 	
 	lda #$30 ;max sprite priority
 	sta playerAttrs
@@ -53,14 +54,11 @@ MainLoop:
 	lda JOY1CUR ;p1 joypad read address
 	sta joypad
 	
-	; cmp #KEY_RIGHT
-	; bne NotRight
-	; inc scrollX
-; NotRight:
-	LoadSprite #$0, #$20, spriteX, spriteY, #%00110000
 	a16
-	
+	jsr HandlePlayerMovement
+
 SetupScrollTable:
+	a16
 	clc
 	lda scroll2X
 	clc

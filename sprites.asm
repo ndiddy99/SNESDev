@@ -11,7 +11,6 @@ oam2WriteIndex = $7
 ;parameters: sprite num, pointer to x coord, pointer to y coord, pointer to tile num, attributes, big/small
 ;shoutout to nintendo for making me go through all this bullshit, can't have
 ; all the memory together or something sane
-	php
 	lda sprite
 	sta spriteNum
 	a16
@@ -25,7 +24,7 @@ oam2WriteIndex = $7
 	lda attributes
 	sta sprAttrs
 	jsr SetOamMirror
-	plp
+	a16
 .endmacro
 
 .segment "CODE"
@@ -34,12 +33,12 @@ InitSprites:
 	lda #$1
 	ldx #$0
 OamInitLoop: ;apparently just setting the sprites to $100 doesn't actually cause them to be removed from the scanline limit
-	sta OamMirror,x
+	sta OamMirror,x ;sets lower byte of every sprite's x pos to 1
 	inx
 	inx
 	inx
 	inx
-	cpx #$200
+	cpx #$200 ;$80 * 4
 	bne OamInitLoop
 	lda #$55
 	ldx #$0
@@ -52,7 +51,6 @@ Oam2InitLoop:
 	rts
 	
 SetOamMirror: ;OAM handler function
-	a8
 	lda spriteNum
 	xba
 	lda #$0
