@@ -40,11 +40,10 @@ Reset:
 	
 .define GROUND_Y $A0
 	lda #GROUND_Y
-	sta playerY
+	sta playerY+2
 	
 	lda #$30 ;max sprite priority
 	sta playerAttrs
-	
 	
 MainLoop:
 	a8
@@ -53,8 +52,6 @@ MainLoop:
 	a16
 	lda JOY1CUR ;p1 joypad read address
 	sta joypad
-	
-	a16
 	jsr HandlePlayerMovement
 
 SetupScrollTable:
