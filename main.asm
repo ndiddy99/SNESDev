@@ -32,18 +32,8 @@ Reset:
 	a16
 	lda #$11b
 	sta scrollY
-	sep #$20
-	a8
-	lda #$50
-	sta playerX
 	
-	
-.define GROUND_Y $A0
-	lda #GROUND_Y
-	sta playerY+2
-	
-	lda #$30 ;max sprite priority
-	sta playerAttrs
+	jsr InitPlayer
 	
 MainLoop:
 	a8
@@ -55,7 +45,6 @@ MainLoop:
 	jsr HandlePlayerMovement
 
 SetupScrollTable:
-	a16
 	clc
 	lda scroll2X
 	clc

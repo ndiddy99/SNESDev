@@ -2,6 +2,10 @@
 
 PLAYER_ACCEL = $3fff ;0.25 px
 MAX_PLAYER_SPEED = $3
+FIRST_PLAYER_TILE = $20
+LAST_PLAYER_TILE = $28 ;horizontally
+PLAYER_TIMER_VAL = $4 ;animation timer
+GROUND = $A0
 
 .enum
 STATE_STILL
@@ -11,7 +15,20 @@ STATE_LEFT_HELD
 STATE_LEFT_RELEASED
 .endenum	
 
+InitPlayer:
+	php
+	a8
+	lda #GROUND
+	sta playerY+2
+	lda #$30 ;max sprite priority
+	sta playerAttrs
+	lda #FIRST_PLAYER_TILE
+	sta playerTileNum
+	plp
+	rts
+
 HandlePlayerMovement:
+	php
 	a16
 	lda joypad 
 	cmp #KEY_RIGHT ;sets up player state based on joypad input
@@ -92,6 +109,9 @@ HandlePlayerMovement:
 		sta playerXSpeed+2
 		
 	ModifySpeed:
+		a8
+		dec playerAnimTimer
+		a16
 		lda playerState
 		cmp #STATE_RIGHT_HELD
 		beq AddSpeed
@@ -118,8 +138,23 @@ HandlePlayerMovement:
 		sbc playerXSpeed+2
 		sta playerX+2
 	
-EndStateMachine:
+	EndStateMachine:
 	
-	LoadSprite #$0, #$20, playerX+2, playerY+2, #%00110000
+	a8
+	lda playerAnimTimer ;is timer zero?
+	bne DrawSprite
+		lda #PLAYER_TIMER_VAL
+		sta playerAnimTimer
+		lda playerTileNum
+		ina
+		ina
+		sta playerTileNum
+		cmp #LAST_PLAYER_TILE
+		bne DrawSprite
+			lda #FIRST_PLAYER_TILE
+			sta playerTileNum
+	DrawSprite:
+	LoadSprite #$0, playerTileNum, playerX+2, playerY+2, playerAttrs
+	plp
 	rts
 	
