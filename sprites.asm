@@ -11,6 +11,7 @@ oam2WriteIndex = $7
 ;parameters: sprite num, pointer to x coord, pointer to y coord, pointer to tile num, attributes, big/small
 ;shoutout to nintendo for making me go through all this bullshit, can't have
 ; all the memory together or something sane
+	a8
 	lda sprite
 	sta spriteNum
 	a16
@@ -53,7 +54,7 @@ Oam2InitLoop:
 SetOamMirror: ;OAM handler function
 	lda spriteNum
 	xba
-	lda #$0
+	lda #$0 ;make sure top byte of a is 0
 	xba
 	a16
 	clc
@@ -107,8 +108,8 @@ Sprite0:
 	
 Sprite1:
 	clc
-	ror oam2Data
-	ror oam2Data
+	rol oam2Data
+	rol oam2Data
 	
 	ldx oam2WriteIndex
 	lda Oam2Mirror,x
@@ -119,10 +120,10 @@ Sprite1:
 	
 Sprite2:
 	clc
-	ror oam2Data
-	ror oam2Data
-	ror oam2Data
-	ror oam2Data
+	rol oam2Data
+	rol oam2Data
+	rol oam2Data
+	rol oam2Data
 	
 	ldx oam2WriteIndex
 	lda Oam2Mirror,x
@@ -133,12 +134,12 @@ Sprite2:
 	
 Sprite3:
 	clc
-	ror oam2Data
-	ror oam2Data
-	ror oam2Data
-	ror oam2Data
-	ror oam2Data
-	ror oam2Data
+	rol oam2Data
+	rol oam2Data
+	rol oam2Data
+	rol oam2Data
+	rol oam2Data
+	rol oam2Data
 	
 	ldx oam2WriteIndex
 	lda Oam2Mirror,x

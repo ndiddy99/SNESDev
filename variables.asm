@@ -14,6 +14,7 @@ playerYSpeed = playerXSpeed+4
 
 playerTileNum = playerYSpeed+4
 playerAnimTimer
+playerAnimMode
 playerAttrs
 playerState ;16 bit to avoid constant accumulator size changing
 .endenum

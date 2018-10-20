@@ -1,11 +1,15 @@
 .segment "CODE"
 
 PLAYER_ACCEL = $3fff ;0.25 px
-MAX_PLAYER_SPEED = $3
-FIRST_PLAYER_TILE = $20
-LAST_PLAYER_TILE = $28 ;horizontally
-PLAYER_TIMER_VAL = $4 ;animation timer
-GROUND = $A0
+MAX_PLAYER_SPEED = $2
+PLAYER_STILL_TILE = $0
+FIRST_PLAYER_TILE = $2
+LAST_PLAYER_TILE = $8 ;horizontally
+PLAYER_TIMER_VAL = $6 ;animation timer
+GROUND = $AC
+
+PLAYER_RIGHT_ATTRS = %00110000
+PLAYER_LEFT_ATTRS =  %01110000
 
 .enum
 STATE_STILL
@@ -13,6 +17,11 @@ STATE_RIGHT_HELD
 STATE_RIGHT_RELEASED
 STATE_LEFT_HELD
 STATE_LEFT_RELEASED
+.endenum
+
+.enum
+ANIM_MODE_ADD
+ANIM_MODE_SUBTRACT
 .endenum	
 
 InitPlayer:
@@ -20,7 +29,7 @@ InitPlayer:
 	a8
 	lda #GROUND
 	sta playerY+2
-	lda #$30 ;max sprite priority
+	lda #PLAYER_RIGHT_ATTRS
 	sta playerAttrs
 	lda #FIRST_PLAYER_TILE
 	sta playerTileNum
@@ -36,6 +45,8 @@ HandlePlayerMovement:
 		a8
 		lda #STATE_RIGHT_HELD
 		sta playerState
+		lda #PLAYER_RIGHT_ATTRS
+		sta playerAttrs
 		a16
 		jmp EndStateAssign
 	NotRight:
@@ -44,6 +55,8 @@ HandlePlayerMovement:
 		a8
 		lda #STATE_LEFT_HELD
 		sta playerState
+		lda #PLAYER_LEFT_ATTRS
+		sta playerAttrs
 		a16
 		jmp EndStateAssign
 	NotLeft:
@@ -64,18 +77,26 @@ HandlePlayerMovement:
 		a16
 		jmp EndStateAssign
 	LeftNotReleased:
+	
 	EndStateAssign:
+		lda playerState
+		cmp #STATE_RIGHT_HELD
+		beq Pressed
+		cmp #STATE_LEFT_HELD
+		beq Pressed
+		cmp #STATE_RIGHT_RELEASED
+		beq Released
+		cmp #STATE_LEFT_RELEASED
+		beq Released
 	
-	lda playerState
-	cmp #STATE_RIGHT_HELD
-	beq Pressed
-	cmp #STATE_LEFT_HELD
-	beq Pressed
-	cmp #STATE_RIGHT_RELEASED
-	beq Released
-	cmp #STATE_LEFT_RELEASED
-	beq Released
-	
+	a8
+	lda #PLAYER_STILL_TILE
+	sta playerTileNum
+	lda #PLAYER_TIMER_VAL
+	sta playerAnimTimer
+	lda #ANIM_MODE_ADD
+	sta playerAnimMode
+	a16
 	
 	jmp EndStateMachine
 	Pressed: ;add accel to speed until you get max speed, add speed to player x
@@ -145,16 +166,39 @@ HandlePlayerMovement:
 	bne DrawSprite
 		lda #PLAYER_TIMER_VAL
 		sta playerAnimTimer
-		lda playerTileNum
-		ina
-		ina
-		sta playerTileNum
-		cmp #LAST_PLAYER_TILE
-		bne DrawSprite
-			lda #FIRST_PLAYER_TILE
+		lda playerAnimMode
+		bne AnimSubtract
+			lda playerTileNum ;add to tile nim
+			ina
+			ina
 			sta playerTileNum
+			cmp #LAST_PLAYER_TILE ;if up to last tile, go to subtract mode
+			bne DrawSprite
+				lda #ANIM_MODE_SUBTRACT
+				sta playerAnimMode
+				jmp DrawSprite
+		AnimSubtract: ;subtract from tile num
+			lda playerTileNum
+			dea
+			dea
+			sta playerTileNum
+			cmp #FIRST_PLAYER_TILE
+			bne DrawSprite
+				lda #ANIM_MODE_ADD
+				sta playerAnimMode
 	DrawSprite:
-	LoadSprite #$0, playerTileNum, playerX+2, playerY+2, playerAttrs
+	LoadSprite #$1, playerTileNum, playerX+2, playerY+2, playerAttrs
+	a16
+	lda playerY+2
+	clc
+	adc #$10
+	sta $a
+	lda playerTileNum
+	clc
+	adc #$20
+	sta $c
+	LoadSprite #$2, $c, playerX+2, $a, playerAttrs
+	
 	plp
 	rts
 	
