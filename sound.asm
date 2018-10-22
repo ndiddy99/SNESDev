@@ -12,7 +12,6 @@ NUM_SPC_BLOCKS = (SPC_LENGTH / 256) + 1
 .define kick $4 ;current "kick" val
 
 LoadSPC:
-	phb
 	php
 	a16
 	lda #NUM_SPC_BLOCKS
@@ -90,5 +89,4 @@ WaitReceive:
 	dex
 	bne @ClrLoop
 	plp
-	plb
 	rtl

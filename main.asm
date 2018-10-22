@@ -17,12 +17,11 @@ Reset:
 	LoadPalette BG2Palette, $10, $10
     LoadPalette PlayerPalette, $80, $10
 	; Load Tile data to VRAM
-    LoadBlockToVRAM BGTiles, $2000, $C0	
+    LoadBlockToVRAM BGTiles, $2000, $400	
 	LoadBlockToVRAM BG2Tiles, $5000, $200 ;8 tiles, 4bpp
 	LoadBlockToVRAM PlayerTiles, $6000, $1000
-	LoadBlockToVRAM BGTilemap, $0000, $2000
+	LoadBlockToVRAM BGTilemap, $0000, $800
 	LoadBlockToVRAM BG2Tilemap, $4000, $800
-	LoadBlockToWRAM BGTilemap, TilemapMirror, $2000
     ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
 	
@@ -30,7 +29,7 @@ Reset:
 	lda #VBLANK_NMI | AUTOREAD
 	sta PPUNMI ;enable vblank interrupt and joypad read
 	a16
-	lda #$11b
+	lda #$11f
 	sta scrollY
 	
 	jsr InitPlayer
@@ -101,10 +100,10 @@ SetupVideo:
 	sta OBSEL ;16x16 or 32x32 sprites, sprite data @ $6000
 	stz OAMADDR ;set OAM write cursor to $0
 	stz OAMADDR+1
-	lda #$1
-    sta BGMODE ;mode 1, 8x8 tiles
+	lda #%00010001
+    sta BGMODE ;mode 1, 16x16 tiles in bg0, 8x8 tiles in bgs 1 and 2
 
-    lda #$03 ;bg1 tilemap 0ffset $0, size 64x64
+    lda #$0 ;bg1 tilemap offset $0, size 32x32
     sta NTADDR
 	
 	lda #$40  ; bg2 tilemap offset: $4000, size: 32x32

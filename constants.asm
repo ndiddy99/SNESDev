@@ -8,7 +8,6 @@
 ;oam mirror defines
 .define OamMirror $400
 .define Oam2Mirror $600
-.define TilemapMirror $2000
 
 .define BG2ScrollTable $620
 ;object list format:
