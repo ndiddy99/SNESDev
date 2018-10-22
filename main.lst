@@ -1288,8 +1288,9 @@ Current file: main.asm
 00021Cr 2               .segment "CODE"
 00021Cr 2               
 00021Cr 2               PLAYER_ACCEL = $3fff ;0.25 px
-00021Cr 2               PLAYER_JUMP_SPEED = $fff9 ;-7
-00021Cr 2               GRAVITY = $5fff ;0.5px
+00021Cr 2               PLAYER_JUMP_SPEED = $fff8 ;-7
+00021Cr 2               GRAVITY = $6fff ;~0.4px
+00021Cr 2               
 00021Cr 2               
 00021Cr 2               MAX_PLAYER_SPEED = $2
 00021Cr 2               PLAYER_STILL_TILE = $0
@@ -1459,125 +1460,138 @@ Current file: main.asm
 00030Fr 2               
 00030Fr 2  A5 10        	lda joypad
 000311r 2  89 00 80     	bit #KEY_B
-000314r 2  F0 0E        	beq DontStartJump
+000314r 2  F0 11        	beq DontStartJump
 000316r 2  A9 01 00     		lda #PLAYER_STATE_JUMPING
 000319r 2  C5 2E        		cmp movementState
-00031Br 2  F0 07        		beq DontStartJump ;don't want player jumping in air
+00031Br 2  F0 20        		beq NotRising ;don't want player jumping in air
 00031Dr 2  85 2E        			sta movementState
-00031Fr 2  A9 F9 FF     			lda #PLAYER_JUMP_SPEED
+00031Fr 2  A9 F8 FF     			lda #PLAYER_JUMP_SPEED
 000322r 2  85 26        			sta playerYSpeed+2
-000324r 2               			; dec playerY+2
-000324r 2               	DontStartJump:
-000324r 2               
-000324r 2  A5 2E        	lda movementState
-000326r 2  C9 01 00     	cmp #PLAYER_STATE_JUMPING
-000329r 2  D0 41        	bne NotJumping
-00032Br 2  A5 24        		lda playerYSpeed
-00032Dr 2  18           		clc
-00032Er 2  69 FF 5F     		adc #GRAVITY
-000331r 2  85 24        		sta playerYSpeed
-000333r 2  A5 26        		lda playerYSpeed+2
-000335r 2  69 00 00     		adc #$0
-000338r 2  85 26        		sta playerYSpeed+2
-00033Ar 2  A5 1C        		lda playerY
-00033Cr 2  18           		clc
-00033Dr 2  65 24        		adc playerYSpeed
-00033Fr 2  85 1C        		sta playerY
-000341r 2  A5 1E        		lda playerY+2
-000343r 2  65 26        		adc playerYSpeed+2
-000345r 2  85 1E        		sta playerY+2
-000347r 2  C9 AC 00     		cmp #GROUND
-00034Ar 2  90 20        		bcc NotInGround ;if player y is greater than ground, no longer jumping
-00034Cr 2  64 24        			stz playerYSpeed
-00034Er 2  64 26        			stz playerYSpeed+2
-000350r 2  A9 AC 00     			lda #GROUND
-000353r 2  85 1E        			sta playerY+2
-000355r 2  64 1C        			stz playerY
-000357r 2  A9 00 00     			lda #PLAYER_STATE_NORMAL
-00035Ar 2  85 2E        			sta movementState
-00035Cr 2  E2 20        			a8
-00035Er 2  A9 00        			lda #PLAYER_STILL_TILE
-000360r 2  85 28        			sta playerTileNum
-000362r 2  A9 06        			lda #PLAYER_TIMER_VAL
-000364r 2  85 29        			sta playerAnimTimer
-000366r 2  A9 00        			lda #ANIM_MODE_ADD
-000368r 2  85 2A        			sta playerAnimMode
-00036Ar 2  C2 20        			a16
-00036Cr 2               		NotInGround:
-00036Cr 2               	NotJumping:
-00036Cr 2               
-00036Cr 2  E2 20        	a8
-00036Er 2  A5 2E        	lda movementState
-000370r 2  C9 01        	cmp #PLAYER_STATE_JUMPING
-000372r 2  D0 07        	bne NoJumpingSprite ;switch to jumping sprite when jumping
-000374r 2  A9 0E        		lda #PLAYER_JUMPING_TILE
-000376r 2  85 28        		sta playerTileNum
-000378r 2  4C rr rr     		jmp DrawSprite
-00037Br 2               	NoJumpingSprite:
-00037Br 2               
-00037Br 2  A5 29        	lda playerAnimTimer ;is timer zero?
-00037Dr 2  D0 27        	bne DrawSprite
-00037Fr 2  A9 06        		lda #PLAYER_TIMER_VAL
-000381r 2  85 29        		sta playerAnimTimer
-000383r 2  A5 2A        		lda playerAnimMode
-000385r 2  D0 11        		bne AnimSubtract
-000387r 2  A5 28        			lda playerTileNum ;add to tile nim
-000389r 2  1A           			ina
-00038Ar 2  1A           			ina
-00038Br 2  85 28        			sta playerTileNum
-00038Dr 2  C9 08        			cmp #LAST_PLAYER_TILE ;if up to last tile, go to subtract mode
-00038Fr 2  D0 15        			bne DrawSprite
-000391r 2  A9 01        				lda #ANIM_MODE_SUBTRACT
-000393r 2  85 2A        				sta playerAnimMode
-000395r 2  4C rr rr     				jmp DrawSprite
-000398r 2               		AnimSubtract: ;subtract from tile num
-000398r 2  A5 28        			lda playerTileNum
-00039Ar 2  3A           			dea
-00039Br 2  3A           			dea
-00039Cr 2  85 28        			sta playerTileNum
-00039Er 2  C9 02        			cmp #FIRST_PLAYER_TILE
-0003A0r 2  D0 04        			bne DrawSprite
-0003A2r 2  A9 00        				lda #ANIM_MODE_ADD
-0003A4r 2  85 2A        				sta playerAnimMode
-0003A6r 2               	DrawSprite:
-0003A6r 2  E2 20 A9 00  	LoadSprite #$0, playerTileNum, playerX+2, playerY+2, playerAttrs
-0003AAr 2  85 00 C2 20  
-0003AEr 2  A5 1A 85 01  
-0003C5r 2  C2 20        	a16
-0003C7r 2  A5 1E        	lda playerY+2
-0003C9r 2  18           	clc
-0003CAr 2  69 10 00     	adc #$10
-0003CDr 2  85 0A        	sta $a
-0003CFr 2  A5 28        	lda playerTileNum
-0003D1r 2  18           	clc
-0003D2r 2  69 20 00     	adc #$20
-0003D5r 2  85 0C        	sta $c
-0003D7r 2  E2 20 A9 01  	LoadSprite #$1, $c, playerX+2, $a, playerAttrs
-0003DBr 2  85 00 C2 20  
-0003DFr 2  A5 1A 85 01  
-0003F6r 2               
-0003F6r 2  28           	plp
-0003F7r 2  60           	rts
-0003F8r 2               
-0003F8r 2               
-0003F8r 1               .include "art.asm"
-0003F8r 2               .segment "CODE"
-0003F8r 2               
-0003F8r 2               BGPalette:
-0003F8r 2  00 00 01 6D  	.INCBIN ".\art\bgtiles.clr"
-0003FCr 2  87 6E A3 48  
-000400r 2  A1 71 DE 46  
-0005F8r 2               
-0005F8r 2               BG2Palette:
-0005F8r 2  00 00 01 6D  	.INCBIN ".\art\bg2tiles.clr"
-0005FCr 2  87 6E A3 48  
-000600r 2  A1 71 C5 0D  
-0007F8r 2               
-0007F8r 2               PlayerPalette:
-0007F8r 2  00 00 C0 00  	.INCBIN ".\art\player.clr"
-0007FCr 2  26 1B 0C 00  
-000800r 2  9F 1A FF 7F  
-0009F8r 2               .segment "BANK2"
+000324r 2  4C rr rr     			jmp NotRising
+000327r 2               			; dec playerY+2
+000327r 2               	DontStartJump:
+000327r 2  A5 26        	lda playerYSpeed+2
+000329r 2  29 00 80     	and #$8000
+00032Cr 2  F0 0F        	beq NotRising ;if player is rising and let go of jump button, add a big ass number to speed to make them
+00032Er 2  A5 24        		lda playerYSpeed ;fall faster
+000330r 2  18           		clc
+000331r 2  69 00 B0     		adc #$B000
+000334r 2  85 24        		sta playerYSpeed
+000336r 2  A5 26        		lda playerYSpeed+2
+000338r 2  69 00 00     		adc #$0
+00033Br 2  85 26        		sta playerYSpeed+2
+00033Dr 2               	NotRising:
+00033Dr 2               
+00033Dr 2               
+00033Dr 2  A5 2E        	lda movementState
+00033Fr 2  C9 01 00     	cmp #PLAYER_STATE_JUMPING
+000342r 2  D0 41        	bne NotJumping
+000344r 2  A5 24        		lda playerYSpeed
+000346r 2  18           		clc
+000347r 2  69 FF 6F     		adc #GRAVITY
+00034Ar 2  85 24        		sta playerYSpeed
+00034Cr 2  A5 26        		lda playerYSpeed+2
+00034Er 2  69 00 00     		adc #$0
+000351r 2  85 26        		sta playerYSpeed+2
+000353r 2  A5 1C        		lda playerY
+000355r 2  18           		clc
+000356r 2  65 24        		adc playerYSpeed
+000358r 2  85 1C        		sta playerY
+00035Ar 2  A5 1E        		lda playerY+2
+00035Cr 2  65 26        		adc playerYSpeed+2
+00035Er 2  85 1E        		sta playerY+2
+000360r 2  C9 AC 00     		cmp #GROUND
+000363r 2  90 20        		bcc NotInGround ;if player y is greater than ground, no longer jumping
+000365r 2  64 24        			stz playerYSpeed
+000367r 2  64 26        			stz playerYSpeed+2
+000369r 2  A9 AC 00     			lda #GROUND
+00036Cr 2  85 1E        			sta playerY+2
+00036Er 2  64 1C        			stz playerY
+000370r 2  A9 00 00     			lda #PLAYER_STATE_NORMAL
+000373r 2  85 2E        			sta movementState
+000375r 2  E2 20        			a8
+000377r 2  A9 00        			lda #PLAYER_STILL_TILE
+000379r 2  85 28        			sta playerTileNum
+00037Br 2  A9 06        			lda #PLAYER_TIMER_VAL
+00037Dr 2  85 29        			sta playerAnimTimer
+00037Fr 2  A9 00        			lda #ANIM_MODE_ADD
+000381r 2  85 2A        			sta playerAnimMode
+000383r 2  C2 20        			a16
+000385r 2               		NotInGround:
+000385r 2               	NotJumping:
+000385r 2               
+000385r 2  E2 20        	a8
+000387r 2  A5 2E        	lda movementState
+000389r 2  C9 01        	cmp #PLAYER_STATE_JUMPING
+00038Br 2  D0 07        	bne NoJumpingSprite ;switch to jumping sprite when jumping
+00038Dr 2  A9 0E        		lda #PLAYER_JUMPING_TILE
+00038Fr 2  85 28        		sta playerTileNum
+000391r 2  4C rr rr     		jmp DrawSprite
+000394r 2               	NoJumpingSprite:
+000394r 2               
+000394r 2  A5 29        	lda playerAnimTimer ;is timer zero?
+000396r 2  D0 27        	bne DrawSprite
+000398r 2  A9 06        		lda #PLAYER_TIMER_VAL
+00039Ar 2  85 29        		sta playerAnimTimer
+00039Cr 2  A5 2A        		lda playerAnimMode
+00039Er 2  D0 11        		bne AnimSubtract
+0003A0r 2  A5 28        			lda playerTileNum ;add to tile nim
+0003A2r 2  1A           			ina
+0003A3r 2  1A           			ina
+0003A4r 2  85 28        			sta playerTileNum
+0003A6r 2  C9 08        			cmp #LAST_PLAYER_TILE ;if up to last tile, go to subtract mode
+0003A8r 2  D0 15        			bne DrawSprite
+0003AAr 2  A9 01        				lda #ANIM_MODE_SUBTRACT
+0003ACr 2  85 2A        				sta playerAnimMode
+0003AEr 2  4C rr rr     				jmp DrawSprite
+0003B1r 2               		AnimSubtract: ;subtract from tile num
+0003B1r 2  A5 28        			lda playerTileNum
+0003B3r 2  3A           			dea
+0003B4r 2  3A           			dea
+0003B5r 2  85 28        			sta playerTileNum
+0003B7r 2  C9 02        			cmp #FIRST_PLAYER_TILE
+0003B9r 2  D0 04        			bne DrawSprite
+0003BBr 2  A9 00        				lda #ANIM_MODE_ADD
+0003BDr 2  85 2A        				sta playerAnimMode
+0003BFr 2               	DrawSprite:
+0003BFr 2  E2 20 A9 00  	LoadSprite #$0, playerTileNum, playerX+2, playerY+2, playerAttrs
+0003C3r 2  85 00 C2 20  
+0003C7r 2  A5 1A 85 01  
+0003DEr 2  C2 20        	a16
+0003E0r 2  A5 1E        	lda playerY+2
+0003E2r 2  18           	clc
+0003E3r 2  69 10 00     	adc #$10
+0003E6r 2  85 0A        	sta $a
+0003E8r 2  A5 28        	lda playerTileNum
+0003EAr 2  18           	clc
+0003EBr 2  69 20 00     	adc #$20
+0003EEr 2  85 0C        	sta $c
+0003F0r 2  E2 20 A9 01  	LoadSprite #$1, $c, playerX+2, $a, playerAttrs
+0003F4r 2  85 00 C2 20  
+0003F8r 2  A5 1A 85 01  
+00040Fr 2               
+00040Fr 2  28           	plp
+000410r 2  60           	rts
+000411r 2               
+000411r 2               
+000411r 1               .include "art.asm"
+000411r 2               .segment "CODE"
+000411r 2               
+000411r 2               BGPalette:
+000411r 2  00 00 01 6D  	.INCBIN ".\art\bgtiles.clr"
+000415r 2  87 6E A3 48  
+000419r 2  A1 71 DE 46  
+000611r 2               
+000611r 2               BG2Palette:
+000611r 2  00 00 01 6D  	.INCBIN ".\art\bg2tiles.clr"
+000615r 2  87 6E A3 48  
+000619r 2  A1 71 C5 0D  
+000811r 2               
+000811r 2               PlayerPalette:
+000811r 2  00 00 C0 00  	.INCBIN ".\art\player.clr"
+000815r 2  26 1B 0C 00  
+000819r 2  9F 1A FF 7F  
+000A11r 2               .segment "BANK2"
 000000r 2               PlayerTiles:
 000000r 2               	.define NUM_LARRY_TILES $E
 000000r 2               	.define LARRY_ANIMATION_DELAY $2 ;number of frames between incrementing movement
@@ -2185,263 +2199,263 @@ Current file: main.asm
 003B57r 2               
 003B57r 1               
 003B57r 1               .segment "CODE"
-0009F8r 1               Reset:
-0009F8r 1  78 18 FB C2  	InitSNES
-0009FCr 1  38 A2 FF 1F  
-000A00r 1  9A 22 rr rr  
-000A07r 1  22 rr rr rr  	jsl LoadSPC
-000A0Br 1  A9 00 8D 21  	LoadPalette BGPalette, $0, $10
-000A0Fr 1  21 A9 rr A2  
-000A13r 1  rr rr A0 20  
-000A1Br 1  A9 10 8D 21  	LoadPalette BG2Palette, $10, $10
-000A1Fr 1  21 A9 rr A2  
-000A23r 1  rr rr A0 20  
-000A2Br 1  A9 80 8D 21      LoadPalette PlayerPalette, $80, $10
-000A2Fr 1  21 A9 rr A2  
-000A33r 1  rr rr A0 20  
-000A3Br 1               	; Load Tile data to VRAM
-000A3Br 1  A9 80 8D 15      LoadBlockToVRAM BGTiles, $2000, $C0
-000A3Fr 1  21 A2 00 20  
-000A43r 1  8E 16 21 A9  
-000A51r 1  A9 80 8D 15  	LoadBlockToVRAM BG2Tiles, $5000, $200 ;8 tiles, 4bpp
-000A55r 1  21 A2 00 50  
-000A59r 1  8E 16 21 A9  
-000A67r 1  A9 80 8D 15  	LoadBlockToVRAM PlayerTiles, $6000, $1000
-000A6Br 1  21 A2 00 60  
-000A6Fr 1  8E 16 21 A9  
-000A7Dr 1  A9 80 8D 15  	LoadBlockToVRAM BGTilemap, $0000, $2000
-000A81r 1  21 A2 00 00  
-000A85r 1  8E 16 21 A9  
-000A93r 1  A9 80 8D 15  	LoadBlockToVRAM BG2Tilemap, $4000, $800
-000A97r 1  21 A2 00 40  
-000A9Br 1  8E 16 21 A9  
-000AA9r 1  A2 rr rr 8E  	LoadBlockToWRAM BGTilemap, TilemapMirror, $2000
-000AADr 1  02 43 A9 rr  
-000AB1r 1  8D 04 43 A2  
-000AD0r 1                   ; Setup Video modes and other stuff, then turn on the screen
-000AD0r 1  20 rr rr         jsr SetupVideo
-000AD3r 1               
-000AD3r 1  20 rr rr     	jsr InitSprites
-000AD6r 1  A9 81        	lda #VBLANK_NMI | AUTOREAD
-000AD8r 1  8D 00 42     	sta PPUNMI ;enable vblank interrupt and joypad read
-000ADBr 1  C2 20        	a16
-000ADDr 1  A9 1B 01     	lda #$11b
-000AE0r 1  85 14        	sta scrollY
-000AE2r 1               
-000AE2r 1  20 rr rr     	jsr InitPlayer
-000AE5r 1               
-000AE5r 1               MainLoop:
-000AE5r 1  E2 20        	a8
-000AE7r 1  A9 01        	lda #$1
-000AE9r 1  85 17        	sta frameStatus ;how we check if the program's done executing
-000AEBr 1  C2 20        	a16
-000AEDr 1  AD 18 42     	lda JOY1CUR ;p1 joypad read address
-000AF0r 1  85 10        	sta joypad
-000AF2r 1  20 rr rr     	jsr HandlePlayerMovement
-000AF5r 1               
-000AF5r 1               ; SetupScrollTable:
-000AF5r 1               	; clc
-000AF5r 1               	; lda scroll2X
-000AF5r 1               	; clc
-000AF5r 1               	; adc #$5
-000AF5r 1               	; sta scroll2X
-000AF5r 1               	; ror
-000AF5r 1               	; sta BG2ScrollTable
-000AF5r 1               	; ror
-000AF5r 1               	; sta BG2ScrollTable+2
-000AF5r 1               	; ror
-000AF5r 1               	; sta BG2ScrollTable+4
-000AF5r 1               	; ror
-000AF5r 1               	; sta BG2ScrollTable+6
-000AF5r 1               	; ror
-000AF5r 1               	; sta BG2ScrollTable+8
-000AF5r 1               	; a8
-000AF5r 1               
-000AF5r 1  E2 20        	a8
-000AF7r 1  64 17        	stz frameStatus
-000AF9r 1  CB           	wai
-000AFAr 1  4C rr rr     	jmp MainLoop
-000AFDr 1               
-000AFDr 1               VBlank:
-000AFDr 1  08           	php
-000AFEr 1  8B           	phb
-000AFFr 1  0B           	phd
-000B00r 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
-000B01r 1  DA           	phx ;fucking up
-000B02r 1  5A           	phy
-000B03r 1  A5 17        	lda frameStatus
-000B05r 1  D0 25        	bne SkipVblank
-000B07r 1  C2 20 A5 12  	SetHScroll scrollX
-000B0Br 1  E2 20 8D 0D  
-000B0Fr 1  21 EB 8D 0D  
-000B14r 1  C2 20 A5 14  	SetVScroll scrollY
-000B18r 1  E2 20 8D 0E  
-000B1Cr 1  21 EB 8D 0E  
-000B21r 1               	;DMATilemapMirror #$2
-000B21r 1  20 rr rr     	jsr DMASpriteMirror
-000B24r 1  A9 01        	lda #$1 ;start dma transfer on channel 1 (change to 3 if i reenable dmatilemapmirror)
-000B26r 1  8D 0B 42     	sta $420b
-000B29r 1               	; jsr SetupHDMA
-000B29r 1  AD 10 42     	lda $4210 ;clear vblank flag
-000B2Cr 1               SkipVblank:
-000B2Cr 1  7A           	ply
-000B2Dr 1  FA           	plx
-000B2Er 1  68           	pla
-000B2Fr 1  2B           	pld
-000B30r 1  AB           	plb
-000B31r 1  28           	plp
-000B32r 1               
-000B32r 1  40           	rti
-000B33r 1               
-000B33r 1               SetupVideo:
-000B33r 1  08               php
-000B34r 1               
-000B34r 1  A9 63        	lda #OBSIZE_16_32 | $3
-000B36r 1  8D 01 21     	sta OBSEL ;16x16 or 32x32 sprites, sprite data @ $6000
-000B39r 1  9C 02 21     	stz OAMADDR ;set OAM write cursor to $0
-000B3Cr 1  9C 03 21     	stz OAMADDR+1
-000B3Fr 1  A9 01        	lda #$1
-000B41r 1  8D 05 21         sta BGMODE ;mode 1, 8x8 tiles
-000B44r 1               
-000B44r 1  A9 03            lda #$03 ;bg1 tilemap 0ffset $0, size 64x64
-000B46r 1  8D 07 21         sta NTADDR
-000B49r 1               
-000B49r 1  A9 40        	lda #$40  ; bg2 tilemap offset: $4000, size: 32x32
-000B4Br 1  8D 08 21     	sta NTADDR+1
-000B4Er 1               
-000B4Er 1  A9 52        	lda #$52
-000B50r 1  8D 0B 21         sta BGCHRADDR ;bg2 chr vram addr to $5000, bg1 chr vram offset $2000
-000B53r 1               
-000B53r 1  A9 13            lda #%00010011 ;enable bg0, bg1, and sprites
-000B55r 1  8D 2C 21         sta BLENDMAIN
-000B58r 1               
-000B58r 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
-000B5Ar 1  8D 0E 21         sta BGSCROLLY
-000B5Dr 1  8D 0E 21         sta BGSCROLLY
-000B60r 1               
-000B60r 1  A9 0F            lda #$F ;max brightness
-000B62r 1  8D 00 21         sta PPUBRIGHT
-000B65r 1               
-000B65r 1  28               plp
-000B66r 1  60               rts
+000A11r 1               Reset:
+000A11r 1  78 18 FB C2  	InitSNES
+000A15r 1  38 A2 FF 1F  
+000A19r 1  9A 22 rr rr  
+000A20r 1  22 rr rr rr  	jsl LoadSPC
+000A24r 1  A9 00 8D 21  	LoadPalette BGPalette, $0, $10
+000A28r 1  21 A9 rr A2  
+000A2Cr 1  rr rr A0 20  
+000A34r 1  A9 10 8D 21  	LoadPalette BG2Palette, $10, $10
+000A38r 1  21 A9 rr A2  
+000A3Cr 1  rr rr A0 20  
+000A44r 1  A9 80 8D 21      LoadPalette PlayerPalette, $80, $10
+000A48r 1  21 A9 rr A2  
+000A4Cr 1  rr rr A0 20  
+000A54r 1               	; Load Tile data to VRAM
+000A54r 1  A9 80 8D 15      LoadBlockToVRAM BGTiles, $2000, $C0
+000A58r 1  21 A2 00 20  
+000A5Cr 1  8E 16 21 A9  
+000A6Ar 1  A9 80 8D 15  	LoadBlockToVRAM BG2Tiles, $5000, $200 ;8 tiles, 4bpp
+000A6Er 1  21 A2 00 50  
+000A72r 1  8E 16 21 A9  
+000A80r 1  A9 80 8D 15  	LoadBlockToVRAM PlayerTiles, $6000, $1000
+000A84r 1  21 A2 00 60  
+000A88r 1  8E 16 21 A9  
+000A96r 1  A9 80 8D 15  	LoadBlockToVRAM BGTilemap, $0000, $2000
+000A9Ar 1  21 A2 00 00  
+000A9Er 1  8E 16 21 A9  
+000AACr 1  A9 80 8D 15  	LoadBlockToVRAM BG2Tilemap, $4000, $800
+000AB0r 1  21 A2 00 40  
+000AB4r 1  8E 16 21 A9  
+000AC2r 1  A2 rr rr 8E  	LoadBlockToWRAM BGTilemap, TilemapMirror, $2000
+000AC6r 1  02 43 A9 rr  
+000ACAr 1  8D 04 43 A2  
+000AE9r 1                   ; Setup Video modes and other stuff, then turn on the screen
+000AE9r 1  20 rr rr         jsr SetupVideo
+000AECr 1               
+000AECr 1  20 rr rr     	jsr InitSprites
+000AEFr 1  A9 81        	lda #VBLANK_NMI | AUTOREAD
+000AF1r 1  8D 00 42     	sta PPUNMI ;enable vblank interrupt and joypad read
+000AF4r 1  C2 20        	a16
+000AF6r 1  A9 1B 01     	lda #$11b
+000AF9r 1  85 14        	sta scrollY
+000AFBr 1               
+000AFBr 1  20 rr rr     	jsr InitPlayer
+000AFEr 1               
+000AFEr 1               MainLoop:
+000AFEr 1  E2 20        	a8
+000B00r 1  A9 01        	lda #$1
+000B02r 1  85 17        	sta frameStatus ;how we check if the program's done executing
+000B04r 1  C2 20        	a16
+000B06r 1  AD 18 42     	lda JOY1CUR ;p1 joypad read address
+000B09r 1  85 10        	sta joypad
+000B0Br 1  20 rr rr     	jsr HandlePlayerMovement
+000B0Er 1               
+000B0Er 1               ; SetupScrollTable:
+000B0Er 1               	; clc
+000B0Er 1               	; lda scroll2X
+000B0Er 1               	; clc
+000B0Er 1               	; adc #$5
+000B0Er 1               	; sta scroll2X
+000B0Er 1               	; ror
+000B0Er 1               	; sta BG2ScrollTable
+000B0Er 1               	; ror
+000B0Er 1               	; sta BG2ScrollTable+2
+000B0Er 1               	; ror
+000B0Er 1               	; sta BG2ScrollTable+4
+000B0Er 1               	; ror
+000B0Er 1               	; sta BG2ScrollTable+6
+000B0Er 1               	; ror
+000B0Er 1               	; sta BG2ScrollTable+8
+000B0Er 1               	; a8
+000B0Er 1               
+000B0Er 1  E2 20        	a8
+000B10r 1  64 17        	stz frameStatus
+000B12r 1  CB           	wai
+000B13r 1  4C rr rr     	jmp MainLoop
+000B16r 1               
+000B16r 1               VBlank:
+000B16r 1  08           	php
+000B17r 1  8B           	phb
+000B18r 1  0B           	phd
+000B19r 1  48           	pha ;push regs to stack so if my main loop is ever too long it'll continue without
+000B1Ar 1  DA           	phx ;fucking up
+000B1Br 1  5A           	phy
+000B1Cr 1  A5 17        	lda frameStatus
+000B1Er 1  D0 25        	bne SkipVblank
+000B20r 1  C2 20 A5 12  	SetHScroll scrollX
+000B24r 1  E2 20 8D 0D  
+000B28r 1  21 EB 8D 0D  
+000B2Dr 1  C2 20 A5 14  	SetVScroll scrollY
+000B31r 1  E2 20 8D 0E  
+000B35r 1  21 EB 8D 0E  
+000B3Ar 1               	;DMATilemapMirror #$2
+000B3Ar 1  20 rr rr     	jsr DMASpriteMirror
+000B3Dr 1  A9 01        	lda #$1 ;start dma transfer on channel 1 (change to 3 if i reenable dmatilemapmirror)
+000B3Fr 1  8D 0B 42     	sta $420b
+000B42r 1               	; jsr SetupHDMA
+000B42r 1  AD 10 42     	lda $4210 ;clear vblank flag
+000B45r 1               SkipVblank:
+000B45r 1  7A           	ply
+000B46r 1  FA           	plx
+000B47r 1  68           	pla
+000B48r 1  2B           	pld
+000B49r 1  AB           	plb
+000B4Ar 1  28           	plp
+000B4Br 1               
+000B4Br 1  40           	rti
+000B4Cr 1               
+000B4Cr 1               SetupVideo:
+000B4Cr 1  08               php
+000B4Dr 1               
+000B4Dr 1  A9 63        	lda #OBSIZE_16_32 | $3
+000B4Fr 1  8D 01 21     	sta OBSEL ;16x16 or 32x32 sprites, sprite data @ $6000
+000B52r 1  9C 02 21     	stz OAMADDR ;set OAM write cursor to $0
+000B55r 1  9C 03 21     	stz OAMADDR+1
+000B58r 1  A9 01        	lda #$1
+000B5Ar 1  8D 05 21         sta BGMODE ;mode 1, 8x8 tiles
+000B5Dr 1               
+000B5Dr 1  A9 03            lda #$03 ;bg1 tilemap 0ffset $0, size 64x64
+000B5Fr 1  8D 07 21         sta NTADDR
+000B62r 1               
+000B62r 1  A9 40        	lda #$40  ; bg2 tilemap offset: $4000, size: 32x32
+000B64r 1  8D 08 21     	sta NTADDR+1
 000B67r 1               
-000B67r 1               ; SetupHDMA:
-000B67r 1               	; lda #DMA_INDIRECT | DMA_00 ;write twice, indirect mode
-000B67r 1               	; sta DMAMODE
-000B67r 1               	; lda #$0f ;write to $210f, bg 2 scroll reg
-000B67r 1               	; sta DMAPPUREG
-000B67r 1               	; a16
-000B67r 1               	; lda #ScrollTable
-000B67r 1               	; sta DMAADDR
-000B67r 1               	; lda #$0
-000B67r 1               	; sta DMAADDRBANK
-000B67r 1               	; a8
-000B67r 1               	; lda #$7e
-000B67r 1               	; sta HDMAINDBANK ;ram bank to read from for indirect hdma
-000B67r 1               
-000B67r 1               	; lda #DMA_00 ;write twice, direct mode
-000B67r 1               	; sta $4310
-000B67r 1               	; lda #$21 ;write to $2121, cgram palette address reg
-000B67r 1               	; sta $4311
-000B67r 1               	; ldy #PaletteIndexTable
-000B67r 1               	; sty $4312
-000B67r 1               	; stz $4314
-000B67r 1               
-000B67r 1               	; lda #DMA_00 ;write twice, direct mode
-000B67r 1               	; sta $4320
-000B67r 1               	; lda #$22 ;write to $2122, cgram palette data reg
-000B67r 1               	; sta $4321
-000B67r 1               	; a16
-000B67r 1               	; lda #GradientTable
-000B67r 1               	; sta $4322
-000B67r 1               	; stz $4324
-000B67r 1               	; a8
-000B67r 1               	; lda #%00000111
-000B67r 1               	; sta HDMASTART ;enable hdma channels 0-2
-000B67r 1               	; rts
-000B67r 1               
-000B67r 1               
-000B67r 1               ; ScrollTable:
-000B67r 1               	; .byte $80
-000B67r 1               	; .word $0000
-000B67r 1               	; .byte $10
-000B67r 1               	; .word BG2ScrollTable+8
-000B67r 1               	; .byte $10
-000B67r 1               	; .word BG2ScrollTable+6
-000B67r 1               	; .byte $10
-000B67r 1               	; .word BG2ScrollTable+4
-000B67r 1               	; .byte $10
-000B67r 1               	; .word BG2ScrollTable+2
-000B67r 1               	; .byte $10
-000B67r 1               	; .word BG2ScrollTable
-000B67r 1               	; .byte $00
-000B67r 1               
-000B67r 1               ; PaletteIndexTable: ;needed because palette index auto-increments after every write
-000B67r 1               ; ;400 instead of $4 because the endianness of the CGRAM write port is reversed for some reason
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $400
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $400
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $400
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $400
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $400
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $400
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $400
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $400
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $400
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $400
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $400
-000B67r 1               	; .byte $00
-000B67r 1               
-000B67r 1               
-000B67r 1               ; GradientTable:
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $71C4; R:4 G:14 B:28
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $5DC7; R:7 G:14 B:23
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $51CB; R:11 G:14 B:20
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $49CD; R:13 G:14 B:18
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $41F1; R:17 G:15 B:16
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $35F4; R:20 G:15 B:13
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $2DF7; R:23 G:15 B:11
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $221A; R:26 G:16 B:8
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $1A1C; R:28 G:16 B:6
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $121F; R:31 G:16 B:4
-000B67r 1               	; .byte $C
-000B67r 1               	; .word $71A1
-000B67r 1               	; .byte $00
-000B67r 1               
-000B67r 1               DMASpriteMirror:
-000B67r 1  9C 02 21     	stz OAMADDR		; set OAM write cursor to 0
-000B6Ar 1  9C 03 21     	stz OAMADDR+1
-000B6Dr 1               
-000B6Dr 1  A9 00        	lda #DMA_LINEAR
-000B6Fr 1  8D 00 43     	sta DMAMODE
-000B72r 1  A9 04        	lda #$04 ;write to $2104 (OAMDATA)
-000B74r 1  8D 01 43     	sta DMAPPUREG
-000B77r 1  A0 00 04     	ldy #OamMirror
-000B7Ar 1  8C 02 43     	sty DMAADDR		; source offset
-000B7Dr 1  A9 7E        	lda #$7E
-000B7Fr 1  8D 04 43     	sta DMAADDRBANK		; bank address = $7E  (work RAM)
-000B82r 1  A0 20 02     	ldy #$0220
-000B85r 1  8C 05 43     	sty DMALEN		; number of bytes to transfer
-000B88r 1  60           	rts
-000B89r 1               
-000B89r 1               
+000B67r 1  A9 52        	lda #$52
+000B69r 1  8D 0B 21         sta BGCHRADDR ;bg2 chr vram addr to $5000, bg1 chr vram offset $2000
+000B6Cr 1               
+000B6Cr 1  A9 13            lda #%00010011 ;enable bg0, bg1, and sprites
+000B6Er 1  8D 2C 21         sta BLENDMAIN
+000B71r 1               
+000B71r 1  A9 FF            lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
+000B73r 1  8D 0E 21         sta BGSCROLLY
+000B76r 1  8D 0E 21         sta BGSCROLLY
+000B79r 1               
+000B79r 1  A9 0F            lda #$F ;max brightness
+000B7Br 1  8D 00 21         sta PPUBRIGHT
+000B7Er 1               
+000B7Er 1  28               plp
+000B7Fr 1  60               rts
+000B80r 1               
+000B80r 1               ; SetupHDMA:
+000B80r 1               	; lda #DMA_INDIRECT | DMA_00 ;write twice, indirect mode
+000B80r 1               	; sta DMAMODE
+000B80r 1               	; lda #$0f ;write to $210f, bg 2 scroll reg
+000B80r 1               	; sta DMAPPUREG
+000B80r 1               	; a16
+000B80r 1               	; lda #ScrollTable
+000B80r 1               	; sta DMAADDR
+000B80r 1               	; lda #$0
+000B80r 1               	; sta DMAADDRBANK
+000B80r 1               	; a8
+000B80r 1               	; lda #$7e
+000B80r 1               	; sta HDMAINDBANK ;ram bank to read from for indirect hdma
+000B80r 1               
+000B80r 1               	; lda #DMA_00 ;write twice, direct mode
+000B80r 1               	; sta $4310
+000B80r 1               	; lda #$21 ;write to $2121, cgram palette address reg
+000B80r 1               	; sta $4311
+000B80r 1               	; ldy #PaletteIndexTable
+000B80r 1               	; sty $4312
+000B80r 1               	; stz $4314
+000B80r 1               
+000B80r 1               	; lda #DMA_00 ;write twice, direct mode
+000B80r 1               	; sta $4320
+000B80r 1               	; lda #$22 ;write to $2122, cgram palette data reg
+000B80r 1               	; sta $4321
+000B80r 1               	; a16
+000B80r 1               	; lda #GradientTable
+000B80r 1               	; sta $4322
+000B80r 1               	; stz $4324
+000B80r 1               	; a8
+000B80r 1               	; lda #%00000111
+000B80r 1               	; sta HDMASTART ;enable hdma channels 0-2
+000B80r 1               	; rts
+000B80r 1               
+000B80r 1               
+000B80r 1               ; ScrollTable:
+000B80r 1               	; .byte $80
+000B80r 1               	; .word $0000
+000B80r 1               	; .byte $10
+000B80r 1               	; .word BG2ScrollTable+8
+000B80r 1               	; .byte $10
+000B80r 1               	; .word BG2ScrollTable+6
+000B80r 1               	; .byte $10
+000B80r 1               	; .word BG2ScrollTable+4
+000B80r 1               	; .byte $10
+000B80r 1               	; .word BG2ScrollTable+2
+000B80r 1               	; .byte $10
+000B80r 1               	; .word BG2ScrollTable
+000B80r 1               	; .byte $00
+000B80r 1               
+000B80r 1               ; PaletteIndexTable: ;needed because palette index auto-increments after every write
+000B80r 1               ; ;400 instead of $4 because the endianness of the CGRAM write port is reversed for some reason
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $400
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $400
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $400
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $400
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $400
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $400
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $400
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $400
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $400
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $400
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $400
+000B80r 1               	; .byte $00
+000B80r 1               
+000B80r 1               
+000B80r 1               ; GradientTable:
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $71C4; R:4 G:14 B:28
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $5DC7; R:7 G:14 B:23
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $51CB; R:11 G:14 B:20
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $49CD; R:13 G:14 B:18
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $41F1; R:17 G:15 B:16
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $35F4; R:20 G:15 B:13
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $2DF7; R:23 G:15 B:11
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $221A; R:26 G:16 B:8
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $1A1C; R:28 G:16 B:6
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $121F; R:31 G:16 B:4
+000B80r 1               	; .byte $C
+000B80r 1               	; .word $71A1
+000B80r 1               	; .byte $00
+000B80r 1               
+000B80r 1               DMASpriteMirror:
+000B80r 1  9C 02 21     	stz OAMADDR		; set OAM write cursor to 0
+000B83r 1  9C 03 21     	stz OAMADDR+1
+000B86r 1               
+000B86r 1  A9 00        	lda #DMA_LINEAR
+000B88r 1  8D 00 43     	sta DMAMODE
+000B8Br 1  A9 04        	lda #$04 ;write to $2104 (OAMDATA)
+000B8Dr 1  8D 01 43     	sta DMAPPUREG
+000B90r 1  A0 00 04     	ldy #OamMirror
+000B93r 1  8C 02 43     	sty DMAADDR		; source offset
+000B96r 1  A9 7E        	lda #$7E
+000B98r 1  8D 04 43     	sta DMAADDRBANK		; bank address = $7E  (work RAM)
+000B9Br 1  A0 20 02     	ldy #$0220
+000B9Er 1  8C 05 43     	sty DMALEN		; number of bytes to transfer
+000BA1r 1  60           	rts
+000BA2r 1               
+000BA2r 1               

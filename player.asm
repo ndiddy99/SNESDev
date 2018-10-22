@@ -1,8 +1,9 @@
 .segment "CODE"
 
 PLAYER_ACCEL = $3fff ;0.25 px
-PLAYER_JUMP_SPEED = $fff9 ;-7
-GRAVITY = $5fff ;0.5px
+PLAYER_JUMP_SPEED = $fff8 ;-7
+GRAVITY = $6fff ;~0.4px
+
 
 MAX_PLAYER_SPEED = $2
 PLAYER_STILL_TILE = $0
@@ -175,12 +176,25 @@ HandlePlayerMovement:
 	beq DontStartJump
 		lda #PLAYER_STATE_JUMPING
 		cmp movementState
-		beq DontStartJump ;don't want player jumping in air
+		beq NotRising ;don't want player jumping in air
 			sta movementState
 			lda #PLAYER_JUMP_SPEED
 			sta playerYSpeed+2
+			jmp NotRising
 			; dec playerY+2
 	DontStartJump:	
+	lda playerYSpeed+2
+	and #$8000
+	beq NotRising ;if player is rising and let go of jump button, add a big ass number to speed to make them
+		lda playerYSpeed ;fall faster
+		clc
+		adc #$B000
+		sta playerYSpeed
+		lda playerYSpeed+2
+		adc #$0
+		sta playerYSpeed+2
+	NotRising:
+	
 	
 	lda movementState
 	cmp #PLAYER_STATE_JUMPING
