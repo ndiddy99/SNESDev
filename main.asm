@@ -44,24 +44,25 @@ MainLoop:
 	sta joypad
 	jsr HandlePlayerMovement
 
-SetupScrollTable:
-	clc
-	lda scroll2X
-	clc
-	adc #$5
-	sta scroll2X
-	ror
-	sta BG2ScrollTable
-	ror
-	sta BG2ScrollTable+2
-	ror
-	sta BG2ScrollTable+4
-	ror
-	sta BG2ScrollTable+6
-	ror
-	sta BG2ScrollTable+8
-	a8
+; SetupScrollTable:
+	; clc
+	; lda scroll2X
+	; clc
+	; adc #$5
+	; sta scroll2X
+	; ror
+	; sta BG2ScrollTable
+	; ror
+	; sta BG2ScrollTable+2
+	; ror
+	; sta BG2ScrollTable+4
+	; ror
+	; sta BG2ScrollTable+6
+	; ror
+	; sta BG2ScrollTable+8
+	; a8
 	
+	a8
 	stz frameStatus
 	wai
 	jmp MainLoop
@@ -81,7 +82,7 @@ VBlank:
 	jsr DMASpriteMirror
 	lda #$1 ;start dma transfer on channel 1 (change to 3 if i reenable dmatilemapmirror)
 	sta $420b
-	jsr SetupHDMA
+	; jsr SetupHDMA
 	lda $4210 ;clear vblank flag
 SkipVblank:
 	ply
@@ -125,108 +126,108 @@ SetupVideo:
     plp
     rts
 	
-SetupHDMA:
-	lda #DMA_INDIRECT | DMA_00 ;write twice, indirect mode
-	sta DMAMODE
-	lda #$0f ;write to $210f, bg 2 scroll reg
-	sta DMAPPUREG
-	a16
-	lda #ScrollTable
-	sta DMAADDR
-	lda #$0
-	sta DMAADDRBANK
-	a8
-	lda #$7e
-	sta HDMAINDBANK ;ram bank to read from for indirect hdma
+; SetupHDMA:
+	; lda #DMA_INDIRECT | DMA_00 ;write twice, indirect mode
+	; sta DMAMODE
+	; lda #$0f ;write to $210f, bg 2 scroll reg
+	; sta DMAPPUREG
+	; a16
+	; lda #ScrollTable
+	; sta DMAADDR
+	; lda #$0
+	; sta DMAADDRBANK
+	; a8
+	; lda #$7e
+	; sta HDMAINDBANK ;ram bank to read from for indirect hdma
 	
-	lda #DMA_00 ;write twice, direct mode
-	sta $4310
-	lda #$21 ;write to $2121, cgram palette address reg
-	sta $4311
-	ldy #PaletteIndexTable
-	sty $4312
-	stz $4314
+	; lda #DMA_00 ;write twice, direct mode
+	; sta $4310
+	; lda #$21 ;write to $2121, cgram palette address reg
+	; sta $4311
+	; ldy #PaletteIndexTable
+	; sty $4312
+	; stz $4314
 
-	lda #DMA_00 ;write twice, direct mode
-	sta $4320
-	lda #$22 ;write to $2122, cgram palette data reg
-	sta $4321
-	a16
-	lda #GradientTable
-	sta $4322
-	stz $4324
-	a8	
-	lda #%00000111
-	sta HDMASTART ;enable hdma channels 0-2
-	rts
+	; lda #DMA_00 ;write twice, direct mode
+	; sta $4320
+	; lda #$22 ;write to $2122, cgram palette data reg
+	; sta $4321
+	; a16
+	; lda #GradientTable
+	; sta $4322
+	; stz $4324
+	; a8	
+	; lda #%00000111
+	; sta HDMASTART ;enable hdma channels 0-2
+	; rts
 	
 	
-ScrollTable:
-	.byte $80
-	.word $0000
-	.byte $10
-	.word BG2ScrollTable+8
-	.byte $10
-	.word BG2ScrollTable+6
-	.byte $10
-	.word BG2ScrollTable+4
-	.byte $10
-	.word BG2ScrollTable+2
-	.byte $10
-	.word BG2ScrollTable
-	.byte $00
+; ScrollTable:
+	; .byte $80
+	; .word $0000
+	; .byte $10
+	; .word BG2ScrollTable+8
+	; .byte $10
+	; .word BG2ScrollTable+6
+	; .byte $10
+	; .word BG2ScrollTable+4
+	; .byte $10
+	; .word BG2ScrollTable+2
+	; .byte $10
+	; .word BG2ScrollTable
+	; .byte $00
 
-PaletteIndexTable: ;needed because palette index auto-increments after every write
-;400 instead of $4 because the endianness of the CGRAM write port is reversed for some reason
-	.byte $C
-	.word $400
-	.byte $C
-	.word $400
-	.byte $C
-	.word $400
-	.byte $C
-	.word $400
-	.byte $C
-	.word $400
-	.byte $C
-	.word $400
-	.byte $C
-	.word $400
-	.byte $C
-	.word $400
-	.byte $C
-	.word $400
-	.byte $C
-	.word $400
-	.byte $C
-	.word $400
-	.byte $00
+; PaletteIndexTable: ;needed because palette index auto-increments after every write
+; ;400 instead of $4 because the endianness of the CGRAM write port is reversed for some reason
+	; .byte $C
+	; .word $400
+	; .byte $C
+	; .word $400
+	; .byte $C
+	; .word $400
+	; .byte $C
+	; .word $400
+	; .byte $C
+	; .word $400
+	; .byte $C
+	; .word $400
+	; .byte $C
+	; .word $400
+	; .byte $C
+	; .word $400
+	; .byte $C
+	; .word $400
+	; .byte $C
+	; .word $400
+	; .byte $C
+	; .word $400
+	; .byte $00
 	
 	
-GradientTable:
-	.byte $C
-	.word $71C4; R:4 G:14 B:28
-	.byte $C
-	.word $5DC7; R:7 G:14 B:23
-	.byte $C
-	.word $51CB; R:11 G:14 B:20
-	.byte $C
-	.word $49CD; R:13 G:14 B:18
-	.byte $C
-	.word $41F1; R:17 G:15 B:16
-	.byte $C
-	.word $35F4; R:20 G:15 B:13
-	.byte $C
-	.word $2DF7; R:23 G:15 B:11
-	.byte $C
-	.word $221A; R:26 G:16 B:8
-	.byte $C
-	.word $1A1C; R:28 G:16 B:6
-	.byte $C
-	.word $121F; R:31 G:16 B:4
-	.byte $C
-	.word $71A1
-	.byte $00
+; GradientTable:
+	; .byte $C
+	; .word $71C4; R:4 G:14 B:28
+	; .byte $C
+	; .word $5DC7; R:7 G:14 B:23
+	; .byte $C
+	; .word $51CB; R:11 G:14 B:20
+	; .byte $C
+	; .word $49CD; R:13 G:14 B:18
+	; .byte $C
+	; .word $41F1; R:17 G:15 B:16
+	; .byte $C
+	; .word $35F4; R:20 G:15 B:13
+	; .byte $C
+	; .word $2DF7; R:23 G:15 B:11
+	; .byte $C
+	; .word $221A; R:26 G:16 B:8
+	; .byte $C
+	; .word $1A1C; R:28 G:16 B:6
+	; .byte $C
+	; .word $121F; R:31 G:16 B:4
+	; .byte $C
+	; .word $71A1
+	; .byte $00
 	
 DMASpriteMirror:
 	stz OAMADDR		; set OAM write cursor to 0

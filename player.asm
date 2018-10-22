@@ -1,10 +1,14 @@
 .segment "CODE"
 
 PLAYER_ACCEL = $3fff ;0.25 px
+PLAYER_JUMP_SPEED = $fff9 ;-7
+GRAVITY = $5fff ;0.5px
+
 MAX_PLAYER_SPEED = $2
 PLAYER_STILL_TILE = $0
 FIRST_PLAYER_TILE = $2
 LAST_PLAYER_TILE = $8 ;horizontally
+PLAYER_JUMPING_TILE = $E
 PLAYER_TIMER_VAL = $6 ;animation timer
 GROUND = $AC
 
@@ -17,6 +21,11 @@ STATE_RIGHT_HELD
 STATE_RIGHT_RELEASED
 STATE_LEFT_HELD
 STATE_LEFT_RELEASED
+.endenum
+
+.enum
+PLAYER_STATE_NORMAL
+PLAYER_STATE_JUMPING
 .endenum
 
 .enum
@@ -40,8 +49,8 @@ HandlePlayerMovement:
 	php
 	a16
 	lda joypad 
-	cmp #KEY_RIGHT ;sets up player state based on joypad input
-	bne NotRight
+	bit #KEY_RIGHT ;sets up player state based on joypad input
+	beq NotRight
 		a8
 		lda #STATE_RIGHT_HELD
 		sta playerState
@@ -50,8 +59,8 @@ HandlePlayerMovement:
 		a16
 		jmp EndStateAssign
 	NotRight:
-	cmp #KEY_LEFT
-	bne NotLeft
+	bit #KEY_LEFT
+	beq NotLeft
 		a8
 		lda #STATE_LEFT_HELD
 		sta playerState
@@ -89,7 +98,7 @@ HandlePlayerMovement:
 		cmp #STATE_LEFT_RELEASED
 		beq Released
 	
-	a8
+	a8 ;if not pressing any buttons, reset tile and animation timer
 	lda #PLAYER_STILL_TILE
 	sta playerTileNum
 	lda #PLAYER_TIMER_VAL
@@ -161,7 +170,64 @@ HandlePlayerMovement:
 	
 	EndStateMachine:
 	
+	lda joypad
+	bit #KEY_B
+	beq DontStartJump
+		lda #PLAYER_STATE_JUMPING
+		cmp movementState
+		beq DontStartJump ;don't want player jumping in air
+			sta movementState
+			lda #PLAYER_JUMP_SPEED
+			sta playerYSpeed+2
+			; dec playerY+2
+	DontStartJump:	
+	
+	lda movementState
+	cmp #PLAYER_STATE_JUMPING
+	bne NotJumping
+		lda playerYSpeed
+		clc
+		adc #GRAVITY
+		sta playerYSpeed
+		lda playerYSpeed+2
+		adc #$0
+		sta playerYSpeed+2
+		lda playerY
+		clc
+		adc playerYSpeed
+		sta playerY
+		lda playerY+2
+		adc playerYSpeed+2
+		sta playerY+2
+		cmp #GROUND
+		bcc NotInGround ;if player y is greater than ground, no longer jumping
+			stz playerYSpeed
+			stz playerYSpeed+2
+			lda #GROUND
+			sta playerY+2
+			stz playerY
+			lda #PLAYER_STATE_NORMAL
+			sta movementState
+			a8
+			lda #PLAYER_STILL_TILE
+			sta playerTileNum
+			lda #PLAYER_TIMER_VAL
+			sta playerAnimTimer
+			lda #ANIM_MODE_ADD
+			sta playerAnimMode
+			a16
+		NotInGround:
+	NotJumping:
+	
 	a8
+	lda movementState
+	cmp #PLAYER_STATE_JUMPING
+	bne NoJumpingSprite ;switch to jumping sprite when jumping
+		lda #PLAYER_JUMPING_TILE
+		sta playerTileNum
+		jmp DrawSprite
+	NoJumpingSprite:
+	
 	lda playerAnimTimer ;is timer zero?
 	bne DrawSprite
 		lda #PLAYER_TIMER_VAL
@@ -187,7 +253,7 @@ HandlePlayerMovement:
 				lda #ANIM_MODE_ADD
 				sta playerAnimMode
 	DrawSprite:
-	LoadSprite #$1, playerTileNum, playerX+2, playerY+2, playerAttrs
+	LoadSprite #$0, playerTileNum, playerX+2, playerY+2, playerAttrs
 	a16
 	lda playerY+2
 	clc
@@ -197,7 +263,7 @@ HandlePlayerMovement:
 	clc
 	adc #$20
 	sta $c
-	LoadSprite #$2, $c, playerX+2, $a, playerAttrs
+	LoadSprite #$1, $c, playerX+2, $a, playerAttrs
 	
 	plp
 	rts

@@ -3,7 +3,6 @@ joypad = $10
 scrollX = joypad+2
 scrollY = scrollX+2 
 scroll2X = scrollY+2
-movementState
 frameStatus
 
 ;---player.asm---
@@ -17,4 +16,5 @@ playerAnimTimer
 playerAnimMode
 playerAttrs
 playerState ;16 bit to avoid constant accumulator size changing
+movementState = playerState+2
 .endenum
