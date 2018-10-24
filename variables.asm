@@ -10,8 +10,9 @@ playerX = frameStatus+1 ;16.16 fixed
 playerY = playerX+4
 playerXSpeed = playerY+4
 playerYSpeed = playerXSpeed+4
+playerBGTile = playerYSpeed+4
 
-playerTileNum = playerYSpeed+4
+playerTileNum = playerBGTile+2
 playerAnimTimer
 playerAnimMode
 playerAttrs

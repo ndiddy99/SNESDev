@@ -267,8 +267,31 @@ HandlePlayerMovement:
 				lda #ANIM_MODE_ADD
 				sta playerAnimMode
 	DrawSprite:
-	LoadSprite #$0, playerTileNum, playerX+2, playerY+2, playerAttrs
+	
 	a16
+	lda playerX+2 ;divide by 16, the clcs are so it doesn't wrap around
+	clc
+	ror
+	clc
+	ror
+	clc
+	ror
+	clc
+	ror
+	sta playerBGTile
+	lda playerY+2 ;dividing y tile by 16 and then multiplying by 32 since tilemap's 32x32
+	clc
+	adc scrollY
+	and #$fff0	  ;is the same as removing last nibble and shifting left once
+	rol
+	clc
+	adc playerBGTile
+	rol ;bytes->words
+	tax
+	lda f:BGTilemap, x
+	sta playerBGTile
+	
+	LoadSprite #$0, playerTileNum, playerX+2, playerY+2, playerAttrs
 	lda playerY+2
 	clc
 	adc #$10
