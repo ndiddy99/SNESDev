@@ -1,7 +1,8 @@
 .segment "CODE"
 
 PLAYER_ACCEL = $3fff ;0.25 px
-PLAYER_JUMP_SPEED = $fff8 ;-7
+; PLAYER_JUMP_SPEED = $fff8 ;-7
+PLAYER_JUMP_SPEED = $fff4 ;-7
 GRAVITY = $6fff ;~0.4px
 
 
@@ -15,6 +16,8 @@ GROUND = $B0
 
 PLAYER_RIGHT_ATTRS = %00110000
 PLAYER_LEFT_ATTRS =  %01110000
+
+PLAYER_WIDTH = $10
 
 .enum
 STATE_STILL
@@ -52,9 +55,9 @@ HandlePlayerMovement:
 	lda joypad 
 	bit #KEY_RIGHT ;sets up player state based on joypad input
 	beq NotRight
-		a8
 		lda #STATE_RIGHT_HELD
 		sta playerState
+		a8
 		lda #PLAYER_RIGHT_ATTRS
 		sta playerAttrs
 		a16
@@ -62,9 +65,9 @@ HandlePlayerMovement:
 	NotRight:
 	bit #KEY_LEFT
 	beq NotLeft
-		a8
 		lda #STATE_LEFT_HELD
 		sta playerState
+		a8
 		lda #PLAYER_LEFT_ATTRS
 		sta playerAttrs
 		a16
@@ -73,18 +76,14 @@ HandlePlayerMovement:
 	lda playerState
 	cmp #STATE_RIGHT_HELD
 	bne RightNotReleased
-		a8
 		lda #STATE_RIGHT_RELEASED
 		sta playerState
-		a16
 		jmp EndStateAssign
 	RightNotReleased:
 	cmp #STATE_LEFT_HELD
 	bne LeftNotReleased
-		a8
 		lda #STATE_LEFT_RELEASED
 		sta playerState
-		a16
 		jmp EndStateAssign
 	LeftNotReleased:
 	
@@ -150,7 +149,7 @@ HandlePlayerMovement:
 		beq AddSpeed
 		jmp SubtractSpeed
 	
-	AddSpeed:
+	AddSpeed: ;add speed to playerx when going right
 		lda playerX
 		clc
 		adc playerXSpeed
@@ -158,9 +157,18 @@ HandlePlayerMovement:
 		lda playerX+2
 		adc playerXSpeed+2
 		sta playerX+2
+		
+		REjectLoop:
+		jsr CheckXCollisionR
+		beq NoCollisionR
+			stz playerXSpeed+2
+			stz playerXSpeed
+			dec playerX+2
+			jmp REjectLoop
+		NoCollisionR:
 		jmp EndStateMachine
 		
-	SubtractSpeed:
+	SubtractSpeed: ;subtract speed from playerx when going left
 		lda playerX
 		sec
 		sbc playerXSpeed
@@ -168,7 +176,15 @@ HandlePlayerMovement:
 		lda playerX+2
 		sbc playerXSpeed+2
 		sta playerX+2
-	
+		
+		LEjectLoop:
+		jsr CheckXCollisionL
+		beq NoCollisionL
+			stz playerXSpeed+2
+			stz playerXSpeed
+			inc playerX+2
+			jmp LEjectLoop
+		NoCollisionL:
 	EndStateMachine:
 	
 	lda joypad
@@ -267,30 +283,6 @@ HandlePlayerMovement:
 				lda #ANIM_MODE_ADD
 				sta playerAnimMode
 	DrawSprite:
-	
-	a16
-	lda playerX+2 ;divide by 16, the clcs are so it doesn't wrap around
-	clc
-	ror
-	clc
-	ror
-	clc
-	ror
-	clc
-	ror
-	sta playerBGTile
-	lda playerY+2 ;dividing y tile by 16 and then multiplying by 32 since tilemap's 32x32
-	clc
-	adc scrollY
-	and #$fff0	  ;is the same as removing last nibble and shifting left once
-	rol
-	clc
-	adc playerBGTile
-	rol ;bytes->words
-	tax
-	lda f:BGTilemap, x
-	sta playerBGTile
-	
 	LoadSprite #$0, playerTileNum, playerX+2, playerY+2, playerAttrs
 	lda playerY+2
 	clc
@@ -303,5 +295,44 @@ HandlePlayerMovement:
 	LoadSprite #$1, $c, playerX+2, $a, playerAttrs
 	
 	plp
+	rts
+	
+CheckXCollisionL: ;for when player is moving left
+	lda playerX+2
+	sta $0
+	lda playerY+2
+	sta $2
+	jmp CheckPlayerCollision
+
+CheckXCollisionR:
+	lda playerX+2
+	clc
+	adc #PLAYER_WIDTH
+	sta $0
+	lda playerY+2
+	sta $2
+	
+CheckPlayerCollision:
+	lda $0 ;divide by 16, the clcs are so it doesn't wrap around
+	clc
+	ror
+	clc
+	ror
+	clc
+	ror
+	clc
+	ror
+	sta playerBGTile
+	lda $2 ;dividing y tile by 16 and then multiplying by 32 since tilemap's 32x32
+	clc
+	adc scrollY
+	and #$fff0	  ;is the same as removing last nibble and shifting left once
+	rol
+	clc
+	adc playerBGTile
+	rol ;words->bytes
+	tax
+	lda f:BGTilemap, x
+	sta playerBGTile
 	rts
 	
