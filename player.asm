@@ -1,8 +1,7 @@
 .segment "CODE"
 
 PLAYER_ACCEL = $3fff ;0.25 px
-; PLAYER_JUMP_SPEED = $fff8 ;-7
-PLAYER_JUMP_SPEED = $fff4 ;-7
+PLAYER_JUMP_SPEED = $fff8 ;-7
 GRAVITY = $6fff ;~0.4px
 
 
@@ -18,6 +17,7 @@ PLAYER_RIGHT_ATTRS = %00110000
 PLAYER_LEFT_ATTRS =  %01110000
 
 PLAYER_WIDTH = $10
+PLAYER_HEIGHT = $20
 
 .enum
 STATE_STILL
@@ -185,7 +185,15 @@ HandlePlayerMovement:
 			inc playerX+2
 			jmp LEjectLoop
 		NoCollisionL:
+	
 	EndStateMachine:
+	
+	jsr CheckYCollisionD
+	bne OnGround
+		lda #PLAYER_STATE_JUMPING ;allows player to fall off ledges
+		sta movementState
+	OnGround:
+	
 	
 	lda joypad
 	bit #KEY_B
@@ -229,12 +237,28 @@ HandlePlayerMovement:
 		lda playerY+2
 		adc playerYSpeed+2
 		sta playerY+2
-		cmp #GROUND
-		bcc NotInGround ;if player y is greater than ground, no longer jumping
-			stz playerYSpeed
+		; cmp #GROUND
+		; bcc NotInGround ;if player y is greater than ground, no longer jumping
+			; stz playerYSpeed
+			; stz playerYSpeed+2
+			; lda #GROUND
+			; sta playerY+2
+			; stz playerY
+			; lda #PLAYER_STATE_NORMAL
+			; sta movementState
+			; a8
+			; lda #PLAYER_STILL_TILE
+			; sta playerTileNum
+			; lda #PLAYER_TIMER_VAL
+			; sta playerAnimTimer
+			; lda #ANIM_MODE_ADD
+			; sta playerAnimMode
+			; a16
+		; NotInGround:
+		jsr CheckYCollisionD ;0 = sprite in air
+		beq NotInGround
+			stz playerYSpeed 
 			stz playerYSpeed+2
-			lda #GROUND
-			sta playerY+2
 			stz playerY
 			lda #PLAYER_STATE_NORMAL
 			sta movementState
@@ -246,10 +270,16 @@ HandlePlayerMovement:
 			lda #ANIM_MODE_ADD
 			sta playerAnimMode
 			a16
+			YEjectLoop:
+			dec playerY+2
+			jsr CheckYCollisionD
+			beq EjectedFromGround
+			jmp YEjectLoop
+			EjectedFromGround:
+				inc playerY+2
 		NotInGround:
 	NotJumping:
 	
-	a8
 	lda movementState
 	cmp #PLAYER_STATE_JUMPING
 	bne NoJumpingSprite ;switch to jumping sprite when jumping
@@ -258,6 +288,7 @@ HandlePlayerMovement:
 		jmp DrawSprite
 	NoJumpingSprite:
 	
+	a8
 	lda playerAnimTimer ;is timer zero?
 	bne DrawSprite
 		lda #PLAYER_TIMER_VAL
@@ -301,16 +332,32 @@ CheckXCollisionL: ;for when player is moving left
 	lda playerX+2
 	sta $0
 	lda playerY+2
+	clc
+	adc #PLAYER_HEIGHT
 	sta $2
 	jmp CheckPlayerCollision
 
-CheckXCollisionR:
+CheckXCollisionR: ;when player is moving right
 	lda playerX+2
 	clc
 	adc #PLAYER_WIDTH
 	sta $0
 	lda playerY+2
+	clc
+	adc #PLAYER_HEIGHT
 	sta $2
+	jmp CheckPlayerCollision
+	
+CheckYCollisionD: ;when player is moving down
+	lda playerX+2
+	clc
+	adc #(PLAYER_WIDTH/2)
+	sta $0
+	lda playerY+2
+	clc
+	adc #PLAYER_HEIGHT+1
+	sta $2
+	
 	
 CheckPlayerCollision:
 	lda $0 ;divide by 16, the clcs are so it doesn't wrap around
