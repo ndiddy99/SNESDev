@@ -18,6 +18,7 @@ PLAYER_LEFT_ATTRS =  %01110000
 
 PLAYER_WIDTH = $10
 PLAYER_HEIGHT = $20
+PLAYER_TOP = $9 ;offset from y pos to top of sprite
 
 .enum
 STATE_STILL
@@ -42,6 +43,8 @@ InitPlayer:
 	a8
 	lda #GROUND
 	sta playerY+2
+	lda #$18
+	sta playerX+2
 	lda #PLAYER_RIGHT_ATTRS
 	sta playerAttrs
 	lda #FIRST_PLAYER_TILE
@@ -237,24 +240,15 @@ HandlePlayerMovement:
 		lda playerY+2
 		adc playerYSpeed+2
 		sta playerY+2
-		; cmp #GROUND
-		; bcc NotInGround ;if player y is greater than ground, no longer jumping
-			; stz playerYSpeed
-			; stz playerYSpeed+2
-			; lda #GROUND
-			; sta playerY+2
-			; stz playerY
-			; lda #PLAYER_STATE_NORMAL
-			; sta movementState
-			; a8
-			; lda #PLAYER_STILL_TILE
-			; sta playerTileNum
-			; lda #PLAYER_TIMER_VAL
-			; sta playerAnimTimer
-			; lda #ANIM_MODE_ADD
-			; sta playerAnimMode
-			; a16
-		; NotInGround:
+		UEjectLoop:
+		jsr CheckYCollisionU
+		beq NoCollisionU
+			stz playerYSpeed
+			stz playerYSpeed+2
+			inc playerY+2
+			jmp UEjectLoop
+		NoCollisionU:
+		
 		jsr CheckYCollisionD ;0 = sprite in air
 		beq NotInGround
 			stz playerYSpeed 
@@ -357,7 +351,17 @@ CheckYCollisionD: ;when player is moving down
 	clc
 	adc #PLAYER_HEIGHT+1
 	sta $2
-	
+	jmp CheckPlayerCollision
+
+CheckYCollisionU: ;when player is moving up
+	lda playerX+2
+	clc
+	adc #(PLAYER_WIDTH/2)
+	sta $0
+	lda playerY+2
+	clc
+	adc #PLAYER_TOP+1
+	sta $2
 	
 CheckPlayerCollision:
 	lda $0 ;divide by 16, the clcs are so it doesn't wrap around
