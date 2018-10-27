@@ -5,6 +5,7 @@
 .include "variables.asm"
 .include "macros.asm"
 .include "sprites.asm"
+.include "tiles.asm"
 .include "player.asm"
 .include "art.asm"
 .include "sound.asm"

@@ -160,15 +160,7 @@ HandlePlayerMovement:
 		lda playerX+2
 		adc playerXSpeed+2
 		sta playerX+2
-		
-		REjectLoop:
-		jsr CheckXCollisionR
-		beq NoCollisionR
-			stz playerXSpeed+2
-			stz playerXSpeed
-			dec playerX+2
-			jmp REjectLoop
-		NoCollisionR:
+		jsr HandleXCollisionR
 		jmp EndStateMachine
 		
 	SubtractSpeed: ;subtract speed from playerx when going left
@@ -180,14 +172,7 @@ HandlePlayerMovement:
 		sbc playerXSpeed+2
 		sta playerX+2
 		
-		LEjectLoop:
-		jsr CheckXCollisionL
-		beq NoCollisionL
-			stz playerXSpeed+2
-			stz playerXSpeed
-			inc playerX+2
-			jmp LEjectLoop
-		NoCollisionL:
+		jsr HandleXCollisionL
 	
 	EndStateMachine:
 	
@@ -321,6 +306,31 @@ HandlePlayerMovement:
 	
 	plp
 	rts
+	
+HandleXCollisionL:
+	jsr CheckXCollisionL
+	beq NoCollisionL
+	tax
+	lda TileAttrs, x ;tile attributes table in tiles.asm
+	bne NoCollisionL ;non-zero: "soft" tile
+		stz playerXSpeed
+		stz playerXSpeed+2
+		inc playerX+2
+		jmp HandleXCollisionL
+	NoCollisionL:
+	rts
+
+HandleXCollisionR:
+	jsr CheckXCollisionR
+	beq NoCollisionR
+	tax
+	lda TileAttrs, x ;tile attributes table in tiles.asm
+	bne NoCollisionR ;non-zero: "soft" tile
+		stz playerXSpeed
+		stz playerXSpeed+2
+		dec playerX+2
+		jmp HandleXCollisionL
+	NoCollisionR:	
 	
 CheckXCollisionL: ;for when player is moving left
 	lda playerX+2
