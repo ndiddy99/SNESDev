@@ -312,11 +312,27 @@ HandleXCollisionL:
 	beq NoCollisionL
 	tax
 	lda TileAttrs, x ;tile attributes table in tiles.asm
-	bne NoCollisionL ;non-zero: "soft" tile
+	bne SoftCollisionL ;non-zero: "soft" tile
 		stz playerXSpeed
 		stz playerXSpeed+2
 		inc playerX+2
 		jmp HandleXCollisionL
+	SoftCollisionL:
+		; lda playerY+2
+		; and #$fff0
+		; clc
+		; adc #$10
+		; sta $0
+		; lda playerX+2
+		; and #$000f
+		; tay
+		; lda TileAttrs, x ;store pointer to offset table
+		; sta $2
+		; lda ($2), y ;load from offset table
+		; clc
+		; adc $0
+		; sta playerY+2
+		
 	NoCollisionL:
 	rts
 
@@ -325,12 +341,31 @@ HandleXCollisionR:
 	beq NoCollisionR
 	tax
 	lda TileAttrs, x ;tile attributes table in tiles.asm
-	bne NoCollisionR ;non-zero: "soft" tile
+	bne SoftCollisionR ;non-zero: "soft" tile
 		stz playerXSpeed
 		stz playerXSpeed+2
 		dec playerX+2
 		jmp HandleXCollisionL
+	;if playerY & $000f  < tileLut, (playerX & $000f) then playerY = tileLut, (playerX & $000f)
+	SoftCollisionR:
+		sta $0 ;pointer to offset table
+		lda playerY+2
+		and #$000f ;playerY location in tile
+		sta $2
+		lda playerX+2 
+		and #$000f ;x index within soft tile
+		rol ;words->bytes
+		tay
+		lda ($0), y ;load from offset table
+		sta $4
+		; cmp $2
+		; bcc NoCollisionR
+		lda playerY+2
+		sec
+		sbc $4
+		sta playerY+2	
 	NoCollisionR:	
+	rts
 	
 CheckXCollisionL: ;for when player is moving left
 	lda playerX+2
