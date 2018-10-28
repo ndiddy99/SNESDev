@@ -233,30 +233,7 @@ HandlePlayerMovement:
 			inc playerY+2
 			jmp UEjectLoop
 		NoCollisionU:
-		
-		jsr CheckYCollisionD ;0 = sprite in air
-		beq NotInGround
-			stz playerYSpeed 
-			stz playerYSpeed+2
-			stz playerY
-			lda #PLAYER_STATE_NORMAL
-			sta movementState
-			a8
-			lda #PLAYER_STILL_TILE
-			sta playerTileNum
-			lda #PLAYER_TIMER_VAL
-			sta playerAnimTimer
-			lda #ANIM_MODE_ADD
-			sta playerAnimMode
-			a16
-			YEjectLoop:
-			dec playerY+2
-			jsr CheckYCollisionD
-			beq EjectedFromGround
-			jmp YEjectLoop
-			EjectedFromGround:
-				inc playerY+2
-		NotInGround:
+		jsr HandleYCollisionD
 	NotJumping:
 	
 	lda movementState
@@ -346,25 +323,52 @@ HandleXCollisionR:
 		stz playerXSpeed+2
 		dec playerX+2
 		jmp HandleXCollisionL
-	;if playerY & $000f  < tileLut, (playerX & $000f) then playerY = tileLut, (playerX & $000f)
+	;playerY -= tileLut, (playerX & $000f)
 	SoftCollisionR:
 		sta $0 ;pointer to offset table
-		lda playerY+2
-		and #$000f ;playerY location in tile
-		sta $2
 		lda playerX+2 
 		and #$000f ;x index within soft tile
 		rol ;words->bytes
 		tay
 		lda ($0), y ;load from offset table
-		sta $4
-		; cmp $2
-		; bcc NoCollisionR
+		sta $2
 		lda playerY+2
 		sec
-		sbc $4
+		sbc $2
 		sta playerY+2	
 	NoCollisionR:	
+	rts
+	
+HandleYCollisionD:
+	jsr CheckYCollisionD ;0 = sprite in air
+	beq NotInGround
+	tax
+	lda TileAttrs, x
+	bne NotInGround
+		stz playerYSpeed 
+		stz playerYSpeed+2
+		stz playerY
+		lda #PLAYER_STATE_NORMAL
+		sta movementState
+		a8
+		lda #PLAYER_STILL_TILE
+		sta playerTileNum
+		lda #PLAYER_TIMER_VAL
+		sta playerAnimTimer
+		lda #ANIM_MODE_ADD
+		sta playerAnimMode
+		a16
+		YEjectLoop:
+		dec playerY+2
+		jsr CheckYCollisionD
+		beq EjectedFromGround
+		tax
+		lda TileAttrs, x
+		bne EjectedFromGround
+		jmp YEjectLoop
+		EjectedFromGround:
+			inc playerY+2
+	NotInGround:
 	rts
 	
 CheckXCollisionL: ;for when player is moving left
