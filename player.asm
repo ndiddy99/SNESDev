@@ -295,21 +295,17 @@ HandleXCollisionL:
 		inc playerX+2
 		jmp HandleXCollisionL
 	SoftCollisionL:
-		; lda playerY+2
-		; and #$fff0
-		; clc
-		; adc #$10
-		; sta $0
-		; lda playerX+2
-		; and #$000f
-		; tay
-		; lda TileAttrs, x ;store pointer to offset table
-		; sta $2
-		; lda ($2), y ;load from offset table
-		; clc
-		; adc $0
-		; sta playerY+2
-		
+		sta $0 ;pointer to offset table
+		lda playerX+2 
+		and #$000f ;x index within soft tile
+		rol ;words->bytes
+		tay
+		lda ($0), y ;load from offset table
+		sta $2
+		lda playerY+2
+		clc
+		adc $2
+		sta playerY+2	
 	NoCollisionL:
 	rts
 
