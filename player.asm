@@ -178,10 +178,11 @@ HandlePlayerMovement:
 	
 	jsr CheckYCollisionD
 	bne OnGround
+	StartFall:
 		lda #PLAYER_STATE_JUMPING ;allows player to fall off ledges
-		sta movementState
+		sta movementState		
 	OnGround:
-	
+	jsr HandleSlopeCollision
 	
 	lda joypad
 	bit #KEY_B
@@ -295,17 +296,17 @@ HandleXCollisionL:
 		inc playerX+2
 		jmp HandleXCollisionL
 	SoftCollisionL:
-		sta $0 ;pointer to offset table
-		lda playerX+2 
-		and #$000f ;x index within soft tile
-		rol ;words->bytes
-		tay
-		lda ($0), y ;load from offset table
-		sta $2
-		lda playerY+2
-		clc
-		adc $2
-		sta playerY+2	
+		; sta $0 ;pointer to offset table
+		; lda playerX+2 
+		; and #$000f ;x index within soft tile
+		; rol ;words->bytes
+		; tay
+		; lda ($0), y ;load from offset table
+		; sta $2
+		; lda playerY+2
+		; clc
+		; adc $2
+		; sta playerY+2	
 	NoCollisionL:
 	rts
 
@@ -321,26 +322,26 @@ HandleXCollisionR:
 		jmp HandleXCollisionL
 	;playerY -= tileLut, (playerX & $000f)
 	SoftCollisionR:
-		sta $0 ;pointer to offset table
-		lda playerX+2 
-		and #$000f ;x index within soft tile
-		rol ;words->bytes
-		tay
-		lda ($0), y ;load from offset table
-		sta $2
-		lda playerY+2
-		sec
-		sbc $2
-		sta playerY+2	
+		; sta $0 ;pointer to offset table
+		; lda playerX+2 
+		; and #$000f ;x index within soft tile
+		; rol ;words->bytes
+		; tay
+		; lda ($0), y ;load from offset table
+		; sta $2
+		; lda playerY+2
+		; sec
+		; sbc $2
+		; sta playerY+2	
 	NoCollisionR:	
 	rts
 	
 HandleYCollisionD:
 	jsr CheckYCollisionD ;0 = sprite in air
 	beq NotInGround
-	tax
-	lda TileAttrs, x
-	bne NotInGround
+	; tax
+	; lda TileAttrs, x
+	; bne NotInGround
 		stz playerYSpeed 
 		stz playerYSpeed+2
 		stz playerY
@@ -364,7 +365,31 @@ HandleYCollisionD:
 		jmp YEjectLoop
 		EjectedFromGround:
 			inc playerY+2
+			jmp NotInGround
 	NotInGround:
+	rts
+	
+	;playerY = ((playerY + PLAYER_HEIGHT-1) & $FFF0) - (tileLut, (middle of sprite x & $F)) - $10
+HandleSlopeCollision:
+	jsr CheckCollisionC
+	tax
+	lda TileAttrs, x
+	beq NotOnSlope
+	sta $4 ;location of height LUT for that block
+	lda $0 ;x value of middle of sprite
+	and #$000f
+	rol ;words->bytes
+	tay
+	lda ($4), y
+	sta $0 ;value to bump up y position by
+	lda $2 ;tile where sprite's feet are
+	and #$fff0
+	sec
+	sbc $0
+	sec
+	sbc #$10
+	sta playerY+2	
+	NotOnSlope:
 	rts
 	
 CheckXCollisionL: ;for when player is moving left
@@ -406,6 +431,17 @@ CheckYCollisionU: ;when player is moving up
 	lda playerY+2
 	clc
 	adc #PLAYER_TOP+1
+	sta $2
+	jmp CheckPlayerCollision
+	
+CheckCollisionC: ;look at the center of the bottom of the player
+	lda playerX+2
+	clc
+	adc #(PLAYER_WIDTH/2)
+	sta $0
+	lda playerY+2
+	clc
+	adc #PLAYER_HEIGHT-1
 	sta $2
 	
 CheckPlayerCollision:
