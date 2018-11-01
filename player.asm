@@ -29,8 +29,9 @@ STATE_LEFT_RELEASED
 .endenum
 
 .enum
-PLAYER_STATE_NORMAL
-PLAYER_STATE_JUMPING
+MOVE_STATE_NORMAL
+MOVE_STATE_JUMPING
+MOVE_STATE_SLOPE
 .endenum
 
 .enum
@@ -176,18 +177,26 @@ HandlePlayerMovement:
 	
 	EndStateMachine:
 	
+	;fall if above a slope tile or above air
 	jsr CheckYCollisionD
-	bne OnGround
+	beq StartFall
+	tax
+	lda TileAttrs, x
+	beq OnGround
 	StartFall:
-		lda #PLAYER_STATE_JUMPING ;allows player to fall off ledges
-		sta movementState		
+		lda #MOVE_STATE_JUMPING ;allows player to fall off ledges
+		sta movementState
+		jmp DoneFall
 	OnGround:
+		lda #MOVE_STATE_NORMAL
+		sta movementState
+	DoneFall:
 	jsr HandleSlopeCollision
 	
 	lda joypad
 	bit #KEY_B
 	beq DontStartJump
-		lda #PLAYER_STATE_JUMPING
+		lda #MOVE_STATE_JUMPING
 		cmp movementState
 		beq NotRising ;don't want player jumping in air
 			sta movementState
@@ -210,7 +219,7 @@ HandlePlayerMovement:
 	
 	
 	lda movementState
-	cmp #PLAYER_STATE_JUMPING
+	cmp #MOVE_STATE_JUMPING
 	bne NotJumping
 		lda playerYSpeed
 		clc
@@ -238,7 +247,7 @@ HandlePlayerMovement:
 	NotJumping:
 	
 	lda movementState
-	cmp #PLAYER_STATE_JUMPING
+	cmp #MOVE_STATE_JUMPING
 	bne NoJumpingSprite ;switch to jumping sprite when jumping
 		lda #PLAYER_JUMPING_TILE
 		sta playerTileNum
@@ -286,66 +295,47 @@ HandlePlayerMovement:
 	rts
 	
 HandleXCollisionL:
-	jsr CheckXCollisionL
+	lda movementState ;no wall collision if on slope
+	cmp #MOVE_STATE_SLOPE
 	beq NoCollisionL
-	tax
-	lda TileAttrs, x ;tile attributes table in tiles.asm
-	bne SoftCollisionL ;non-zero: "soft" tile
-		stz playerXSpeed
-		stz playerXSpeed+2
-		inc playerX+2
-		jmp HandleXCollisionL
-	SoftCollisionL:
-		; sta $0 ;pointer to offset table
-		; lda playerX+2 
-		; and #$000f ;x index within soft tile
-		; rol ;words->bytes
-		; tay
-		; lda ($0), y ;load from offset table
-		; sta $2
-		; lda playerY+2
-		; clc
-		; adc $2
-		; sta playerY+2	
+		jsr CheckXCollisionL
+		beq NoCollisionL
+		tax
+		lda TileAttrs, x ;tile attributes table in tiles.asm
+		bne NoCollisionL ;non-zero: "soft" tile
+			stz playerXSpeed
+			stz playerXSpeed+2
+			inc playerX+2
+			jmp HandleXCollisionL
 	NoCollisionL:
 	rts
 
 HandleXCollisionR:
-	jsr CheckXCollisionR
+	lda movementState
+	cmp #MOVE_STATE_SLOPE
 	beq NoCollisionR
-	tax
-	lda TileAttrs, x ;tile attributes table in tiles.asm
-	bne SoftCollisionR ;non-zero: "soft" tile
-		stz playerXSpeed
-		stz playerXSpeed+2
-		dec playerX+2
-		jmp HandleXCollisionL
-	;playerY -= tileLut, (playerX & $000f)
-	SoftCollisionR:
-		; sta $0 ;pointer to offset table
-		; lda playerX+2 
-		; and #$000f ;x index within soft tile
-		; rol ;words->bytes
-		; tay
-		; lda ($0), y ;load from offset table
-		; sta $2
-		; lda playerY+2
-		; sec
-		; sbc $2
-		; sta playerY+2	
+		jsr CheckXCollisionR
+		beq NoCollisionR
+		tax
+		lda TileAttrs, x ;tile attributes table in tiles.asm
+		bne NoCollisionR ;non-zero: "soft" tile
+			stz playerXSpeed
+			stz playerXSpeed+2
+			dec playerX+2
+			jmp HandleXCollisionL
 	NoCollisionR:	
 	rts
 	
 HandleYCollisionD:
 	jsr CheckYCollisionD ;0 = sprite in air
 	beq NotInGround
-	; tax
-	; lda TileAttrs, x
-	; bne NotInGround
+	tax
+	lda TileAttrs, x
+	bne NotInGround
 		stz playerYSpeed 
 		stz playerYSpeed+2
 		stz playerY
-		lda #PLAYER_STATE_NORMAL
+		lda #MOVE_STATE_NORMAL
 		sta movementState
 		a8
 		lda #PLAYER_STILL_TILE
@@ -375,20 +365,22 @@ HandleSlopeCollision:
 	tax
 	lda TileAttrs, x
 	beq NotOnSlope
-	sta $4 ;location of height LUT for that block
-	lda $0 ;x value of middle of sprite
-	and #$000f
-	rol ;words->bytes
-	tay
-	lda ($4), y
-	sta $0 ;value to bump up y position by
-	lda $2 ;tile where sprite's feet are
-	and #$fff0
-	sec
-	sbc $0
-	sec
-	sbc #$10
-	sta playerY+2	
+		sta $4 ;location of height LUT for that block
+		lda $0 ;x value of middle of sprite
+		and #$000f
+		rol ;words->bytes
+		tay
+		lda ($4), y
+		sta $0 ;value to bump up y position by
+		lda $2 ;tile where sprite's feet are
+		and #$fff0
+		sec
+		sbc $0
+		sec
+		sbc #$10
+		sta playerY+2
+		lda #MOVE_STATE_SLOPE
+		sta movementState
 	NotOnSlope:
 	rts
 	

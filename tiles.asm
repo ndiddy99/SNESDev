@@ -9,7 +9,6 @@ TileAttrs: ;either "hard" aka eject or pointer to heightmap
 .word HeightMap6
 
 HeightMap4: ;height map for tile 4
-.word $0
 .word $1
 .word $2
 .word $3
@@ -25,6 +24,7 @@ HeightMap4: ;height map for tile 4
 .word $d
 .word $e
 .word $f
+.word $10
 
 HeightMap6:
 .word $10
