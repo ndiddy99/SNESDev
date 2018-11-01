@@ -191,6 +191,15 @@ HandlePlayerMovement:
 		lda #MOVE_STATE_NORMAL
 		sta movementState
 	DoneFall:
+	; jsr CheckYCollisionD
+	; bne OnGround
+		; lda #MOVE_STATE_JUMPING ;allows player to fall off ledges
+		; sta movementState
+		; jmp EndGroundCheck
+	; OnGround:
+		; lda #MOVE_STATE_NORMAL
+		; sta movementState
+	; EndGroundCheck:
 	jsr HandleSlopeCollision
 	
 	lda joypad
