@@ -191,27 +191,44 @@ HandlePlayerMovement:
 				dec playerY+2
 				jsr CheckYCollisionD
 				beq @NotOnSlope
+				tax
+				lda TileAttrs, x
+				bne @NotOnSlope
 			jmp @EjectLoop
 	@NotOnSlope:
-	; fall if above a slope tile or above air
+	
 	lda movementState
 	cmp #MOVE_STATE_JUMPING
-	beq NotOnGround ;don't set state to "falling" if player's jumping
-	jsr CheckYCollisionD
-	beq StartFall
-	tax
-	lda TileAttrs, x
 	beq OnGround
-	StartFall:
-		lda #MOVE_STATE_FALLING ;allows player to fall off ledges
-		sta movementState
-		jmp DoneFall
+		jsr CheckYCollisionD
+		beq StartFall
+		tax
+		lda TileAttrs, x
+		beq OnGround
+		StartFall:
+			lda #MOVE_STATE_FALLING
+			sta movementState
 	OnGround:
-		lda #MOVE_STATE_NORMAL
-		sta movementState
-	DoneFall:
-	jsr HandleSlopeCollision
-	NotOnGround:
+	
+	; fall if above a slope tile or above air
+	; lda movementState
+	; cmp #MOVE_STATE_JUMPING
+	; beq NotOnGround ;don't set state to "falling" if player's jumping
+	; jsr CheckYCollisionD
+	; beq StartFall
+	; tax
+	; lda TileAttrs, x
+	; beq OnGround
+	; StartFall:
+		; lda #MOVE_STATE_FALLING ;allows player to fall off ledges
+		; sta movementState
+		; jmp DoneFall
+	; OnGround:
+		; lda #MOVE_STATE_NORMAL
+		; sta movementState
+	; DoneFall:
+	; jsr HandleSlopeCollision
+	; NotOnGround:
 	
 
 	
