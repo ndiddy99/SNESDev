@@ -31,7 +31,8 @@ STATE_LEFT_RELEASED
 .enum
 MOVE_STATE_NORMAL
 MOVE_STATE_JUMPING
-MOVE_STATE_SLOPE
+MOVE_STATE_FALLING ;like jumping but without the jumping frame
+MOVE_STATE_SLOPE ;when player is on slope
 .endenum
 
 .enum
@@ -172,35 +173,47 @@ HandlePlayerMovement:
 		lda playerX+2
 		sbc playerXSpeed+2
 		sta playerX+2
-		
 		jsr HandleXCollisionL
 	
 	EndStateMachine:
 	
-	;fall if above a slope tile or above air
+	lda movementState ;eject vertically to the next tile when walking off a slope
+	cmp #MOVE_STATE_SLOPE
+	bne @NotOnSlope
+		jsr CheckYCollisionD ;if on a non-slope tile and was on a slope
+		beq @NotOnSlope
+		tax
+		lda TileAttrs, x
+		bne @NotOnSlope
+			lda #MOVE_STATE_NORMAL
+			sta movementState
+			@EjectLoop: ;vertical eject
+				dec playerY+2
+				jsr CheckYCollisionD
+				beq @NotOnSlope
+			jmp @EjectLoop
+	@NotOnSlope:
+	; fall if above a slope tile or above air
+	lda movementState
+	cmp #MOVE_STATE_JUMPING
+	beq NotOnGround ;don't set state to "falling" if player's jumping
 	jsr CheckYCollisionD
 	beq StartFall
 	tax
 	lda TileAttrs, x
 	beq OnGround
 	StartFall:
-		lda #MOVE_STATE_JUMPING ;allows player to fall off ledges
+		lda #MOVE_STATE_FALLING ;allows player to fall off ledges
 		sta movementState
 		jmp DoneFall
 	OnGround:
 		lda #MOVE_STATE_NORMAL
 		sta movementState
 	DoneFall:
-	; jsr CheckYCollisionD
-	; bne OnGround
-		; lda #MOVE_STATE_JUMPING ;allows player to fall off ledges
-		; sta movementState
-		; jmp EndGroundCheck
-	; OnGround:
-		; lda #MOVE_STATE_NORMAL
-		; sta movementState
-	; EndGroundCheck:
 	jsr HandleSlopeCollision
+	NotOnGround:
+	
+
 	
 	lda joypad
 	bit #KEY_B
@@ -229,7 +242,11 @@ HandlePlayerMovement:
 	
 	lda movementState
 	cmp #MOVE_STATE_JUMPING
-	bne NotJumping
+	beq Jumping
+	cmp #MOVE_STATE_FALLING
+	beq Jumping
+	jmp NotJumping
+	Jumping:
 		lda playerYSpeed
 		clc
 		adc #GRAVITY
@@ -262,6 +279,8 @@ HandlePlayerMovement:
 		sta playerTileNum
 		jmp DrawSprite
 	NoJumpingSprite:
+
+	jsr HandleSlopeCollision
 	
 	a8
 	lda playerAnimTimer ;is timer zero?
@@ -370,6 +389,9 @@ HandleYCollisionD:
 	
 	;playerY = ((playerY + PLAYER_HEIGHT-1) & $FFF0) - (tileLut, (middle of sprite x & $F)) - $10
 HandleSlopeCollision:
+	lda movementState
+	cmp #MOVE_STATE_JUMPING
+	beq NotOnSlope
 	jsr CheckCollisionC
 	tax
 	lda TileAttrs, x
