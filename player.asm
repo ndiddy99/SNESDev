@@ -43,9 +43,9 @@ ANIM_MODE_SUBTRACT
 InitPlayer:
 	php
 	a8
-	lda #GROUND
+	lda #$50
 	sta playerY+2
-	lda #$18
+	lda #$58
 	sta playerX+2
 	lda #PLAYER_RIGHT_ATTRS
 	sta playerAttrs
@@ -210,28 +210,6 @@ HandlePlayerMovement:
 			sta movementState
 	OnGround:
 	
-	; fall if above a slope tile or above air
-	; lda movementState
-	; cmp #MOVE_STATE_JUMPING
-	; beq NotOnGround ;don't set state to "falling" if player's jumping
-	; jsr CheckYCollisionD
-	; beq StartFall
-	; tax
-	; lda TileAttrs, x
-	; beq OnGround
-	; StartFall:
-		; lda #MOVE_STATE_FALLING ;allows player to fall off ledges
-		; sta movementState
-		; jmp DoneFall
-	; OnGround:
-		; lda #MOVE_STATE_NORMAL
-		; sta movementState
-	; DoneFall:
-	; jsr HandleSlopeCollision
-	; NotOnGround:
-	
-
-	
 	lda joypad
 	bit #KEY_B
 	beq DontStartJump
@@ -370,7 +348,8 @@ HandleXCollisionR:
 			jmp HandleXCollisionL
 	NoCollisionR:	
 	rts
-	
+
+
 HandleYCollisionD:
 	jsr CheckYCollisionD ;0 = sprite in air
 	beq NotInGround
@@ -451,28 +430,66 @@ CheckXCollisionR: ;when player is moving right
 	adc #PLAYER_HEIGHT
 	sta $2
 	jmp CheckPlayerCollision
-	
-CheckYCollisionD: ;when player is moving down
-	lda playerX+2
+
+;center collision -> left collision -> right collision	
+CheckYCollisionD:
+	lda playerX+2 ;1. check for bottom-center collision
 	clc
-	adc #(PLAYER_WIDTH/2)
+	adc #PLAYER_WIDTH/2
 	sta $0
 	lda playerY+2
 	clc
 	adc #PLAYER_HEIGHT+1
 	sta $2
-	jmp CheckPlayerCollision
+	jsr CheckPlayerCollision
+	bne @EndCheck ;if center collision, exit routine
+	
+	lda playerX+2 ;2. check for bottom-left collision
+	sta $0
+	jsr CheckPlayerCollision
+	bne @EndCheck
+	
+	lda playerX+2 ;3. check for bottom-right collision
+	clc
+	adc #PLAYER_WIDTH
+	sta $0
+	jsr CheckPlayerCollision
+	@EndCheck:	
+	rts
 
 CheckYCollisionU: ;when player is moving up
-	lda playerX+2
+	; lda playerX+2
+	; clc
+	; adc #(PLAYER_WIDTH/2)
+	; sta $0
+	; lda playerY+2
+	; clc
+	; adc #PLAYER_TOP+1
+	; sta $2
+	; jmp CheckPlayerCollision
+	lda playerX+2 ;1. check for bottom-center collision
 	clc
-	adc #(PLAYER_WIDTH/2)
+	adc #PLAYER_WIDTH/2
 	sta $0
 	lda playerY+2
 	clc
-	adc #PLAYER_TOP+1
+	adc #PLAYER_TOP+2
 	sta $2
-	jmp CheckPlayerCollision
+	jsr CheckPlayerCollision
+	bne @EndCheck ;if center collision, exit routine
+	
+	lda playerX+2 ;2. check for bottom-left collision
+	sta $0
+	jsr CheckPlayerCollision
+	bne @EndCheck
+	
+	lda playerX+2 ;3. check for bottom-right collision
+	clc
+	adc #PLAYER_WIDTH
+	sta $0
+	jsr CheckPlayerCollision
+	@EndCheck:
+	rts
 	
 CheckCollisionC: ;look at the center of the bottom of the player
 	lda playerX+2

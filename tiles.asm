@@ -28,8 +28,8 @@ HeightMap4: ;height map for tile 4
 
 HeightMap6:
 .word $10
-.word $10
-.word $10
+.word $f
+.word $e
 .word $d
 .word $c
 .word $b
