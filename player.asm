@@ -43,9 +43,13 @@ ANIM_MODE_SUBTRACT
 InitPlayer:
 	php
 	a8
-	lda #$50
+	; lda #GROUND
+	; sta playerY+2
+	; lda #$30
+	; sta playerX+2
+	lda #$30
 	sta playerY+2
-	lda #$58
+	lda #$57
 	sta playerX+2
 	lda #PLAYER_RIGHT_ATTRS
 	sta playerAttrs
@@ -209,6 +213,7 @@ HandlePlayerMovement:
 			lda #MOVE_STATE_FALLING
 			sta movementState
 	OnGround:
+	jsr HandleSlopeCollision
 	
 	lda joypad
 	bit #KEY_B
@@ -275,7 +280,6 @@ HandlePlayerMovement:
 		jmp DrawSprite
 	NoJumpingSprite:
 
-	jsr HandleSlopeCollision
 	
 	a8
 	lda playerAnimTimer ;is timer zero?
@@ -353,9 +357,11 @@ HandleXCollisionR:
 HandleYCollisionD:
 	jsr CheckYCollisionD ;0 = sprite in air
 	beq NotInGround
-	tax
-	lda TileAttrs, x
-	bne NotInGround
+	; tax
+	; lda TileAttrs, x
+	; beq NormalEject
+		; jmp HandleSlopeCollision
+	NormalEject:
 		stz playerYSpeed 
 		stz playerYSpeed+2
 		stz playerY
@@ -373,7 +379,7 @@ HandleYCollisionD:
 		dec playerY+2
 		jsr CheckYCollisionD
 		beq EjectedFromGround
-		tax
+		tax ;don't eject from ground if it's a slope tile
 		lda TileAttrs, x
 		bne EjectedFromGround
 		jmp YEjectLoop
@@ -416,7 +422,7 @@ CheckXCollisionL: ;for when player is moving left
 	sta $0
 	lda playerY+2
 	clc
-	adc #PLAYER_HEIGHT
+	adc #PLAYER_HEIGHT-1
 	sta $2
 	jmp CheckPlayerCollision
 
@@ -427,7 +433,7 @@ CheckXCollisionR: ;when player is moving right
 	sta $0
 	lda playerY+2
 	clc
-	adc #PLAYER_HEIGHT
+	adc #PLAYER_HEIGHT-1
 	sta $2
 	jmp CheckPlayerCollision
 
@@ -442,7 +448,7 @@ CheckYCollisionD:
 	adc #PLAYER_HEIGHT+1
 	sta $2
 	jsr CheckPlayerCollision
-	bne @EndCheck ;if center collision, exit routine
+	bne @EndCheck ;if center hard collision, exit routine
 	
 	lda playerX+2 ;2. check for bottom-left collision
 	sta $0
@@ -454,19 +460,10 @@ CheckYCollisionD:
 	adc #PLAYER_WIDTH
 	sta $0
 	jsr CheckPlayerCollision
-	@EndCheck:	
+	@EndCheck:
 	rts
 
 CheckYCollisionU: ;when player is moving up
-	; lda playerX+2
-	; clc
-	; adc #(PLAYER_WIDTH/2)
-	; sta $0
-	; lda playerY+2
-	; clc
-	; adc #PLAYER_TOP+1
-	; sta $2
-	; jmp CheckPlayerCollision
 	lda playerX+2 ;1. check for bottom-center collision
 	clc
 	adc #PLAYER_WIDTH/2
