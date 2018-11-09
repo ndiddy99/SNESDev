@@ -49,7 +49,7 @@ InitPlayer:
 	; sta playerX+2
 	lda #$30
 	sta playerY+2
-	lda #$57
+	lda #$58
 	sta playerX+2
 	lda #PLAYER_RIGHT_ATTRS
 	sta playerAttrs
@@ -277,6 +277,9 @@ HandlePlayerMovement:
 			inc playerY+2
 			jmp UEjectLoop
 		NoCollisionU:
+		lda playerYSpeed+2 ;if player isn't falling, don't check down collision
+		and #$8000
+		bne NotJumping
 		jsr HandleYCollisionD
 	NotJumping:
 	
@@ -365,6 +368,7 @@ HandleXCollisionR:
 HandleYCollisionD:
 	jsr CheckYCollisionD ;0 = sprite in air
 	beq NotInGround
+
 	; tax
 	; lda TileAttrs, x
 	; beq NormalEject
