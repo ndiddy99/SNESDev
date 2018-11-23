@@ -146,7 +146,6 @@ Sprite3:
 	and #SPRITE3_MASK
 	ora oam2Data
 	sta Oam2Mirror,x
-	jmp EndBitStuff
 	
 EndBitStuff:
 	rts

@@ -1,0 +1,2 @@
+1. if on slope, add slopeaccellut, tilenum to playerslopespeed
+2. if playerslopespeed isn't 0, add to playerx+2	

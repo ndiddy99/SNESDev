@@ -3,6 +3,7 @@
 .p816   ; 65816 processor
 .i16    ; X/Y are 16 bits
 .a8     ; A is 8 bits
+.feature force_range
 
 .define ROM_NAME "physics demo         "
                 ;"123456789012345678901"

@@ -76,6 +76,8 @@ VBlank:
 	phy
 	lda frameStatus
 	bne SkipVblank
+	lda #FORCEBLANK
+	sta PPUBRIGHT
 	SetHScroll scrollX
 	SetVScroll scrollY
 	;DMATilemapMirror #$2
@@ -83,6 +85,8 @@ VBlank:
 	lda #$1 ;start dma transfer on channel 1 (change to 3 if i reenable dmatilemapmirror)
 	sta $420b
 	; jsr SetupHDMA
+	lda #$F ;disable force blank, set back to max brightness
+	sta PPUBRIGHT
 	lda $4210 ;clear vblank flag
 SkipVblank:
 	ply
@@ -125,41 +129,6 @@ SetupVideo:
 
     plp
     rts
-	
-; SetupHDMA:
-	; lda #DMA_INDIRECT | DMA_00 ;write twice, indirect mode
-	; sta DMAMODE
-	; lda #$0f ;write to $210f, bg 2 scroll reg
-	; sta DMAPPUREG
-	; a16
-	; lda #ScrollTable
-	; sta DMAADDR
-	; lda #$0
-	; sta DMAADDRBANK
-	; a8
-	; lda #$7e
-	; sta HDMAINDBANK ;ram bank to read from for indirect hdma
-	
-	; lda #DMA_00 ;write twice, direct mode
-	; sta $4310
-	; lda #$21 ;write to $2121, cgram palette address reg
-	; sta $4311
-	; ldy #PaletteIndexTable
-	; sty $4312
-	; stz $4314
-
-	; lda #DMA_00 ;write twice, direct mode
-	; sta $4320
-	; lda #$22 ;write to $2122, cgram palette data reg
-	; sta $4321
-	; a16
-	; lda #GradientTable
-	; sta $4322
-	; stz $4324
-	; a8	
-	; lda #%00000111
-	; sta HDMASTART ;enable hdma channels 0-2
-	; rts
 	
 	
 ; ScrollTable:

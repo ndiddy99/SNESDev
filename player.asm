@@ -21,11 +21,9 @@ PLAYER_HEIGHT = $20
 PLAYER_TOP = $9 ;offset from y pos to top of sprite
 
 .enum
-STATE_STILL
+STATE_DECEL
 STATE_RIGHT_HELD 
-STATE_RIGHT_RELEASED
 STATE_LEFT_HELD
-STATE_LEFT_RELEASED
 .endenum
 
 .enum
@@ -43,13 +41,9 @@ ANIM_MODE_SUBTRACT
 InitPlayer:
 	php
 	a8
-	; lda #GROUND
-	; sta playerY+2
-	; lda #$30
-	; sta playerX+2
-	lda #$30
+	lda #GROUND
 	sta playerY+2
-	lda #$58
+	lda #$20
 	sta playerX+2
 	lda #PLAYER_RIGHT_ATTRS
 	sta playerAttrs
@@ -82,31 +76,96 @@ HandlePlayerMovement:
 		a16
 		jmp EndStateAssign
 	NotLeft:
-	lda playerState
-	cmp #STATE_RIGHT_HELD
-	bne RightNotReleased
-		lda #STATE_RIGHT_RELEASED
-		sta playerState
-		jmp EndStateAssign
-	RightNotReleased:
-	cmp #STATE_LEFT_HELD
-	bne LeftNotReleased
-		lda #STATE_LEFT_RELEASED
-		sta playerState
-		jmp EndStateAssign
+	lda #STATE_DECEL
+	sta playerState
 	LeftNotReleased:
 	
 	EndStateAssign:
-		lda playerState
-		cmp #STATE_RIGHT_HELD
-		beq Pressed
-		cmp #STATE_LEFT_HELD
-		beq Pressed
-		cmp #STATE_RIGHT_RELEASED
-		beq Released
-		cmp #STATE_LEFT_RELEASED
-		beq Released
 	
+	lda playerState
+	bne ModifySpeed
+		jmp Released
+	ModifySpeed:
+	cmp #STATE_RIGHT_HELD
+	bne RightNotHeld
+		lda playerXSpeed+2
+		cmp #MAX_PLAYER_SPEED
+		bne @DontAddSpeed
+			jmp AddSpeed
+		@DontAddSpeed:
+			lda playerXSpeed
+			clc
+			adc #PLAYER_ACCEL
+			sta playerXSpeed
+			lda playerXSpeed+2
+			adc #$0
+			sta playerXSpeed+2
+			jmp AddSpeed
+	RightNotHeld:
+	cmp #STATE_LEFT_HELD
+	bne LeftNotHeld
+		lda playerXSpeed+2
+		cmp #-(MAX_PLAYER_SPEED+1)
+		bne @DontAddSpeed
+			jmp AddSpeed
+		@DontAddSpeed:
+			lda playerXSpeed
+			sec
+			sbc #PLAYER_ACCEL
+			sta playerXSpeed
+			lda playerXSpeed+2
+			sbc #$0
+			sta playerXSpeed+2
+			jmp AddSpeed
+	LeftNotHeld:
+	 
+	Released:
+	lda playerXSpeed
+	bne PlayerMoving
+	lda playerXSpeed+2
+	bne PlayerMoving
+	jmp PlayerStill
+	PlayerMoving:
+		lda playerXSpeed+2
+		and #$8000
+		beq MovingRight
+			lda playerXSpeed
+			clc
+			adc #PLAYER_ACCEL
+			sta playerXSpeed
+			lda playerXSpeed+2
+			adc #$0
+			sta playerXSpeed+2
+			jmp AddSpeed
+		MovingRight:
+			lda playerXSpeed
+			sec
+			sbc #PLAYER_ACCEL
+			sta playerXSpeed
+			lda playerXSpeed+2
+			sbc #$0
+			sta playerXSpeed+2		
+		
+	AddSpeed:
+	dec playerAnimTimer
+	lda playerX
+	clc
+	adc playerXSpeed
+	sta playerX
+	lda playerX+2
+	adc playerXSpeed+2
+	sta playerX+2
+	lda playerState
+	cmp #STATE_LEFT_HELD
+	bcc CheckRightCollision
+		jsr HandleXCollisionL
+		jmp EndCheckCollision
+	CheckRightCollision:
+		jsr HandleXCollisionR
+	EndCheckCollision:	
+	jmp EndModifySpeed
+	
+	PlayerStill:	
 	a8 ;if not pressing any buttons, reset tile and animation timer
 	lda #PLAYER_STILL_TILE
 	sta playerTileNum
@@ -115,71 +174,70 @@ HandlePlayerMovement:
 	lda #ANIM_MODE_ADD
 	sta playerAnimMode
 	a16
-	
-	jmp EndStateMachine
-	Pressed: ;add accel to speed until you get max speed, add speed to player x
-		lda playerXSpeed+2
-		cmp #MAX_PLAYER_SPEED
-		beq ModifySpeed
-			lda playerXSpeed ;add 0.25 to low word of x speed
-			clc
-			adc #PLAYER_ACCEL 
-			sta playerXSpeed
-			lda playerXSpeed+2
-			adc #$0 ;carry to high word of x speed
-			sta playerXSpeed+2
-			jmp ModifySpeed
+	EndModifySpeed:
+	; Pressed: ;add accel to speed until you get max speed, add speed to player x
+		; lda playerXSpeed+2
+		; cmp #MAX_PLAYER_SPEED
+		; beq ModifySpeed
+			; lda playerXSpeed ;add 0.25 to low word of x speed
+			; clc
+			; adc #PLAYER_ACCEL 
+			; sta playerXSpeed
+			; lda playerXSpeed+2
+			; adc #$0 ;carry to high word of x speed
+			; sta playerXSpeed+2
+			; jmp ModifySpeed
 			
-	Released: ;subtract accel from speed until you get to 0
-		lda playerXSpeed+2 ;has X speed been reduced to 0?
-		bne NotZero
-		lda playerXSpeed ;check both decimal and whole part
-		bne NotZero
-			lda #STATE_STILL ;if so, set player state to "still"
-			sta playerState
-			jmp EndStateMachine
-		NotZero:
-		lda playerXSpeed ;otherwise subtract PLAYER_ACCEL from x speed
-		sec
-		sbc #PLAYER_ACCEL
-		sta playerXSpeed
-		lda playerXSpeed+2
-		sbc #$0
-		sta playerXSpeed+2
+	; Released: ;subtract accel from speed until you get to 0
+		; lda playerXSpeed+2 ;has X speed been reduced to 0?
+		; bne NotZero
+		; lda playerXSpeed ;check both decimal and whole part
+		; bne NotZero
+			; lda #STATE_STILL ;if so, set player state to "still"
+			; sta playerState
+			; jmp EndStateMachine
+		; NotZero:
+		; lda playerXSpeed ;otherwise subtract PLAYER_ACCEL from x speed
+		; sec
+		; sbc #PLAYER_ACCEL
+		; sta playerXSpeed
+		; lda playerXSpeed+2
+		; sbc #$0
+		; sta playerXSpeed+2
 		
-	ModifySpeed:
-		a8
-		dec playerAnimTimer
-		a16
-		lda playerState
-		cmp #STATE_RIGHT_HELD
-		beq AddSpeed
-		cmp #STATE_RIGHT_RELEASED
-		beq AddSpeed
-		jmp SubtractSpeed
+	; ModifySpeed:
+		; a8
+		; dec playerAnimTimer
+		; a16
+		; lda playerState
+		; cmp #STATE_RIGHT_HELD
+		; beq AddSpeed
+		; cmp #STATE_RIGHT_RELEASED
+		; beq AddSpeed
+		; jmp SubtractSpeed
 	
-	AddSpeed: ;add speed to playerx when going right
-		lda playerX
-		clc
-		adc playerXSpeed
-		sta playerX
-		lda playerX+2
-		adc playerXSpeed+2
-		sta playerX+2
-		jsr HandleXCollisionR
-		jmp EndStateMachine
+	; AddSpeed: ;add speed to playerx when going right
+		; lda playerX
+		; clc
+		; adc playerXSpeed
+		; sta playerX
+		; lda playerX+2
+		; adc playerXSpeed+2
+		; sta playerX+2
+		; jsr HandleXCollisionR
+		; jmp EndStateMachine
 		
-	SubtractSpeed: ;subtract speed from playerx when going left
-		lda playerX
-		sec
-		sbc playerXSpeed
-		sta playerX
-		lda playerX+2
-		sbc playerXSpeed+2
-		sta playerX+2
-		jsr HandleXCollisionL
+	; SubtractSpeed: ;subtract speed from playerx when going left
+		; lda playerX
+		; sec
+		; sbc playerXSpeed
+		; sta playerX
+		; lda playerX+2
+		; sbc playerXSpeed+2
+		; sta playerX+2
+		; jsr HandleXCollisionL
 	
-	EndStateMachine:
+	; EndStateMachine:
 	
 	lda movementState ;eject vertically to the next tile when walking off a slope
 	cmp #MOVE_STATE_SLOPE
@@ -226,9 +284,12 @@ HandlePlayerMovement:
 	lda joypad
 	bit #KEY_B
 	beq DontStartJump
-		lda #MOVE_STATE_JUMPING
-		cmp movementState
+		lda movementState
+		cmp #MOVE_STATE_JUMPING
 		beq NotRising ;don't want player jumping in air
+		cmp #MOVE_STATE_FALLING
+		beq NotRising
+			lda #MOVE_STATE_JUMPING
 			sta movementState
 			lda #PLAYER_JUMP_SPEED
 			sta playerYSpeed+2
@@ -425,6 +486,14 @@ HandleSlopeCollision:
 		sta playerY+2
 		lda #MOVE_STATE_SLOPE
 		sta movementState
+		
+		; lda playerXSpeed
+		; sec
+		; sbc #$1000
+		; sta playerXSpeed
+		; lda playerXSpeed+2
+		; sbc #$0
+		; sta playerXSpeed+2
 	NotOnSlope:
 	rts
 	
@@ -510,15 +579,11 @@ CheckCollisionC: ;look at the center of the bottom of the player
 	sta $2
 	
 CheckPlayerCollision:
-	lda $0 ;divide by 16, the clcs are so it doesn't wrap around
-	clc
-	ror
-	clc
-	ror
-	clc
-	ror
-	clc
-	ror
+	lda $0 ;divide by 16
+	lsr
+	lsr
+	lsr
+	lsr
 	sta playerBGTile
 	lda $2 ;dividing y tile by 16 and then multiplying by 32 since tilemap's 32x32
 	clc
@@ -530,6 +595,7 @@ CheckPlayerCollision:
 	rol ;words->bytes
 	tax
 	lda f:BGTilemap, x
+	and #$3ff ;just get the 9 bit tile number
 	sta playerBGTile
 	rts
 	
