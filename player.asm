@@ -128,23 +128,33 @@ HandlePlayerMovement:
 	PlayerMoving:
 		lda playerXSpeed+2
 		and #$8000
-		beq MovingRight
-			lda playerXSpeed
+		beq DecelRight
+			lda playerXSpeed ;going left, add speed until 0
 			clc
 			adc #PLAYER_ACCEL
 			sta playerXSpeed
 			lda playerXSpeed+2
 			adc #$0
 			sta playerXSpeed+2
+			and #$8000
+			bne @NotBelowZero
+				stz playerXSpeed
+				stz playerXSpeed+2
+		@NotBelowZero:	
 			jmp AddSpeed
-		MovingRight:
+		DecelRight:
 			lda playerXSpeed
 			sec
 			sbc #PLAYER_ACCEL
 			sta playerXSpeed
 			lda playerXSpeed+2
 			sbc #$0
-			sta playerXSpeed+2		
+			sta playerXSpeed+2
+			and #$8000
+			beq @NotBelowZero
+				stz playerXSpeed
+				stz playerXSpeed+2
+			@NotBelowZero:
 		
 	AddSpeed:
 	dec playerAnimTimer
@@ -155,9 +165,9 @@ HandlePlayerMovement:
 	lda playerX+2
 	adc playerXSpeed+2
 	sta playerX+2
-	lda playerState
-	cmp #STATE_LEFT_HELD
-	bcc CheckRightCollision
+	lda playerXSpeed+2
+	and #$8000
+	beq CheckRightCollision
 		jsr HandleXCollisionL
 		jmp EndCheckCollision
 	CheckRightCollision:
@@ -487,13 +497,24 @@ HandleSlopeCollision:
 		lda #MOVE_STATE_SLOPE
 		sta movementState
 		
-		; lda playerXSpeed
-		; sec
-		; sbc #$1000
-		; sta playerXSpeed
-		; lda playerXSpeed+2
-		; sbc #$0
-		; sta playerXSpeed+2
+		lda AddSubTable, x
+		bne @SubtractMomentum
+			lda playerXSpeed
+			clc
+			adc MomentumTable, x
+			sta playerXSpeed
+			lda playerXSpeed+2
+			adc #$0
+			sta playerXSpeed+2
+			jmp NotOnSlope
+		@SubtractMomentum:
+			lda playerXSpeed
+			sec
+			sbc MomentumTable, x
+			sta playerXSpeed
+			lda playerXSpeed+2
+			sbc #$0
+			sta playerXSpeed+2
 	NotOnSlope:
 	rts
 	
