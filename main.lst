@@ -1427,7 +1427,6 @@ Current file: main.asm
 0002B5r 2               	NotLeft:
 0002B5r 2  A9 00 00     	lda #STATE_DECEL
 0002B8r 2  85 2E        	sta playerState
-0002BAr 2               	LeftNotReleased:
 0002BAr 2               
 0002BAr 2               	EndStateAssign:
 0002BAr 2               
@@ -1522,6 +1521,8 @@ Current file: main.asm
 000364r 2               	CheckRightCollision:
 000364r 2  20 rr rr     		jsr HandleXCollisionR
 000367r 2               	EndCheckCollision:
+000367r 2               	; jsr HandleXCollisionR
+000367r 2               	; jsr HandleXCollisionL
 000367r 2  4C rr rr     	jmp EndModifySpeed
 00036Ar 2               
 00036Ar 2               	PlayerStill:
@@ -1534,69 +1535,6 @@ Current file: main.asm
 000376r 2  85 2C        	sta playerAnimMode
 000378r 2  C2 20        	a16
 00037Ar 2               	EndModifySpeed:
-00037Ar 2               	; Pressed: ;add accel to speed until you get max speed, add speed to player x
-00037Ar 2               		; lda playerXSpeed+2
-00037Ar 2               		; cmp #MAX_PLAYER_SPEED
-00037Ar 2               		; beq ModifySpeed
-00037Ar 2               			; lda playerXSpeed ;add 0.25 to low word of x speed
-00037Ar 2               			; clc
-00037Ar 2               			; adc #PLAYER_ACCEL
-00037Ar 2               			; sta playerXSpeed
-00037Ar 2               			; lda playerXSpeed+2
-00037Ar 2               			; adc #$0 ;carry to high word of x speed
-00037Ar 2               			; sta playerXSpeed+2
-00037Ar 2               			; jmp ModifySpeed
-00037Ar 2               
-00037Ar 2               	; Released: ;subtract accel from speed until you get to 0
-00037Ar 2               		; lda playerXSpeed+2 ;has X speed been reduced to 0?
-00037Ar 2               		; bne NotZero
-00037Ar 2               		; lda playerXSpeed ;check both decimal and whole part
-00037Ar 2               		; bne NotZero
-00037Ar 2               			; lda #STATE_STILL ;if so, set player state to "still"
-00037Ar 2               			; sta playerState
-00037Ar 2               			; jmp EndStateMachine
-00037Ar 2               		; NotZero:
-00037Ar 2               		; lda playerXSpeed ;otherwise subtract PLAYER_ACCEL from x speed
-00037Ar 2               		; sec
-00037Ar 2               		; sbc #PLAYER_ACCEL
-00037Ar 2               		; sta playerXSpeed
-00037Ar 2               		; lda playerXSpeed+2
-00037Ar 2               		; sbc #$0
-00037Ar 2               		; sta playerXSpeed+2
-00037Ar 2               
-00037Ar 2               	; ModifySpeed:
-00037Ar 2               		; a8
-00037Ar 2               		; dec playerAnimTimer
-00037Ar 2               		; a16
-00037Ar 2               		; lda playerState
-00037Ar 2               		; cmp #STATE_RIGHT_HELD
-00037Ar 2               		; beq AddSpeed
-00037Ar 2               		; cmp #STATE_RIGHT_RELEASED
-00037Ar 2               		; beq AddSpeed
-00037Ar 2               		; jmp SubtractSpeed
-00037Ar 2               
-00037Ar 2               	; AddSpeed: ;add speed to playerx when going right
-00037Ar 2               		; lda playerX
-00037Ar 2               		; clc
-00037Ar 2               		; adc playerXSpeed
-00037Ar 2               		; sta playerX
-00037Ar 2               		; lda playerX+2
-00037Ar 2               		; adc playerXSpeed+2
-00037Ar 2               		; sta playerX+2
-00037Ar 2               		; jsr HandleXCollisionR
-00037Ar 2               		; jmp EndStateMachine
-00037Ar 2               
-00037Ar 2               	; SubtractSpeed: ;subtract speed from playerx when going left
-00037Ar 2               		; lda playerX
-00037Ar 2               		; sec
-00037Ar 2               		; sbc playerXSpeed
-00037Ar 2               		; sta playerX
-00037Ar 2               		; lda playerX+2
-00037Ar 2               		; sbc playerXSpeed+2
-00037Ar 2               		; sta playerX+2
-00037Ar 2               		; jsr HandleXCollisionL
-00037Ar 2               
-00037Ar 2               	; EndStateMachine:
 00037Ar 2               
 00037Ar 2  A5 30        	lda movementState ;eject vertically to the next tile when walking off a slope
 00037Cr 2  C9 03 00     	cmp #MOVE_STATE_SLOPE
@@ -1784,7 +1722,7 @@ Current file: main.asm
 0004FFr 2  64 20        			stz playerXSpeed
 000501r 2  64 22        			stz playerXSpeed+2
 000503r 2  C6 1A        			dec playerX+2
-000505r 2  4C rr rr     			jmp HandleXCollisionL
+000505r 2  4C rr rr     			jmp HandleXCollisionR
 000508r 2               	NoCollisionR:
 000508r 2  60           	rts
 000509r 2               
@@ -2082,25 +2020,25 @@ Current file: main.asm
 001BC0r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$2,$2,$0,$0,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 001BC4r 2  00 00 00 00  
 001BC8r 2  00 00 00 00  
-001C00r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001C00r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$2,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 001C04r 2  00 00 00 00  
 001C08r 2  00 00 00 00  
-001C40r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$0,$0,$0,$2,$2,$2,$0,$0,$0,$0,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001C40r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$0,$0,$0,$2,$2,$2,$0,$0,$0,$2,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 001C44r 2  00 00 00 00  
 001C48r 2  00 00 00 00  
-001C80r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001C80r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$2,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 001C84r 2  00 00 00 00  
 001C88r 2  00 00 00 00  
-001CC0r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001CC0r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$2,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 001CC4r 2  00 00 00 00  
 001CC8r 2  00 00 00 00  
-001D00r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001D00r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$2,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 001D04r 2  00 00 00 00  
 001D08r 2  00 00 00 00  
-001D40r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$0,$0,$2,$6,$0,$0,$0,$0,$0,$0,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001D40r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$0,$4,$2,$6,$0,$0,$0,$0,$0,$2,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 001D44r 2  00 00 00 00  
 001D48r 2  00 00 00 00  
-001D80r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$4,$2,$2,$2,$6,$0,$0,$0,$0,$0,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
+001D80r 2  02 00 00 00  	.word $2,$0,$0,$0,$0,$4,$2,$2,$2,$6,$0,$0,$0,$0,$2,$0,$2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
 001D84r 2  00 00 00 00  
 001D88r 2  00 00 04 00  
 001DC0r 2  02 00 02 00  	.word $2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2,$2
@@ -2426,7 +2364,7 @@ Current file: main.asm
 000D64r 1  A9 00            lda #$0 ;bg1 tilemap offset $0, size 32x32
 000D66r 1  8D 07 21         sta NTADDR
 000D69r 1               
-000D69r 1  A9 40        	lda #$40  ; bg2 tilemap offset: $4000, size: 32x32
+000D69r 1  A9 40        	lda #$40 | 0  ; bg2 tilemap offset: $4000, size: 32x32
 000D6Br 1  8D 08 21     	sta NTADDR+1
 000D6Er 1               
 000D6Er 1  A9 52        	lda #$52

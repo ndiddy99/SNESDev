@@ -78,7 +78,6 @@ HandlePlayerMovement:
 	NotLeft:
 	lda #STATE_DECEL
 	sta playerState
-	LeftNotReleased:
 	
 	EndStateAssign:
 	
@@ -172,7 +171,7 @@ HandlePlayerMovement:
 		jmp EndCheckCollision
 	CheckRightCollision:
 		jsr HandleXCollisionR
-	EndCheckCollision:	
+	EndCheckCollision:
 	jmp EndModifySpeed
 	
 	PlayerStill:	
@@ -185,69 +184,6 @@ HandlePlayerMovement:
 	sta playerAnimMode
 	a16
 	EndModifySpeed:
-	; Pressed: ;add accel to speed until you get max speed, add speed to player x
-		; lda playerXSpeed+2
-		; cmp #MAX_PLAYER_SPEED
-		; beq ModifySpeed
-			; lda playerXSpeed ;add 0.25 to low word of x speed
-			; clc
-			; adc #PLAYER_ACCEL 
-			; sta playerXSpeed
-			; lda playerXSpeed+2
-			; adc #$0 ;carry to high word of x speed
-			; sta playerXSpeed+2
-			; jmp ModifySpeed
-			
-	; Released: ;subtract accel from speed until you get to 0
-		; lda playerXSpeed+2 ;has X speed been reduced to 0?
-		; bne NotZero
-		; lda playerXSpeed ;check both decimal and whole part
-		; bne NotZero
-			; lda #STATE_STILL ;if so, set player state to "still"
-			; sta playerState
-			; jmp EndStateMachine
-		; NotZero:
-		; lda playerXSpeed ;otherwise subtract PLAYER_ACCEL from x speed
-		; sec
-		; sbc #PLAYER_ACCEL
-		; sta playerXSpeed
-		; lda playerXSpeed+2
-		; sbc #$0
-		; sta playerXSpeed+2
-		
-	; ModifySpeed:
-		; a8
-		; dec playerAnimTimer
-		; a16
-		; lda playerState
-		; cmp #STATE_RIGHT_HELD
-		; beq AddSpeed
-		; cmp #STATE_RIGHT_RELEASED
-		; beq AddSpeed
-		; jmp SubtractSpeed
-	
-	; AddSpeed: ;add speed to playerx when going right
-		; lda playerX
-		; clc
-		; adc playerXSpeed
-		; sta playerX
-		; lda playerX+2
-		; adc playerXSpeed+2
-		; sta playerX+2
-		; jsr HandleXCollisionR
-		; jmp EndStateMachine
-		
-	; SubtractSpeed: ;subtract speed from playerx when going left
-		; lda playerX
-		; sec
-		; sbc playerXSpeed
-		; sta playerX
-		; lda playerX+2
-		; sbc playerXSpeed+2
-		; sta playerX+2
-		; jsr HandleXCollisionL
-	
-	; EndStateMachine:
 	
 	lda movementState ;eject vertically to the next tile when walking off a slope
 	cmp #MOVE_STATE_SLOPE
@@ -431,7 +367,7 @@ HandleXCollisionR:
 			stz playerXSpeed
 			stz playerXSpeed+2
 			dec playerX+2
-			jmp HandleXCollisionL
+			jmp HandleXCollisionR
 	NoCollisionR:	
 	rts
 
