@@ -6,6 +6,7 @@ GRAVITY = $6fff ;~0.4px
 
 
 MAX_PLAYER_SPEED = $2
+MAX_SLOPE_SPEED = $4
 PLAYER_STILL_TILE = $0
 FIRST_PLAYER_TILE = $2
 LAST_PLAYER_TILE = $8 ;horizontally
@@ -441,6 +442,10 @@ HandleSlopeCollision:
 			sta playerXSpeed
 			lda playerXSpeed+2
 			adc #$0
+			cmp #MAX_SLOPE_SPEED
+			bne @DontCapAddSpeed
+				stz playerXSpeed
+			@DontCapAddSpeed:
 			sta playerXSpeed+2
 			jmp NotOnSlope
 		@SubtractMomentum:
@@ -450,6 +455,12 @@ HandleSlopeCollision:
 			sta playerXSpeed
 			lda playerXSpeed+2
 			sbc #$0
+			cmp #-(MAX_SLOPE_SPEED+1)
+			bne @DontCapSubSpeed
+				lda #$ffff
+				sta playerXSpeed
+				lda #-(MAX_SLOPE_SPEED+1)
+			@DontCapSubSpeed:
 			sta playerXSpeed+2
 	NotOnSlope:
 	rts
