@@ -7,6 +7,8 @@ TileAttrs: ;either "hard" aka eject or pointer to heightmap
 .word TILE_HARD
 .word HeightMap4
 .word HeightMap6
+.word HeightMap8
+.word HeightMapA
 
 ADD = $0
 SUBTRACT = $1
@@ -16,12 +18,16 @@ AddSubTable: ;whether to add or subtract momentum depending on tile num
 .word $0
 .word SUBTRACT
 .word ADD
+.word SUBTRACT
+.word SUBTRACT
 
 MomentumTable:
 .word $0
 .word $0
 .word $6000
 .word $6000
+.word $4800
+.word $4800
 
 HeightMap4: ;height map for tile 4
 .word $1
@@ -58,3 +64,39 @@ HeightMap6:
 .word $3
 .word $2
 .word $1
+
+HeightMap8:
+.word $1
+.word $1
+.word $2
+.word $2
+.word $3
+.word $3
+.word $4
+.word $4
+.word $5
+.word $5
+.word $6
+.word $6
+.word $7
+.word $7
+.word $8
+.word $8
+
+HeightMapA:
+.word $9
+.word $9
+.word $a
+.word $a
+.word $b
+.word $b
+.word $c
+.word $c
+.word $d
+.word $d
+.word $e
+.word $e
+.word $f
+.word $f
+.word $10
+.word $10
