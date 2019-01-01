@@ -111,7 +111,7 @@ SetupVideo:
     lda #$0 ;bg1 tilemap offset $0, size 32x32
     sta NTADDR
 	
-	lda #$40 | 0  ; bg2 tilemap offset: $4000, size: 32x32
+	lda #$40  ; bg2 tilemap offset: $4000, size: 32x32
 	sta NTADDR+1
 
 	lda #$52

@@ -21,13 +21,14 @@ AddSubTable: ;whether to add or subtract momentum depending on tile num
 .word SUBTRACT
 .word SUBTRACT
 
+;if tile has momentum, needs to be more than PLAYER_ACCEL or else weird stuff happens
 MomentumTable:
 .word $0
 .word $0
 .word $6000
 .word $6000
-.word $4800
-.word $4800
+.word $4400
+.word $4400
 
 HeightMap4: ;height map for tile 4
 .word $1

@@ -1,6 +1,6 @@
 .segment "CODE"
 
-PLAYER_ACCEL = $3fff ;0.25 px
+PLAYER_ACCEL = $4000 ;0.25 px
 PLAYER_JUMP_SPEED = $fff8 ;-7
 GRAVITY = $6fff ;~0.4px
 
@@ -46,6 +46,7 @@ InitPlayer:
 	sta playerY+2
 	lda #$20
 	sta playerX+2
+	sta playerSpriteX
 	lda #PLAYER_RIGHT_ATTRS
 	sta playerAttrs
 	lda #FIRST_PLAYER_TILE
@@ -158,13 +159,34 @@ HandlePlayerMovement:
 		
 	AddSpeed:
 	dec playerAnimTimer
-	lda playerX
-	clc
-	adc playerXSpeed
-	sta playerX
 	lda playerX+2
-	adc playerXSpeed+2
-	sta playerX+2
+	cmp #$80 ;if player > halfway through screen, add speed to scroll instead of sprite x
+	bcs AddToScrollX
+		AddToPlayerX:
+		lda playerX
+		clc
+		adc playerXSpeed
+		sta playerX
+		lda playerX+2
+		adc playerXSpeed+2
+		sta playerX+2
+		sta playerSpriteX
+		jmp EndAddSpeed
+		
+		AddToScrollX:
+		lda playerX
+		clc
+		adc playerXSpeed
+		sta playerX
+		lda playerX+2
+		adc playerXSpeed+2
+		sta playerX+2
+		and #$3ff
+		sec
+		sbc #$80 ;since player is already this far over if this code is run
+		sta scrollX
+	EndAddSpeed:
+	
 	lda playerXSpeed+2
 	and #$8000
 	beq CheckRightCollision
@@ -326,7 +348,7 @@ HandlePlayerMovement:
 				lda #ANIM_MODE_ADD
 				sta playerAnimMode
 	DrawSprite:
-	LoadSprite #$0, playerTileNum, playerX+2, playerY+2, playerAttrs
+	LoadSprite #$0, playerTileNum, playerSpriteX, playerY+2, playerAttrs
 	lda playerY+2
 	clc
 	adc #$10
@@ -335,7 +357,7 @@ HandlePlayerMovement:
 	clc
 	adc #$20
 	sta $c
-	LoadSprite #$1, $c, playerX+2, $a, playerAttrs
+	LoadSprite #$1, $c, playerSpriteX, $a, playerAttrs
 	
 	plp
 	rts

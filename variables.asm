@@ -8,7 +8,8 @@ frameStatus
 ;---player.asm---
 playerX = frameStatus+1 ;16.16 fixed
 playerY = playerX+4
-playerXSpeed = playerY+4
+playerSpriteX = playerY+4
+playerXSpeed = playerSpriteX+2
 playerYSpeed = playerXSpeed+4
 playerBGTile = playerYSpeed+4
 
