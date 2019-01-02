@@ -159,33 +159,13 @@ HandlePlayerMovement:
 		
 	AddSpeed:
 	dec playerAnimTimer
+	lda playerX
+	clc
+	adc playerXSpeed
+	sta playerX
 	lda playerX+2
-	cmp #$80 ;if player > halfway through screen, add speed to scroll instead of sprite x
-	bcs AddToScrollX
-		AddToPlayerX:
-		lda playerX
-		clc
-		adc playerXSpeed
-		sta playerX
-		lda playerX+2
-		adc playerXSpeed+2
-		sta playerX+2
-		sta playerSpriteX
-		jmp EndAddSpeed
-		
-		AddToScrollX:
-		lda playerX
-		clc
-		adc playerXSpeed
-		sta playerX
-		lda playerX+2
-		adc playerXSpeed+2
-		sta playerX+2
-		and #$3ff
-		sec
-		sbc #$80 ;since player is already this far over if this code is run
-		sta scrollX
-	EndAddSpeed:
+	adc playerXSpeed+2
+	sta playerX+2
 	
 	lda playerXSpeed+2
 	and #$8000
@@ -320,7 +300,6 @@ HandlePlayerMovement:
 		sta playerTileNum
 		jmp DrawSprite
 	NoJumpingSprite:
-
 	
 	a8
 	lda playerAnimTimer ;is timer zero?
@@ -348,6 +327,26 @@ HandlePlayerMovement:
 				lda #ANIM_MODE_ADD
 				sta playerAnimMode
 	DrawSprite:
+	
+	a16
+	lda playerX+2
+	cmp #$80 ;if player is at least halfway over
+	bcs SetScrollX ;update the scroll pos
+		SetSpriteX: ;otherwise update the sprite pos
+		lda playerX+2
+		sta playerSpriteX
+		stz scrollX
+		jmp EndUpdate
+		
+		SetScrollX:
+		lda playerX+2
+		sec
+		sbc playerSpriteX
+		and #$3ff
+		sta scrollX
+	EndUpdate:
+	
+		
 	LoadSprite #$0, playerTileNum, playerSpriteX, playerY+2, playerAttrs
 	lda playerY+2
 	clc
