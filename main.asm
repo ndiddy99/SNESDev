@@ -74,6 +74,7 @@ VBlank:
 	pha ;push regs to stack so if my main loop is ever too long it'll continue without
 	phx ;fucking up
 	phy
+	a8
 	lda frameStatus
 	bne SkipVblank
 	lda #FORCEBLANK

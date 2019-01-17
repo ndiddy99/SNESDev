@@ -5,7 +5,7 @@ PLAYER_JUMP_SPEED = $fff8 ;-7
 GRAVITY = $6fff ;~0.4px
 
 
-MAX_PLAYER_SPEED = $2
+MAX_PLAYER_SPEED = $3
 MAX_SLOPE_SPEED = $4
 PLAYER_STILL_TILE = $0
 FIRST_PLAYER_TILE = $2
@@ -89,11 +89,11 @@ HandlePlayerMovement:
 	ModifySpeed:
 	cmp #STATE_RIGHT_HELD
 	bne RightNotHeld
-		lda playerXSpeed+2
+		lda playerXSpeed+2		;if player speed is greater than max speed, don't apply acceleration
 		cmp #MAX_PLAYER_SPEED
-		bne @DontAddSpeed
+		bmi @AccelPlayer
 			jmp AddSpeed
-		@DontAddSpeed:
+		@AccelPlayer:
 			lda playerXSpeed
 			clc
 			adc #PLAYER_ACCEL
@@ -106,10 +106,10 @@ HandlePlayerMovement:
 	cmp #STATE_LEFT_HELD
 	bne LeftNotHeld
 		lda playerXSpeed+2
-		cmp #-(MAX_PLAYER_SPEED+1)
-		bne @DontAddSpeed
+		cmp #-(MAX_PLAYER_SPEED)
+		bpl @AccelPlayer
 			jmp AddSpeed
-		@DontAddSpeed:
+		@AccelPlayer:
 			lda playerXSpeed
 			sec
 			sbc #PLAYER_ACCEL
@@ -569,6 +569,7 @@ CheckCollisionC: ;look at the center of the bottom of the player
 	
 CheckPlayerCollision:
 	lda $0 ;divide by 16
+	and #$1ff
 	lsr
 	lsr
 	lsr
