@@ -17,3 +17,4 @@
 ; status (0=still, 1 = moving, 2 = ready to despawn, etc) (byte)
 ; pointer to "handler" function
 .define EntityList $630  
+.define TilemapMirror $700

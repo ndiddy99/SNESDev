@@ -584,7 +584,7 @@ CheckPlayerCollision:
 	adc playerBGTile
 	rol ;words->bytes
 	tax
-	lda f:BGTilemap, x
+	lda TilemapMirror, x
 	and #$3ff ;just get the 9 bit tile number
 	sta playerBGTile
 	rts

@@ -3,10 +3,15 @@ joypad = $10
 scrollX = joypad+2
 scrollY = scrollX+2 
 scroll2X = scrollY+2
-frameStatus
+frameStatus ;0 if main loop is done executing
+
+;---scroll.asm---
+scrollColumn ;last scroll column loaded
+scrollScreenAddr=scrollColumn+2 ;pointer to "screen" that you're loading tiles from
+scrollPtr = scrollScreenAddr+2 ;for copying scroll to vram in vblank
 
 ;---player.asm---
-playerX = frameStatus+1 ;16.16 fixed
+playerX = scrollPtr+2 ;16.16 fixed
 playerY = playerX+4
 playerSpriteX = playerY+4
 playerXSpeed = playerSpriteX+2

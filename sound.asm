@@ -1,4 +1,5 @@
 .segment "BANK1"
+.scope
 
 SPCPrg:
 	.incbin ".\sound\sound.bin"
@@ -90,3 +91,5 @@ WaitReceive:
 	bne @ClrLoop
 	plp
 	rtl
+
+.endscope

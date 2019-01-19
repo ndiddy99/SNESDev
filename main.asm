@@ -7,6 +7,7 @@
 .include "sprites.asm"
 .include "tiles.asm"
 .include "player.asm"
+.include "scroll.asm"
 .include "art.asm"
 .include "sound.asm"
 
@@ -21,7 +22,8 @@ Reset:
     LoadBlockToVRAM BGTiles, $2000, $400	
 	LoadBlockToVRAM BG2Tiles, $5000, $200 ;8 tiles, 4bpp
 	LoadBlockToVRAM PlayerTiles, $6000, $1000
-	LoadBlockToVRAM BGTilemap, $0000, $800
+	LoadBlockToVRAM BGTilemap, $0, $380
+	LoadBlockToWRAM BGTilemap, TilemapMirror, $380
 	LoadBlockToVRAM BG2Tilemap, $4000, $800
     ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
@@ -30,10 +32,11 @@ Reset:
 	lda #VBLANK_NMI | AUTOREAD
 	sta PPUNMI ;enable vblank interrupt and joypad read
 	a16
-	lda #$11f
-	sta scrollY
+	stz scrollX
+	stz scrollY
 	
 	jsr InitPlayer
+	jsr InitScroll
 	
 MainLoop:
 	a8
@@ -43,6 +46,7 @@ MainLoop:
 	lda JOY1CUR ;p1 joypad read address
 	sta joypad
 	jsr HandlePlayerMovement
+	; jsr HandleScroll
 
 ; SetupScrollTable:
 	; clc
