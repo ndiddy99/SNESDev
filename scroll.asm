@@ -19,6 +19,7 @@ HandleScroll:
 	adc #$11 ;first offscreen tile
 	cmp scrollColumn ;beyond a new scroll boundary?
 	bcc EndHandleScroll
+	beq EndHandleScroll
 		sta scrollColumn
 		and #$1f
 		bne NotOnScreenBoundary
@@ -42,11 +43,11 @@ HandleScroll:
 		ldx #$e ;number of tiles to copy
 		ldy #$0
 		a8
-		lda #$2
+		lda #$2 ;bank with map data
 		pha
 		plb
 		a16
-		CopyLoop:
+		@CopyLoop:
 			lda (sourceAddr), y
 			sta (destAddr), y
 			tya
@@ -54,12 +55,42 @@ HandleScroll:
 			adc #$40
 			tay
 			dex
-			bne CopyLoop
+			bne @CopyLoop
 		a8
 		lda #$0
 		pha
 		plb
 		a16
 	EndHandleScroll:
+	rts
+	
+VramScrollCopy: ;run during vblank if there's new tile data to copy
+	a8
+	lda #$1 ;increment vram access by 64 bytes
+	sta PPUCTRL
+	a16
+	lda scrollColumn
+	and #$1f
+	asl
+	clc
+	adc #TilemapMirror
+	sta sourceAddr
+	
+	lda scrollColumn
+	and #$1f
+	sta PPUADDR ;set up where to write to in VRAM
+	
+	ldx #$e ;number of tiles to copy
+	ldy #$0
+	@CopyLoop:
+		lda (sourceAddr), y
+		sta PPUDATA
+		tya
+		clc
+		adc #$40
+		tay
+		dex
+		bne @CopyLoop
+	a8
 	rts
 	

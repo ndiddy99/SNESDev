@@ -46,7 +46,7 @@ MainLoop:
 	lda JOY1CUR ;p1 joypad read address
 	sta joypad
 	jsr HandlePlayerMovement
-	; jsr HandleScroll
+	jsr HandleScroll
 
 ; SetupScrollTable:
 	; clc
@@ -85,11 +85,12 @@ VBlank:
 	sta PPUBRIGHT
 	SetHScroll scrollX
 	SetVScroll scrollY
-	;DMATilemapMirror #$2
+	jsr VramScrollCopy
 	jsr DMASpriteMirror
 	lda #$1 ;start dma transfer on channel 1 (change to 3 if i reenable dmatilemapmirror)
 	sta $420b
 	; jsr SetupHDMA
+	
 	lda #$F ;disable force blank, set back to max brightness
 	sta PPUBRIGHT
 	lda $4210 ;clear vblank flag
