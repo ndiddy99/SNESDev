@@ -170,10 +170,14 @@ HandlePlayerMovement:
 	lda playerXSpeed+2
 	and #$8000
 	beq CheckRightCollision
-		jsr HandleXCollisionL
+		jsr HandleXCollisionL ;going left
+		lda #$1
+		sta playerDirection
 		jmp EndCheckCollision
 	CheckRightCollision:
 		jsr HandleXCollisionR
+		lda #$2
+		sta playerDirection
 	EndCheckCollision:
 	jmp EndModifySpeed
 	
@@ -186,6 +190,7 @@ HandlePlayerMovement:
 	lda #ANIM_MODE_ADD
 	sta playerAnimMode
 	a16
+	stz playerDirection
 	EndModifySpeed:
 	
 	lda movementState ;eject vertically to the next tile when walking off a slope

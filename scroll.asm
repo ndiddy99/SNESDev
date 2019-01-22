@@ -3,13 +3,39 @@
 
 sourceAddr = $0
 destAddr = $2
+columnNum = $4
 
 InitScroll:
 	lda #BGTilemap ;address of first offscreen column
 	sta scrollScreenAddr
 	rts
-
+	
 HandleScroll:
+	lda playerDirection ;0 = still, 1 = left, 2 = right
+	beq EndHandleScroll ;if player's not moving, don't have to worry about scroll
+	cmp #$2 
+	beq MovingRight
+	
+	MovingLeft:
+	lda scrollX
+	lsr
+	lsr
+	lsr
+	lsr ;leftmost onscreen column
+	dec a ;first offscreen column to the left
+	cmp scrollColumn
+	bcs EndHandleScroll
+	sta scrollColumn
+	and #$1f
+	cmp #$1f ;is rightmost tile on previous screen?
+	bne NotOnScreenBoundary
+		lda scrollScreenAddr
+		sec
+		sbc #$380 ;32 columns, 14 rows, 1 word per tile
+		sta scrollScreenAddr
+		bra DoneMovementTests
+	
+	MovingRight:
 	lda scrollX
 	lsr
 	lsr
@@ -20,24 +46,24 @@ HandleScroll:
 	cmp scrollColumn ;beyond a new scroll boundary?
 	bcc EndHandleScroll
 	beq EndHandleScroll
-		sta scrollColumn
-		and #$1f
-		bne NotOnScreenBoundary
-			lda scrollScreenAddr
-			clc
-			adc #$380 ;32 columns, 14 rows, 1 word per tile
-			sta scrollScreenAddr
+	sta scrollColumn
+	and #$1f
+	bne NotOnScreenBoundary
+		lda scrollScreenAddr
+		clc
+		adc #$380 ;32 columns, 14 rows, 1 word per tile
+		sta scrollScreenAddr
 	NotOnScreenBoundary:
+	
+	DoneMovementTests:
 		lda scrollColumn
 		and #$1f
-		asl
+		asl ;words->bytes
+		pha ;>
 		clc
 		adc scrollScreenAddr
 		sta scrollPtr
-		sta sourceAddr ;set up source and destination pointers
-		lda scrollColumn
-		and #$1f
-		asl
+		pla ;<
 		adc #TilemapMirror
 		sta destAddr
 		ldx #$e ;number of tiles to copy
@@ -48,7 +74,7 @@ HandleScroll:
 		plb
 		a16
 		@CopyLoop:
-			lda (sourceAddr), y
+			lda (scrollPtr), y
 			sta (destAddr), y
 			tya
 			clc
@@ -73,7 +99,7 @@ VramScrollCopy: ;run during vblank if there's new tile data to copy
 	and #$1f
 	asl
 	clc
-	adc #TilemapMirror
+	adc #TilemapMirror ;copy from tilemap mirror to real tilemap
 	sta sourceAddr
 	
 	lda scrollColumn
