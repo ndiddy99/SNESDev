@@ -15,8 +15,6 @@ HandleScroll:
 	beq EndHandleScroll ;if player's not moving, don't have to worry about scroll
 	cmp #$2 
 	beq MovingRight
-	;issue: if the left and right boundaries are on 2 different screens, scroll screws up
-	;because of how i set scrollScreenAddr
 	;if going left and scroll & 1f goes up, that means you wrapped (so should change screen addy)
 	;same if going right and scroll & 1f goes down
 	MovingLeft:
@@ -62,10 +60,11 @@ HandleScroll:
 		pha ;>
 		clc
 		adc scrollScreenAddr
-		sta scrollPtr
+		sta sourceAddr
 		pla ;<
+		clc
 		adc #TilemapMirror
-		sta destAddr
+		sta scrollMirrorPtr
 		ldx #$e ;number of tiles to copy
 		ldy #$0
 		a8
@@ -74,8 +73,8 @@ HandleScroll:
 		plb
 		a16
 		@CopyLoop:
-			lda (scrollPtr), y
-			sta (destAddr), y
+			lda (sourceAddr), y
+			sta (scrollMirrorPtr), y
 			tya
 			clc
 			adc #$40
@@ -95,11 +94,14 @@ VramScrollCopy: ;run during vblank if there's new tile data to copy
 	lda #$1 ;increment vram access by 64 bytes
 	sta PPUCTRL
 	a16
-	lda scrollColumn
-	asl
-	clc
-	adc #TilemapMirror ;copy from tilemap mirror to real tilemap
-	sta sourceAddr
+	lda scrollMirrorPtr
+	beq DoneVramCopy
+	
+	; lda scrollColumn
+	; asl
+	; clc
+	; adc #TilemapMirror ;copy from tilemap mirror to real tilemap
+	; sta sourceAddr
 	
 	lda scrollColumn
 	sta PPUADDR ;set up where to write to in VRAM
@@ -107,7 +109,7 @@ VramScrollCopy: ;run during vblank if there's new tile data to copy
 	ldx #$e ;number of tiles to copy
 	ldy #$0
 	@CopyLoop:
-		lda (sourceAddr), y
+		lda (scrollMirrorPtr), y
 		sta PPUDATA
 		tya
 		clc
@@ -115,6 +117,8 @@ VramScrollCopy: ;run during vblank if there's new tile data to copy
 		tay
 		dex
 		bne @CopyLoop
+	stz scrollMirrorPtr ;how I mark that the tile column has been copied already
+	DoneVramCopy:
 	a8
 	rts
 	
