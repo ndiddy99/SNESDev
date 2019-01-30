@@ -47,7 +47,19 @@ MainLoop:
 	sta joypad
 	jsr HandlePlayerMovement
 	jsr HandleScroll
-
+	
+	a16
+	LoadSprite #$0, playerTileNum, playerSpriteX, playerY+2, playerAttrs
+	lda playerY+2
+	clc
+	adc #$10
+	sta $a
+	lda playerTileNum
+	clc
+	adc #$20
+	sta $c
+	LoadSprite #$1, $c, playerSpriteX, $a, playerAttrs
+	
 ; SetupScrollTable:
 	; clc
 	; lda scroll2X
@@ -68,6 +80,7 @@ MainLoop:
 	
 	a8
 	stz frameStatus
+	
 	wai
 	jmp MainLoop
 	

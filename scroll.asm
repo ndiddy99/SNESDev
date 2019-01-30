@@ -11,6 +11,25 @@ InitScroll:
 	rts
 	
 HandleScroll:
+	php
+	a16
+	lda playerX+2
+	cmp #$80 ;if player is at least halfway over
+	bcs SetScrollX ;update the scroll pos
+		SetSpriteX: ;otherwise update the sprite pos
+		lda playerX+2
+		sta playerSpriteX
+		stz scrollX
+		jmp EndUpdate
+		
+		SetScrollX:
+		lda playerX+2
+		sec
+		sbc playerSpriteX
+		and #$3ff
+		sta scrollX
+	EndUpdate:
+	
 	lda playerDirection ;0 = still, 1 = left, 2 = right
 	beq EndHandleScroll ;if player's not moving, don't have to worry about scroll
 	cmp #$2 
@@ -87,6 +106,7 @@ HandleScroll:
 		plb
 		a16
 	EndHandleScroll:
+	plp
 	rts
 	
 VramScrollCopy: ;run during vblank if there's new tile data to copy

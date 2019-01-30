@@ -303,12 +303,12 @@ HandlePlayerMovement:
 	bne NoJumpingSprite ;switch to jumping sprite when jumping
 		lda #PLAYER_JUMPING_TILE
 		sta playerTileNum
-		jmp DrawSprite
+		jmp DoneAnim
 	NoJumpingSprite:
 	
 	a8
 	lda playerAnimTimer ;is timer zero?
-	bne DrawSprite
+	bne DoneAnim
 		lda #PLAYER_TIMER_VAL
 		sta playerAnimTimer
 		lda playerAnimMode
@@ -318,51 +318,22 @@ HandlePlayerMovement:
 			ina
 			sta playerTileNum
 			cmp #LAST_PLAYER_TILE ;if up to last tile, go to subtract mode
-			bne DrawSprite
+			bne DoneAnim
 				lda #ANIM_MODE_SUBTRACT
 				sta playerAnimMode
-				jmp DrawSprite
+				jmp DoneAnim
 		AnimSubtract: ;subtract from tile num
 			lda playerTileNum
 			dea
 			dea
 			sta playerTileNum
 			cmp #FIRST_PLAYER_TILE
-			bne DrawSprite
+			bne DoneAnim
 				lda #ANIM_MODE_ADD
 				sta playerAnimMode
-	DrawSprite:
+	DoneAnim:
 	
 	a16
-	lda playerX+2
-	cmp #$80 ;if player is at least halfway over
-	bcs SetScrollX ;update the scroll pos
-		SetSpriteX: ;otherwise update the sprite pos
-		lda playerX+2
-		sta playerSpriteX
-		stz scrollX
-		jmp EndUpdate
-		
-		SetScrollX:
-		lda playerX+2
-		sec
-		sbc playerSpriteX
-		and #$3ff
-		sta scrollX
-	EndUpdate:
-	
-		
-	LoadSprite #$0, playerTileNum, playerSpriteX, playerY+2, playerAttrs
-	lda playerY+2
-	clc
-	adc #$10
-	sta $a
-	lda playerTileNum
-	clc
-	adc #$20
-	sta $c
-	LoadSprite #$1, $c, playerSpriteX, $a, playerAttrs
-	
 	plp
 	rts
 	
