@@ -8,27 +8,41 @@ columnNum = $4
 InitScroll:
 	lda #BGTilemap ;address of first offscreen column
 	sta scrollScreenAddr
+	lda #$ffff
+	sta scrollLock ;
 	rts
 	
 HandleScroll:
 	php
 	a16
 	lda playerX+2
-	cmp #$80 ;if player is at least halfway over
-	bcs SetScrollX ;update the scroll pos
-		SetSpriteX: ;otherwise update the sprite pos
-		lda playerX+2
+	cmp #$80 ; if playerX < $80
+	bcs NoLockL
+		sta playerSpriteX ;spriteX = playerX
+		stz scrollX ;scrollX = 0
+		jmp EndHandleScroll
+	NoLockL:
+	and #$3ff ;keep within screen bounds
+	cmp scrollLock ; else if (playerX & $3ff) >= scrollLock
+	bcc NoLockR
+		sec ;spriteX = $80 + ((playerX & $3ff) - scrollLock)
+		sbc scrollLock
+		clc
+		adc #$80
 		sta playerSpriteX
-		stz scrollX
-		jmp EndUpdate
 		
-		SetScrollX:
-		lda playerX+2
+		lda scrollLock ;scrollX = maxScroll - $80
 		sec
-		sbc playerSpriteX
-		and #$3ff
+		sbc #$80
 		sta scrollX
-	EndUpdate:
+		jmp EndHandleScroll
+	NoLockR:
+	lda playerX+2 ;else, keep sprite centered, do scrolling normally
+	sec
+	sbc #$80
+	sta scrollX
+	lda #$80
+	sta playerSpriteX
 	
 	lda playerDirection ;0 = still, 1 = left, 2 = right
 	beq EndHandleScroll ;if player's not moving, don't have to worry about scroll
@@ -52,6 +66,7 @@ HandleScroll:
 		sec
 		sbc #$380 ;32 columns, 14 rows, 1 word per tile
 		sta scrollScreenAddr
+		dec scrollScreenNum
 		bra DoneMovementTests
 	
 	MovingRight:
@@ -71,6 +86,7 @@ HandleScroll:
 		clc
 		adc #$380 ;32 columns, 14 rows, 1 word per tile
 		sta scrollScreenAddr
+		inc scrollScreenNum
 	NotOnScreenBoundary:
 	
 	DoneMovementTests:
@@ -100,6 +116,11 @@ HandleScroll:
 			tay
 			dex
 			bne @CopyLoop
+		lda scrollScreenNum
+		asl
+		tay
+		lda BGScrollBounds, y
+		sta scrollLock
 		a8
 		lda #$0
 		pha
