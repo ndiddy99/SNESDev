@@ -17,11 +17,16 @@ HandleScroll:
 	a16
 	lda playerX+2
 	cmp #$80 ; if playerX < $80
+	beq LockL
 	bcs NoLockL
+	LockL:
 		sta playerSpriteX ;spriteX = playerX
 		stz scrollX ;scrollX = 0
-		jmp EndHandleScroll
+		bra EndSetScroll
 	NoLockL:
+	lda scrollLock
+	beq NoLockR
+	lda playerX+2
 	and #$3ff ;keep within screen bounds
 	cmp scrollLock ; else if (playerX & $3ff) >= scrollLock
 	bcc NoLockR
@@ -43,6 +48,7 @@ HandleScroll:
 	sta scrollX
 	lda #$80
 	sta playerSpriteX
+	EndSetScroll:
 	
 	lda playerDirection ;0 = still, 1 = left, 2 = right
 	beq EndHandleScroll ;if player's not moving, don't have to worry about scroll
