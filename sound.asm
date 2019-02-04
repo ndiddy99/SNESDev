@@ -1,5 +1,4 @@
 .segment "BANK1"
-.scope
 
 SPCPrg:
 	.incbin ".\sound\sound.bin"
@@ -7,10 +6,10 @@ SPCPrgEnd:
 
 SPC_LENGTH = SPCPrgEnd-SPCPrg
 NUM_SPC_BLOCKS = (SPC_LENGTH / 256) + 1
-.define copyAddr $0 ;address to copy to (word)
-.define copyIndex $2 ;index within one block (byte)
-.define blockIndex $3 ;what block's being copied (byte)
-.define kick $4 ;current "kick" val
+copyAddr = $0 ;address to copy to (word)
+copyIndex = $2 ;index within one block (byte)
+blockIndex = $3 ;what block's being copied (byte)
+kick = $4 ;current "kick" val
 
 LoadSPC:
 	php
@@ -91,5 +90,3 @@ WaitReceive:
 	bne @ClrLoop
 	plp
 	rtl
-
-.endscope

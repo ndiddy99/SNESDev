@@ -1,6 +1,7 @@
 .enum ;start at $10 because first 15 bytes are "scratchpad"
 joypad = $10
-scrollX = joypad+2
+joypadBuf = joypad+2 ;last frame's joypad input, useful for differentiating a press and a hold
+scrollX = joypadBuf+2 
 scrollY = scrollX+2 
 scroll2X = scrollY+2
 frameStatus ;0 if main loop is done executing

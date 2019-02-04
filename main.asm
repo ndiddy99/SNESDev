@@ -14,7 +14,7 @@
 .segment "CODE"
 Reset:
 	InitSNES
-	; jsl LoadSPC
+	jsl LoadSPC
 	LoadPalette BGPalette, $0, $10
 	LoadPalette BG2Palette, $10, $10
     LoadPalette PlayerPalette, $80, $10
@@ -78,6 +78,8 @@ MainLoop:
 	; sta BG2ScrollTable+8
 	; a8
 	
+	lda joypad
+	sta joypadBuf
 	a8
 	stz frameStatus
 	

@@ -238,6 +238,9 @@ HandlePlayerMovement:
 	lda joypad
 	bit #KEY_B
 	beq DontStartJump
+	lda joypadBuf
+	bit #KEY_B
+	bne NotRising
 		lda movementState
 		cmp #MOVE_STATE_JUMPING
 		beq NotRising ;don't want player jumping in air
