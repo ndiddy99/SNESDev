@@ -21,9 +21,7 @@ LoadSPC:
 	a8
 	lda #$cc ;starting kick val
 	sta kick
-	
-	stz $4200
-	sei ;disable interrupts, this is kinda time sensitive
+
 WaitForInit:
 	lda $2140
 	cmp #$aa ;spc sets reg 0 to aa after it inits
@@ -82,7 +80,6 @@ WaitReceive:
 	stz $2141 ;start command
 	lda kick
 	sta $2140
-	cli ;enable interrupts
 	ldx #$6
 @ClrLoop:
 	stz $0,x

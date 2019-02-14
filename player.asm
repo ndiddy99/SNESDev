@@ -238,7 +238,7 @@ HandlePlayerMovement:
 	lda joypad
 	bit #KEY_B
 	beq DontStartJump
-	lda joypadBuf
+	lda joypadBuf ;if holding down B from last jump, don't start jumping again
 	bit #KEY_B
 	bne NotRising
 		lda movementState

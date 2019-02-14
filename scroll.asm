@@ -108,11 +108,9 @@ HandleScroll:
 		sta scrollMirrorPtr
 		ldx #$e ;number of tiles to copy
 		ldy #$0
-		a8
-		lda #$2 ;bank with map data
-		pha
-		plb
-		a16
+		pea $0002 ;bank with map data: $2 return bank: $0
+							;doesn't use immediate syntax for some reason
+		plb ;load $2 from stack
 		@CopyLoop:
 			lda (sourceAddr), y
 			sta (scrollMirrorPtr), y
@@ -127,11 +125,7 @@ HandleScroll:
 		tay
 		lda BGScrollBounds, y
 		sta scrollLock
-		a8
-		lda #$0
-		pha
-		plb
-		a16
+		plb ;load $0 from stack
 	EndHandleScroll:
 	plp
 	rts
@@ -141,9 +135,6 @@ VramScrollCopy: ;run during vblank if there's new tile data to copy
 	lda #$1 ;increment vram access by 64 bytes
 	sta PPUCTRL
 	a16
-	lda scrollMirrorPtr
-	beq DoneVramCopy
-	
 	; lda scrollColumn
 	; asl
 	; clc
@@ -152,7 +143,6 @@ VramScrollCopy: ;run during vblank if there's new tile data to copy
 	
 	lda scrollColumn
 	sta PPUADDR ;set up where to write to in VRAM
-	
 	ldx #$e ;number of tiles to copy
 	ldy #$0
 	@CopyLoop:
@@ -165,7 +155,6 @@ VramScrollCopy: ;run during vblank if there's new tile data to copy
 		dex
 		bne @CopyLoop
 	stz scrollMirrorPtr ;how I mark that the tile column has been copied already
-	DoneVramCopy:
 	a8
 	rts
 	

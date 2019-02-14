@@ -12,25 +12,39 @@
 .include "sound.asm"
 
 .segment "CODE"
+
 Reset:
 	InitSNES
 	jsl LoadSPC
 	LoadPalette BGPalette, $0, $10
 	LoadPalette BG2Palette, $10, $10
+	LoadPalette FontPalette, $20, $4
     LoadPalette PlayerPalette, $80, $10
 	; Load Tile data to VRAM
-    LoadBlockToVRAM BGTiles, $2000, $400	
-	LoadBlockToVRAM BG2Tiles, $5000, $200 ;8 tiles, 4bpp
-	LoadBlockToVRAM PlayerTiles, $6000, $1000
-	LoadBlockToVRAM BGTilemap, $0, $380
+	LoadBlockToVRAM BGTilemap, $0, $400
 	LoadBlockToWRAM BGTilemap, TilemapMirror, $380
-	LoadBlockToVRAM BG2Tilemap, $4000, $800
+    LoadBlockToVRAM BGTiles, $1000, $400
+
+	LoadBlockToVRAM BG2Tilemap, $2000, $800	
+	LoadBlockToVRAM BG2Tiles, $3000, $200 ;8 tiles, 4bpp
+	
+	LoadBlockToVRAM FontTiles, $4000, $1800
+	LoadBlockToVRAM PlayerTiles, $6000, $1000
     ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
 	
 	jsr InitSprites
+	
+	WaitStartFrame:
+	lda $2137 ;latches h/v counter
+	lda $213d
+	bne WaitStartFrame ;if not at the start of a frame, don't continue
+	
+	lda $4210
 	lda #VBLANK_NMI | AUTOREAD
 	sta PPUNMI ;enable vblank interrupt and joypad read
+	lda $4210
+	
 	a16
 	stz scrollX
 	stz scrollY
@@ -82,7 +96,7 @@ MainLoop:
 	sta joypadBuf
 	a8
 	stz frameStatus
-	
+	EndLoop:
 	wai
 	jmp MainLoop
 	
@@ -100,7 +114,12 @@ VBlank:
 	sta PPUBRIGHT
 	SetHScroll scrollX
 	SetVScroll scrollY
-	jsr VramScrollCopy
+	a16
+	lda scrollMirrorPtr ;how I check if need to copy scroll data or not
+	beq DontCopyScroll
+		jsr VramScrollCopy
+	DontCopyScroll:
+	a8
 	jsr DMASpriteMirror
 	lda #$1 ;start dma transfer on channel 1 (change to 3 if i reenable dmatilemapmirror)
 	sta $420b
@@ -126,19 +145,19 @@ SetupVideo:
 	sta OBSEL ;16x16 or 32x32 sprites, sprite data @ $6000
 	stz OAMADDR ;set OAM write cursor to $0
 	stz OAMADDR+1
-	lda #%00010001
-    sta BGMODE ;mode 1, 16x16 tiles in bg0, 8x8 tiles in bgs 1 and 2
+	lda #%01011001
+    sta BGMODE ;mode 1, 16x16 tiles in bgs 1 and 3, 8x8 tiles in bg 2
 
     lda #$0 ;bg1 tilemap offset $0, size 32x32
     sta NTADDR
 	
-	lda #$40  ; bg2 tilemap offset: $4000, size: 32x32
+	lda #$20  ; bg2 tilemap offset: $2000, size: 32x32
 	sta NTADDR+1
 
-	lda #$52
-    sta BGCHRADDR ;bg2 chr vram addr to $5000, bg1 chr vram offset $2000
+	lda #$31
+    sta BGCHRADDR ;bg2 chr vram addr to $3000, bg1 chr vram offset $1000
 	
-    lda #%00010011 ;enable bg0, bg1, and sprites
+    lda #%00010111 ;enable bg1, bg2, bg3, and sprites
     sta BLENDMAIN
 
     lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff

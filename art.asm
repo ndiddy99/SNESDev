@@ -1,21 +1,21 @@
-.segment "CODE"
-
-BGPalette:
-	.INCBIN ".\art\bgtiles.clr"
-
-BG2Palette:
-	.INCBIN ".\art\bg2tiles.clr"
+.segment "BANK2"
+FontPalette:
+	.INCBIN ".\art\font.clr"
+FontTiles:
+	.INCBIN ".\art\font.pic"
 	
 PlayerPalette:
 	.INCBIN ".\art\player.clr"
-.segment "BANK2"
 PlayerTiles:
-	.define NUM_LARRY_TILES $E
-	.define LARRY_ANIMATION_DELAY $2 ;number of frames between incrementing movement
 	.INCBIN ".\art\player.pic"
+	
+BGPalette:
+	.INCBIN ".\art\bgtiles.clr"
 BGTiles:
 	.incbin ".\art\bgtiles.pic"
-
+	
+BG2Palette:
+	.INCBIN ".\art\bg2tiles.clr"
 BG2Tiles:
 	.incbin ".\art\bg2tiles.pic"
 	
