@@ -140,7 +140,7 @@ _Loop03:		;regs $2123-$2133
 			;also, we're not sure what all of the registers do, so it is better to leave them at
 			;their reset state value
 
-;  JSR ClearVRAM      ;Reset VRAM
+ JSR ClearVRAM      ;Reset VRAM
  ; JSR ClearPalette   ;Reset colors
 
   ;**** clear Sprite tables ********

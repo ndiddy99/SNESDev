@@ -5,6 +5,7 @@
 .include "variables.asm"
 .include "macros.asm"
 .include "sprites.asm"
+.include "text.asm"
 .include "tiles.asm"
 .include "player.asm"
 .include "scroll.asm"
@@ -34,6 +35,15 @@ Reset:
     jsr SetupVideo
 	
 	jsr InitSprites
+	
+	a16
+	DrawText TextL0, #$0, #$0
+	DrawText TextL1, #$0, #$1
+	DrawText TextL2, #$0, #$2
+	DrawText TextL3, #$0, #$3
+	DrawText TextL4, #$0, #$4
+	DrawText TextL5, #$0, #$5
+	a8
 	
 	WaitStartFrame:
 	lda $2137 ;latches h/v counter
@@ -114,6 +124,8 @@ VBlank:
 	sta PPUBRIGHT
 	SetHScroll scrollX
 	SetVScroll scrollY
+	WRAMtoVRAM TextMirror, $4c00, $400
+	
 	a16
 	lda scrollMirrorPtr ;how I check if need to copy scroll data or not
 	beq DontCopyScroll
@@ -153,16 +165,22 @@ SetupVideo:
 	
 	lda #$20  ; bg2 tilemap offset: $2000, size: 32x32
 	sta NTADDR+1
+	
+	lda #$4c
+	sta NTADDR+2 ;bg3 tilemap offset: $4C00, size 32x32
 
 	lda #$31
     sta BGCHRADDR ;bg2 chr vram addr to $3000, bg1 chr vram offset $1000
 	
+	lda #$04
+	sta BGCHRADDR+1 ;bg3 chr vram addr is $4000
+	
     lda #%00010111 ;enable bg1, bg2, bg3, and sprites
     sta BLENDMAIN
 
-    lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
-    sta BGSCROLLY
-    sta BGSCROLLY
+    ; lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
+    ; sta BGSCROLLY
+    ; sta BGSCROLLY
 
     lda #$F ;max brightness
     sta PPUBRIGHT

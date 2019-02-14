@@ -18,3 +18,4 @@
 ; pointer to "handler" function
 .define EntityList $630  
 .define TilemapMirror $700
+.define TextMirror $B00 ;mirror for text bg layer
