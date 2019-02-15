@@ -29,7 +29,7 @@ Reset:
 	LoadBlockToVRAM BG2Tilemap, $2000, $800	
 	LoadBlockToVRAM BG2Tiles, $3000, $200 ;8 tiles, 4bpp
 	
-	LoadBlockToVRAM FontTiles, $4000, $1800
+	LoadBlockToVRAM FontTiles, $4000, $600
 	LoadBlockToVRAM PlayerTiles, $6000, $1000
     ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
@@ -37,12 +37,12 @@ Reset:
 	jsr InitSprites
 	
 	a16
-	DrawText TextL0, #$0, #$0
-	DrawText TextL1, #$0, #$1
-	DrawText TextL2, #$0, #$2
-	DrawText TextL3, #$0, #$3
-	DrawText TextL4, #$0, #$4
-	DrawText TextL5, #$0, #$5
+	DrawText TextL0, #$0, #$1
+	DrawText TextL1, #$0, #$2
+	DrawText TextL2, #$0, #$3
+	DrawText TextL3, #$0, #$4
+	DrawText TextL4, #$0, #$5
+	DrawText TextL5, #$0, #$6
 	a8
 	
 	WaitStartFrame:
@@ -104,9 +104,9 @@ MainLoop:
 	
 	lda joypad
 	sta joypadBuf
+	DrawByte playerSpriteX, #$5, #$a
 	a8
 	stz frameStatus
-	EndLoop:
 	wai
 	jmp MainLoop
 	
@@ -157,7 +157,7 @@ SetupVideo:
 	sta OBSEL ;16x16 or 32x32 sprites, sprite data @ $6000
 	stz OAMADDR ;set OAM write cursor to $0
 	stz OAMADDR+1
-	lda #%01011001
+	lda #%00011001
     sta BGMODE ;mode 1, 16x16 tiles in bgs 1 and 3, 8x8 tiles in bg 2
 
     lda #$0 ;bg1 tilemap offset $0, size 32x32
