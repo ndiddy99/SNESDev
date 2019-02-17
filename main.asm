@@ -42,7 +42,8 @@ Reset:
 	DrawText TextL2, #$0, #$3
 	DrawText TextL3, #$0, #$4
 	DrawText TextL4, #$0, #$5
-	DrawText TextL5, #$0, #$6
+	DrawText TextL5, #$4, #$6
+	; DrawText DumText, #$0, #$1a
 	a8
 	
 	WaitStartFrame:
@@ -104,7 +105,7 @@ MainLoop:
 	
 	lda joypad
 	sta joypadBuf
-	DrawByte playerSpriteX, #$5, #$a
+	; DrawByte playerSpriteX, #$5, #$a
 	a8
 	stz frameStatus
 	wai
@@ -124,7 +125,7 @@ VBlank:
 	sta PPUBRIGHT
 	SetHScroll scrollX
 	SetVScroll scrollY
-	WRAMtoVRAM TextMirror, $4c00, $400
+	jsr TransferTextQueue
 	
 	a16
 	lda scrollMirrorPtr ;how I check if need to copy scroll data or not
@@ -177,10 +178,6 @@ SetupVideo:
 	
     lda #%00010111 ;enable bg1, bg2, bg3, and sprites
     sta BLENDMAIN
-
-    ; lda #$FF ;bg1 horizontal scroll to -1 to fix weird stuff
-    ; sta BGSCROLLY
-    ; sta BGSCROLLY
 
     lda #$F ;max brightness
     sta PPUBRIGHT

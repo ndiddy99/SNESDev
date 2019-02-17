@@ -13,8 +13,11 @@ scrollScreenNum=scrollScreenAddr+2
 scrollMirrorPtr = scrollScreenNum+2
 scrollLock = scrollMirrorPtr+2 ;player x pos within screen that causes scrolling to lock
 
+;---text.asm---
+textQueueIndex = scrollLock+2
+
 ;---player.asm---
-playerX = scrollLock+2 ;16.16 fixed
+playerX = textQueueIndex+2 ;16.16 fixed
 playerY = playerX+4
 playerSpriteX = playerY+4
 playerXSpeed = playerSpriteX+2

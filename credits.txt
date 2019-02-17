@@ -13,4 +13,4 @@ Flygon
 best snes debugger- nocash
 most accurate snes emulator- byuu
 sick af floppy copier- bung
-good 16x16 font- Dwedit
+good 8x8 font- Dwedit
