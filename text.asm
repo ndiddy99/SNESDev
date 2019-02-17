@@ -47,7 +47,7 @@ WriteString:
 	clc
 	adc $2
 	clc
-	adc #$4c00 ;text layer base addr=
+	adc #$4c00 ;text layer base addr
 	sta TextQueue, x
 	inx
 	inx
@@ -76,52 +76,60 @@ WriteString:
 	
 	rts
 	
-; WriteByte:
-	; a16
-	; asl ;yPos (already in a) * 32 + xPos = tilemap pos to start writing at
-	; asl
-	; asl
-	; asl
-	; asl
-	; clc
-	; adc $2
-	; asl ;words -> bytes
-	; tax
+WriteByte:
+	a16
+	ldx textQueueIndex
 	
-	; lda $0
-	; and #$f0
-	; lsr
-	; lsr
-	; lsr
-	; lsr
-	; cmp #$a ;because of how ASCII works, you have to add #$10 to the value to get
-	; bcs AddLettersN1 ;the ascii tile if it's between 0-9, but #$17 if it's between A-F
-		; clc
-		; adc #$10
-		; bra DoneAddN1
-	; AddLettersN1:
-		; clc
-		; adc #$17
-	; DoneAddN1:
-	; ora #$2000
-	; sta TextMirror, x
-	; inx
-	; inx
-	; ;repeat for second nybble
-	; lda $0
-	; and #$0f
-	; cmp #$a 
-	; bcs AddLettersN2 
-		; clc
-		; adc #$10
-		; bra DoneAddN2
-	; AddLettersN2:
-		; clc
-		; adc #$17
-	; DoneAddN2:
-	; ora #$2000
-	; sta TextMirror, x	
-	; rts
+	asl ;yPos (already in a) * 32 + xPos = tilemap pos to start writing at
+	asl
+	asl
+	asl
+	asl
+	clc
+	adc $2
+	clc
+	adc #$4c00 ;text layer addr
+	sta TextQueue, x
+	inx
+	inx
+	
+	lda $0
+	and #$f0
+	lsr
+	lsr
+	lsr
+	lsr
+	cmp #$a ;because of how ASCII works, you have to add #$10 to the value to get
+	bcs AddLettersN1 ;the ascii tile if it's between 0-9, but #$17 if it's between A-F
+		clc
+		adc #$10
+		bra DoneAddN1
+	AddLettersN1:
+		clc
+		adc #$17
+	DoneAddN1:
+	ora #$2000
+	sta TextQueue, x
+	inx
+	inx
+	;repeat for second nybble
+	lda $0
+	and #$0f
+	cmp #$a 
+	bcs AddLettersN2 
+		clc
+		adc #$10
+		bra DoneAddN2
+	AddLettersN2:
+		clc
+		adc #$17
+	DoneAddN2:
+	ora #$2000
+	sta TextQueue, x
+	inx
+	inx
+	stz TextQueue, x
+	rts
 	
 TransferTextQueue:
 	php
