@@ -132,7 +132,7 @@ HandleScroll:
 	
 VramScrollCopy: ;run during vblank if there's new tile data to copy
 	a8
-	lda #$1 ;increment vram access by 64 bytes
+	lda #$81 ;increment vram access by 64 bytes
 	sta PPUCTRL
 	a16
 	; lda scrollColumn

@@ -8,18 +8,6 @@ TileAttrs: ;either "hard" aka eject or pointer to heightmap
 .word HeightMap4
 .word HeightMap6
 .word HeightMap8
-.word HeightMapA
-
-ADD = $0
-SUBTRACT = $1
-
-AddSubTable: ;whether to add or subtract momentum depending on tile num
-.word $0
-.word $0
-.word SUBTRACT
-.word ADD
-.word SUBTRACT
-.word SUBTRACT
 
 ;if tile has momentum, needs to be more than PLAYER_ACCEL or else weird stuff happens
 MomentumTable:
@@ -49,42 +37,24 @@ HeightMap4: ;height map for tile 4
 .word $10
 
 HeightMap6:
-.word $10
-.word $f
-.word $e
-.word $d
-.word $c
-.word $b
-.word $a
-.word $9
-.word $8
-.word $7
-.word $6
-.word $5
-.word $4
-.word $3
-.word $2
 .word $1
+.word $1
+.word $2
+.word $2
+.word $3
+.word $3
+.word $4
+.word $4
+.word $5
+.word $5
+.word $6
+.word $6
+.word $7
+.word $7
+.word $8
+.word $8
 
 HeightMap8:
-.word $1
-.word $1
-.word $2
-.word $2
-.word $3
-.word $3
-.word $4
-.word $4
-.word $5
-.word $5
-.word $6
-.word $6
-.word $7
-.word $7
-.word $8
-.word $8
-
-HeightMapA:
 .word $9
 .word $9
 .word $a

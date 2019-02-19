@@ -9,6 +9,7 @@ koitsu
 Sik
 toekutr
 Flygon
+furrykef
 
 best snes debugger- nocash
 most accurate snes emulator- byuu
