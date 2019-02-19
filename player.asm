@@ -418,10 +418,24 @@ HandleSlopeCollision:
 	lda TileAttrs, x
 	beq NotOnSlope
 		sta $4 ;location of height LUT for that block
-		lda $0 ;x value of middle of sprite
-		and #$000f
-		rol ;words->bytes
-		tay
+		lda playerBGTile
+		and #$4000 
+		bne SubXCalc
+			lda $0 ;x value of middle of sprite
+			and #$000f
+			asl ;words->bytes
+			tay
+			bra EndXCalc
+		SubXCalc:
+			lda $0 ;x value of middle of sprite
+			and #$000f
+			sta $0
+			lda #$f ;if it's been mirrored, start looking at height LUT from the end of the tile
+			sec
+			sbc $0
+			asl ;words->bytes
+			tay
+		EndXCalc:
 		lda ($4), y
 		sta $0 ;value to bump up y position by
 		lda $2 ;tile where sprite's feet are
@@ -434,8 +448,9 @@ HandleSlopeCollision:
 		lda #MOVE_STATE_SLOPE
 		sta movementState
 		
-		lda AddSubTable, x
-		bne @SubtractMomentum
+		lda playerBGTile
+		and #$4000 ;has tile been mirrored?
+		beq @SubtractMomentum
 			lda playerXSpeed
 			clc
 			adc MomentumTable, x
@@ -447,7 +462,7 @@ HandleSlopeCollision:
 				stz playerXSpeed
 			@DontCapAddSpeed:
 			sta playerXSpeed+2
-			jmp NotOnSlope
+			bra NotOnSlope
 		@SubtractMomentum:
 			lda playerXSpeed
 			sec
@@ -564,7 +579,10 @@ CheckPlayerCollision:
 	rol ;words->bytes
 	tax
 	lda TilemapMirror, x
-	and #$3ff ;just get the 9 bit tile number
+	pha
+	and #$43ff ;just get the 9 bit tile number and the x flip bit
 	sta playerBGTile
+	pla
+	and #$3ff
 	rts
 	

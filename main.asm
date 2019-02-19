@@ -65,15 +65,13 @@ Reset:
 	
 MainLoop:
 	a8
-	lda #$1
-	sta frameStatus ;how we check if the program's done executing
+	inc frameStatus ;how we check if the program's done executing
 	a16
 	lda JOY1CUR ;p1 joypad read address
 	sta joypad
 	jsr HandlePlayerMovement
 	jsr HandleScroll
 	
-	a16
 	LoadSprite #$0, playerTileNum, playerSpriteX, playerY+2, playerAttrs
 	lda playerY+2
 	clc
