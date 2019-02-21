@@ -210,25 +210,27 @@ HandlePlayerMovement:
 				tax
 				lda TileAttrs, x
 				bne @NotOnSlope
-			jmp @EjectLoop
+			bra @EjectLoop
 	@NotOnSlope:
 	
 	lda movementState
 	cmp #MOVE_STATE_JUMPING
+	beq OnGround
+	cmp #MOVE_STATE_FALLING
 	beq OnGround
 		jsr CheckYCollisionD
 		beq StartFall
 			tax
 			lda TileAttrs, x
 			bne SlopeInsertLoop
-		jmp OnGround
+		bra OnGround
 			SlopeInsertLoop: ;if on a slope tile, insert into ground until touching a non-slope tile
 				inc playerY+2
 				jsr CheckYCollisionD
 				tax
 				lda TileAttrs, x
 				beq OnGround
-			jmp SlopeInsertLoop 
+			bra SlopeInsertLoop 
 		StartFall:	
 			lda #MOVE_STATE_FALLING
 			sta movementState
@@ -352,7 +354,7 @@ HandleXCollisionL:
 			stz playerXSpeed
 			stz playerXSpeed+2
 			inc playerX+2
-			jmp HandleXCollisionL
+			bra HandleXCollisionL
 	NoCollisionL:
 	rts
 
@@ -368,7 +370,7 @@ HandleXCollisionR:
 			stz playerXSpeed
 			stz playerXSpeed+2
 			dec playerX+2
-			jmp HandleXCollisionR
+			bra HandleXCollisionR
 	NoCollisionR:	
 	rts
 
@@ -402,7 +404,7 @@ HandleYCollisionD:
 			tax ;don't eject from ground if it's a slope tile
 			lda TileAttrs, x
 			bne EjectedFromGround
-		jmp YEjectLoop
+		bra YEjectLoop
 		EjectedFromGround:
 			inc playerY+2
 	NotInGround:
