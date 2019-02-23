@@ -6,6 +6,7 @@
 .include "macros.asm"
 .include "sprites.asm"
 .include "text.asm"
+.include "crashhandler.asm"
 .include "tiles.asm"
 .include "player.asm"
 .include "scroll.asm"
@@ -36,15 +37,14 @@ Reset:
 	
 	jsr InitSprites
 	
-	a16
-	DrawText TextL0, #$0, #$1
-	DrawText TextL1, #$0, #$2
-	DrawText TextL2, #$0, #$3
-	DrawText TextL3, #$0, #$4
-	DrawText TextL4, #$0, #$5
-	DrawText TextL5, #$4, #$6
-	; DrawText DumText, #$0, #$1a
-	a8
+	; a16
+	; DrawText TextL0, #$0, #$1
+	; DrawText TextL1, #$0, #$2
+	; DrawText TextL2, #$0, #$3
+	; DrawText TextL3, #$0, #$4
+	; DrawText TextL4, #$0, #$5
+	; DrawText TextL5, #$4, #$6
+	; a8
 	
 	WaitStartFrame:
 	lda $2137 ;latches h/v counter
@@ -67,6 +67,7 @@ MainLoop:
 	a8
 	inc frameStatus ;how we check if the program's done executing
 	a16
+	; brk
 	lda JOY1CUR ;p1 joypad read address
 	sta joypad
 	jsr HandlePlayerMovement

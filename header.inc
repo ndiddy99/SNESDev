@@ -27,6 +27,7 @@
 EmptyHandler0:
 	rti
 EmptyHandler1:
+	jmp CrashHandler
 	rti
 EmptyHandler2:
 	rti
