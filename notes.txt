@@ -1,2 +1,6 @@
-1. if on slope, add slopeaccellut, tilenum to playerslopespeed
-2. if playerslopespeed isn't 0, add to playerx+2	
+to-dos:
+-crash handler that prints out registers, pc val, etc
+-converter for tiled tmx map files
+-enemy support
+-non copyright infringing main character (i'm thinking bunny)
+-projectile with physics (carrot?)

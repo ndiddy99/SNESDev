@@ -104,6 +104,7 @@ MainLoop:
 	lda joypad
 	sta joypadBuf
 	DrawByte playerSpriteX, #$5, #$a
+	DrawWord playerX+2, #$5, #$9
 	a8
 	stz frameStatus
 	wai

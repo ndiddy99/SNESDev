@@ -16,6 +16,24 @@
 	jsr WriteByte
 .endmacro
 
+.macro DrawWord wordAddr, xPos, yPos
+	lda wordAddr ;first byte
+	xba
+	sta $0
+	lda xPos
+	sta $2
+	lda yPos
+	jsr WriteByte
+	
+	lda wordAddr
+	sta $0
+	lda xPos+2
+	sta $2
+	lda yPos
+	jsr WriteByte
+	
+.endmacro
+
 .segment "CODE"
 
 ;tile number = (asciiNum - $20)
@@ -129,6 +147,9 @@ WriteByte:
 	inx
 	inx
 	stz TextQueue, x
+	inx
+	inx
+	stx textQueueIndex ;update textQueueIndex
 	rts
 	
 TransferTextQueue:
