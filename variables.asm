@@ -5,6 +5,8 @@ scrollX = joypadBuf+2
 scrollY = scrollX+2 
 scroll2X = scrollY+2
 frameStatus ;0 if main loop is done executing
+watchDog ;set to 0 at the start of main loop and incremented every vblank. if it doesn't get
+		 ;reset within 64 frames, assume the game's crashed
 
 ;---scroll.asm---
 scrollColumn ;last scroll column loaded

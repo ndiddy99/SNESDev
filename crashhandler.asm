@@ -1,14 +1,15 @@
 .segment "CODE"
 
 CrashHandler:
+	stz PPUNMI
 	a16
 	sta $10 ;store register state
 	stx $12
 	sty $14
 	tsc
 	sta $16 ;stack pointer
-	stz PPUNMI ;disable vblank interrupt
 	a8
+	lda NMISTATUS ;clear NMI in case we crashed during vblank
 	pla
 	sta $18 ;status register
 	pla
@@ -18,7 +19,6 @@ CrashHandler:
 	pla
 	sta $1e ;program bank
 	a16
-	lda NMISTATUS ;clear NMI in case we crashed during vblank
 	DrawText ErrorMessage, #$3, #$3
 	DrawText ErrorMessage2, #$3, #$4
 	DrawText Registers, #$3, #$6
@@ -49,11 +49,12 @@ CrashHandler:
 	DrawByte $1ffe, #$15, #$b
 	DrawByte $1fff, #$18, #$b
 	
-	
+	a8
 	lda #FORCEBLANK
 	sta PPUBRIGHT ;force blank enabled
 	
 	;----zerofill text layer-----
+	a16
 	lda #$4c00 ;vram address to write to
 	sta $2116
 	a8
@@ -69,7 +70,7 @@ CrashHandler:
 	lda #$800 ;# of bytes to write
 	sta $4305
 	a8
-	stz $4303 ;bank
+	stz $4304 ;bank
 	lda #$1 ;start the transfer
 	sta $420b
 	
@@ -77,6 +78,10 @@ CrashHandler:
     sta BLENDMAIN	
 	
 	jsr TransferTextQueue
+	stz $2121
+	lda #$f
+	sta $2122
+	stz $2122
 	lda #$f ;turn on ppu rendering, max brightness
 	sta PPUBRIGHT
 	

@@ -66,8 +66,8 @@ Reset:
 MainLoop:
 	a8
 	inc frameStatus ;how we check if the program's done executing
+	stz watchDog
 	a16
-	; brk
 	lda JOY1CUR ;p1 joypad read address
 	sta joypad
 	jsr HandlePlayerMovement
@@ -119,6 +119,13 @@ VBlank:
 	phx ;fucking up
 	phy
 	a8
+	lda watchDog
+	inc a
+	cmp #$40
+	bne GameNotCrashed
+		brk
+	GameNotCrashed:
+	sta watchDog
 	lda frameStatus
 	bne SkipVblank
 	lda #FORCEBLANK
