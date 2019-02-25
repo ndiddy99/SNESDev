@@ -50,9 +50,10 @@ HandleScroll:
 	sta playerSpriteX
 	EndSetScroll:
 	
-	lda playerDirection ;0 = still, 1 = left, 2 = right
+	; lda playerDirection ;0 = still, 1 = left, 2 = right
+	lda playerXSpeed+2
 	beq EndHandleScroll ;if player's not moving, don't have to worry about scroll
-	cmp #$2 
+	and #$8000
 	beq MovingRight
 	;if going left and scroll & 1f goes up, that means you wrapped (so should change screen addy)
 	;same if going right and scroll & 1f goes down

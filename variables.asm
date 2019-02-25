@@ -32,5 +32,4 @@ playerAnimMode
 playerAttrs
 playerState ;16 bit to avoid constant accumulator size changing
 movementState = playerState+2
-playerDirection = movementState+2 ;0 = still, 1 = left, 2 = right
 .endenum
