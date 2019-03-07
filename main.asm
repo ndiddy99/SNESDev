@@ -105,7 +105,7 @@ MainLoop:
 	lda joypad
 	sta joypadBuf
 	DrawByte playerSpriteX, #$5, #$a
-	DrawWord playerXSpeed+2, #$5, #$9
+	DrawWord playerX+2, #$5, #$9
 	; DrawWord playerX, #$9, #$9
 	a8
 	stz frameStatus
@@ -167,7 +167,7 @@ SetupVideo:
 	stz OAMADDR ;set OAM write cursor to $0
 	stz OAMADDR+1
 	lda #%00011001
-    sta BGMODE ;mode 1, 16x16 tiles in bgs 1 and 3, 8x8 tiles in bg 2
+    sta BGMODE ;mode 1, 16x16 tiles in bg 1, 8x8 tiles in bgs 2 and 3
 
     lda #$0 ;bg1 tilemap offset $0, size 32x32
     sta NTADDR

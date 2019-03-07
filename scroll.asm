@@ -8,8 +8,13 @@ columnNum = $4
 InitScroll:
 	lda #BGTilemap ;address of first offscreen column
 	sta scrollScreenAddr
-	lda #$ffff
-	sta scrollLock ;
+	
+	pea $0002
+	plb
+	lda BGRightLim
+	sta rScrollLim
+	plb
+	
 	rts
 	
 HandleScroll:
@@ -24,24 +29,24 @@ HandleScroll:
 		stz scrollX ;scrollX = 0
 		bra EndSetScroll
 	NoLockL:
-	lda scrollLock
-	beq NoLockR
+	
 	lda playerX+2
-	and #$3ff ;keep within screen bounds
-	cmp scrollLock ; else if (playerX & $3ff) >= scrollLock
+	cmp rScrollLim ;if playerX > rScrollLim
 	bcc NoLockR
-		sec ;spriteX = $80 + ((playerX & $3ff) - scrollLock)
-		sbc scrollLock
+		sec ;playerSpriteX = playerX - rScrollLim + #$80 (middle of screen)
+		sbc rScrollLim
 		clc
 		adc #$80
 		sta playerSpriteX
 		
-		lda scrollLock ;scrollX = maxScroll - $80
+		lda rScrollLim ;scrollX + rScrollLim - #$80 & #$3ff
 		sec
 		sbc #$80
+		and #$3ff
 		sta scrollX
-		jmp EndHandleScroll
+		jmp EndHandleScroll ;since we're locked, don't need to scroll further
 	NoLockR:
+	
 	lda playerX+2 ;else, keep sprite centered, do scrolling normally
 	sec
 	sbc #$80
@@ -50,7 +55,6 @@ HandleScroll:
 	sta playerSpriteX
 	EndSetScroll:
 	
-	; lda playerDirection ;0 = still, 1 = left, 2 = right
 	lda playerXSpeed+2
 	beq EndHandleScroll ;if player's not moving, don't have to worry about scroll
 	and #$8000
@@ -121,11 +125,6 @@ HandleScroll:
 			tay
 			dex
 			bne @CopyLoop
-		lda scrollScreenNum
-		asl
-		tay
-		lda BGScrollBounds, y
-		sta scrollLock
 		plb ;load $0 from stack
 	EndHandleScroll:
 	plp
