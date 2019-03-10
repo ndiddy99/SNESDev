@@ -18,14 +18,9 @@ BG2Palette:
 	.INCBIN ".\art\bg2tiles.clr"
 BG2Tiles:
 	.incbin ".\art\bg2tiles.pic"
-	
-BGScrollBounds: ;player x position within screen when screen locks
-	.word $0	;0 = no bounds
-	.word $0	;0 = no bounds
-	.word $370
 
 BGRightLim:
-	.word $580
+	.word $580 ;player X to lock at
 
 BGTilemap: ;14 columns tall ($380 bytes) because SNES screen is 14 tiles tall (14*16=224)
 	.word $2,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0
