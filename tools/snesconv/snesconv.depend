@@ -1,5 +1,6 @@
 # depslib dependency file v1.0
-1552186366 source:c:\snes\tools\snesconv\snesconv.c
+1552261784 source:c:\snes\tools\snesconv\snesconv.c
+	<stdint.h>
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
