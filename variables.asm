@@ -32,3 +32,9 @@ playerAnimMode: .res 1 ;16 bit to avoid constant accumulator size changing
 playerAttrs: .res 1
 playerState: .res 2
 movementState: .res 2
+
+;---collision.asm---
+collisionX: .res 4
+collisionY: .res 4
+collisionXSpeed: .res 4
+collisionYSpeed: .res 4

@@ -104,8 +104,10 @@ MainLoop:
 	
 	lda joypad
 	sta joypadBuf
-	DrawByte playerSpriteX, #$5, #$a
+	DrawWord scrollScreenNum, #$5, #$a
 	DrawWord playerX+2, #$5, #$9
+	DrawWord playerXSpeed, #$9, #$b
+	DrawWord playerXSpeed+2, #$5, #$b
 	; DrawWord playerX, #$9, #$9
 	a8
 	stz frameStatus
