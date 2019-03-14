@@ -119,7 +119,6 @@ HandleXCollisionL:
 		:	inc collisionX+2
 			bra LEjectLoop
 		DoneLEject:
-		dec collisionX+2
 	NoCollisionL:
 	rts
 
@@ -134,7 +133,8 @@ HandleXCollisionR:
 	bne NoCollisionR
 		stz collisionXSpeed
 		stz collisionXSpeed+2
-		stz collisionX
+		lda #$ffff
+		sta collisionX
 		bra :+
 		REjectLoop:
 		jsr CheckXCollisionR
@@ -145,16 +145,6 @@ HandleXCollisionR:
 		:	dec collisionX+2
 			bra REjectLoop
 		DoneREject:
-		inc collisionX+2
-		; jsr CheckXCollisionR
-		; beq NoCollisionR
-		; tax
-		; lda TileAttrs, x ;tile attributes table in tiles.asm
-		; bne NoCollisionR ;non-zero: "soft" tile
-			; stz collisionXSpeed
-			; stz collisionXSpeed+2
-			; dec collisionX+2
-			; bra HandleXCollisionR
 	NoCollisionR:	
 	rts
 
