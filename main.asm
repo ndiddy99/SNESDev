@@ -9,6 +9,7 @@
 .include "crashhandler.asm"
 .include "tiles.asm"
 .include "player.asm"
+.include "collision.asm"
 .include "scroll.asm"
 .include "art.asm"
 .include "sound.asm"
@@ -71,6 +72,19 @@ MainLoop:
 	lda JOY1CUR ;p1 joypad read address
 	sta joypad
 	jsr HandlePlayerMovement
+	
+	ldx #playerX ;source
+	ldy #collisionX ;destination
+	lda #$15 ;number of bytes to copy - 1
+	mvn $0, $0
+	
+	jsr HandleCollision
+	
+	ldx #collisionX
+	ldy #playerX
+	lda #$15
+	mvn $0, $0
+	
 	jsr HandleScroll
 	
 	LoadSprite #$0, playerTileNum, playerSpriteX, playerY+2, playerAttrs

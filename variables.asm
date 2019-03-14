@@ -22,10 +22,9 @@ textQueueIndex: .res 2
 ;---player.asm---
 playerX: .res 4 ;16.16 fixed
 playerY: .res 4
-playerSpriteX: .res 2
 playerXSpeed: .res 4
 playerYSpeed: .res 4
-playerBGTile: .res 2
+playerSpriteX: .res 2
 playerTileNum: .res 1
 playerAnimTimer: .res 1
 playerAnimMode: .res 1 ;16 bit to avoid constant accumulator size changing
@@ -38,3 +37,4 @@ collisionX: .res 4
 collisionY: .res 4
 collisionXSpeed: .res 4
 collisionYSpeed: .res 4
+currBGTile: .res 2
