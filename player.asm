@@ -142,7 +142,7 @@ HandlePlayerMovement:
 				stz playerXSpeed
 				stz playerXSpeed+2
 		@NotBelowZero:	
-			jmp AddSpeed
+			bra AddSpeed
 		DecelRight:
 			lda playerXSpeed
 			sec
@@ -195,8 +195,6 @@ HandlePlayerMovement:
 			sta movementState
 			lda #PLAYER_JUMP_SPEED
 			sta playerYSpeed+2
-			lda #PLAYER_JUMPING_TILE
-			sta playerTileNum
 			bra NotRising
 			; dec playerY+2
 	DontStartJump:	
@@ -215,8 +213,13 @@ HandlePlayerMovement:
 	lda movementState
 	cmp #MOVE_STATE_JUMPING
 	bne NoJumpingSprite ;switch to jumping sprite when jumping
+		a8
 		lda #PLAYER_JUMPING_TILE
 		sta playerTileNum
+		lda #PLAYER_TIMER_VAL
+		sta playerAnimTimer
+		lda #ANIM_MODE_SUBTRACT
+		sta playerAnimMode
 		bra DoneAnim
 	NoJumpingSprite:
 

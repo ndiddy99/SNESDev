@@ -86,7 +86,7 @@ HandleCollision:
 			stz collisionYSpeed
 			stz collisionYSpeed+2
 			inc collisionY+2
-			jmp UEjectLoop
+			bra UEjectLoop
 		NoCollisionU:
 		lda collisionYSpeed+2 ;if player isn't falling, don't check down collision
 		and #$8000
@@ -163,14 +163,14 @@ HandleYCollisionD:
 		stz collisionY
 		lda #MOVE_STATE_NORMAL
 		sta movementState
-		a8
+		; a8
 		; lda #PLAYER_STILL_TILE
 		; sta playerTileNum
 		; lda #PLAYER_TIMER_VAL
 		; sta playerAnimTimer
 		; lda #ANIM_MODE_ADD
 		; sta playerAnimMode
-		a16
+		; a16
 		YEjectLoop:
 			dec collisionY+2
 			jsr CheckYCollisionD
