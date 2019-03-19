@@ -9,6 +9,7 @@
 .include "crashhandler.asm"
 .include "tiles.asm"
 .include "player.asm"
+.include "objlist.asm"
 .include "collision.asm"
 .include "scroll.asm"
 .include "art.asm"
@@ -23,6 +24,7 @@ Reset:
 	LoadPalette BG2Palette, $10, $10
 	LoadPalette FontPalette, $20, $4
     LoadPalette PlayerPalette, $80, $10
+    LoadPalette Enemy1Palette, $90, $10
 	; Load Tile data to VRAM
 	LoadBlockToVRAM BGTilemap, $0, $400
 	LoadBlockToWRAM BGTilemap, TilemapMirror, $380
@@ -32,7 +34,8 @@ Reset:
 	LoadBlockToVRAM BG2Tiles, $3000, $200 ;8 tiles, 4bpp
 	
 	LoadBlockToVRAM FontTiles, $4000, $600
-	LoadBlockToVRAM PlayerTiles, $6000, $1000
+	LoadBlockToVRAM PlayerTiles, $6000, $800
+	LoadBlockToVRAM Enemy1Tiles, $6400, $800
     ; Setup Video modes and other stuff, then turn on the screen
     jsr SetupVideo
 	
@@ -63,6 +66,7 @@ Reset:
 	
 	jsr InitPlayer
 	jsr InitScroll
+	jsr InitObject
 	
 MainLoop:
 	a8
@@ -75,14 +79,14 @@ MainLoop:
 	
 	ldx #playerX ;source
 	ldy #collisionX ;destination
-	lda #$15 ;number of bytes to copy - 1
+	lda #$11 ;number of bytes to copy - 1
 	mvn $0, $0
 	
 	jsr HandleCollision
 	
 	ldx #collisionX
 	ldy #playerX
-	lda #$15
+	lda #$11
 	mvn $0, $0
 	
 	jsr HandleScroll
@@ -98,23 +102,7 @@ MainLoop:
 	sta $c
 	LoadSprite #$1, $c, playerSpriteX, $a, playerAttrs
 	
-; SetupScrollTable:
-	; clc
-	; lda scroll2X
-	; clc
-	; adc #$5
-	; sta scroll2X
-	; ror
-	; sta BG2ScrollTable
-	; ror
-	; sta BG2ScrollTable+2
-	; ror
-	; sta BG2ScrollTable+4
-	; ror
-	; sta BG2ScrollTable+6
-	; ror
-	; sta BG2ScrollTable+8
-	; a8
+	jsr ProcessObjects
 	
 	lda joypad
 	sta joypadBuf

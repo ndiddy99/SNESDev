@@ -21,12 +21,13 @@ PLAYER_WIDTH = $10
 PLAYER_HEIGHT = $20
 PLAYER_TOP = $9 ;offset from y pos to top of sprite
 
+;playerState
 .enum
 STATE_DECEL
 STATE_RIGHT_HELD 
 STATE_LEFT_HELD
 .endenum
-
+;moveState
 .enum
 MOVE_STATE_NORMAL
 MOVE_STATE_JUMPING
@@ -186,13 +187,13 @@ HandlePlayerMovement:
 	lda joypadBuf ;if holding down B from last jump, don't start jumping again
 	bit #KEY_B
 	bne NotRising
-		lda movementState
+		lda playerMove
 		cmp #MOVE_STATE_JUMPING
 		beq NotRising ;don't want player jumping in air
 		cmp #MOVE_STATE_FALLING
 		beq NotRising
 			lda #MOVE_STATE_JUMPING
-			sta movementState
+			sta playerMove
 			lda #PLAYER_JUMP_SPEED
 			sta playerYSpeed+2
 			bra NotRising
@@ -210,14 +211,14 @@ HandlePlayerMovement:
 		sta playerYSpeed+2
 	NotRising:
 
-	lda movementState
+	lda playerMove
 	cmp #MOVE_STATE_JUMPING
 	bne NoJumpingSprite ;switch to jumping sprite when jumping
 		a8
 		lda #PLAYER_JUMPING_TILE
 		sta playerTileNum
-		lda #PLAYER_TIMER_VAL
-		sta playerAnimTimer
+		lda #$1
+		sta playerAnimTimer ;gets decremented to 0, this makes it go right back to walking animation
 		lda #ANIM_MODE_SUBTRACT
 		sta playerAnimMode
 		bra DoneAnim

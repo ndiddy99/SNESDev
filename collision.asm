@@ -287,7 +287,7 @@ CheckYCollisionD:
 	adc #PLAYER_HEIGHT+1
 	sta $2
 	jsr CheckCollision
-	bne @EndCheck ;if center hard collision, exit routine
+	bne @EndCheck
 	
 	lda collisionX+2 ;2. check for bottom-left collision
 	sta $0

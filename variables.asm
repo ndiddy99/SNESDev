@@ -24,17 +24,24 @@ playerX: .res 4 ;16.16 fixed
 playerY: .res 4
 playerXSpeed: .res 4
 playerYSpeed: .res 4
+playerMove: .res 2
 playerSpriteX: .res 2
 playerTileNum: .res 1
 playerAnimTimer: .res 1
 playerAnimMode: .res 1 ;16 bit to avoid constant accumulator size changing
 playerAttrs: .res 1
 playerState: .res 2
-movementState: .res 2
 
 ;---collision.asm---
-collisionX: .res 4
+collisionX: .res 4 ;these get block copied in
 collisionY: .res 4
 collisionXSpeed: .res 4
 collisionYSpeed: .res 4
+movementState: .res 2
+;local variables
 currBGTile: .res 2
+
+;---entity.asm---
+numObjects: .res 2
+objectCursor: .res 2 ;where you are in the object list
+objectIndex: .res 2 ;objectCursor * sizeof(object struct)

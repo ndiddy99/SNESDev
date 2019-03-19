@@ -1,3 +1,8 @@
+.define SPRITE3_MASK %00111111
+.define SPRITE2_MASK %11001111
+.define SPRITE1_MASK %11110011
+.define SPRITE0_MASK %11111100
+
 spriteNum = $0
 xPos = $1
 yPos = $3

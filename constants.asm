@@ -1,22 +1,18 @@
-;---oam pt 2 write masks---
 
-.define SPRITE3_MASK %00111111
-.define SPRITE2_MASK %11001111
-.define SPRITE1_MASK %11110011
-.define SPRITE0_MASK %11111100
+;object list format (18 bytes or 12 hex per object):
+; x pos (4 bytes)
+; y pos (4 bytes)
+; x speed (4 bytes)
+; y speed (4 bytes)
+; movement state (same format as playerMove) 2 bytes
+; general state (what direction you're going, etc) 2 bytes
+.define ObjectList $100 
+.define OBJ_ENTRY_SIZE $12
 
 ;oam mirror defines
 .define OamMirror $400
 .define Oam2Mirror $600
-
-.define BG2ScrollTable $620
-;object list format:
-; x pos (byte)
-; y pos (byte)
-; attributes (byte)
-; status (0=still, 1 = moving, 2 = ready to despawn, etc) (byte)
-; pointer to "handler" function
-.define EntityList $630  
+ 
 .define TilemapMirror $700
 .define TextQueue $B00
 ;format: 

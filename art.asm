@@ -9,6 +9,11 @@ PlayerPalette:
 PlayerTiles:
 	.INCBIN ".\art\player.pic"
 	
+Enemy1Palette:
+	.INCBIN ".\art\enemy1.clr"
+Enemy1Tiles:
+	.INCBIN ".\art\enemy1.pic"
+	
 BGPalette:
 	.INCBIN ".\art\bgtiles.clr"
 BGTiles:
