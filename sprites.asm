@@ -97,11 +97,10 @@ SetOamMirror: ;OAM handler function
 	lda spriteNum
 	and #%00000011 ;only care if it's 0 to 3 since there's 4 bytes in OAM pt 2
 	beq Sprite0 ;check where in the byte to place 1st x bit/sprite size
-	cmp #$1
-	beq Sprite1
 	cmp #$2
+	bcc Sprite1
 	beq Sprite2
-	jmp Sprite3
+	bra Sprite3
 	
 Sprite0:
 	ldx oam2WriteIndex

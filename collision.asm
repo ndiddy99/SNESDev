@@ -152,25 +152,12 @@ HandleXCollisionR:
 HandleYCollisionD:
 	jsr CheckYCollisionD ;0 = sprite in air
 	beq NotInGround
-
-	; tax
-	; lda TileAttrs, x
-	; beq NormalEject
-	; jmp HandleSlopeCollision
 	NormalEject:
 		stz collisionYSpeed 
 		stz collisionYSpeed+2
 		stz collisionY
 		lda #MOVE_STATE_NORMAL
 		sta movementState
-		; a8
-		; lda #PLAYER_STILL_TILE
-		; sta playerTileNum
-		; lda #PLAYER_TIMER_VAL
-		; sta playerAnimTimer
-		; lda #ANIM_MODE_ADD
-		; sta playerAnimMode
-		; a16
 		YEjectLoop:
 			dec collisionY+2
 			jsr CheckYCollisionD
@@ -219,7 +206,7 @@ HandleSlopeCollision:
 		sec
 		sbc $0
 		sec
-		sbc #$10
+		sbc #(PLAYER_HEIGHT - $10)
 		sta collisionY+2
 		lda #MOVE_STATE_SLOPE
 		sta movementState

@@ -6,8 +6,9 @@
 ; y speed (4 bytes)
 ; movement state (same format as playerMove) 2 bytes
 ; general state (what direction you're going, etc) 2 bytes
+; handler function pointer 2 bytes
 .define ObjectList $100 
-.define OBJ_ENTRY_SIZE $12
+.define OBJ_ENTRY_SIZE $14
 
 ;oam mirror defines
 .define OamMirror $400

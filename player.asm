@@ -43,7 +43,7 @@ ANIM_MODE_SUBTRACT
 InitPlayer:
 	php
 	a8
-	lda #GROUND
+	lda #$40
 	sta playerY+2
 	lda #$20
 	sta playerX+2

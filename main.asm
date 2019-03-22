@@ -10,6 +10,7 @@
 .include "tiles.asm"
 .include "player.asm"
 .include "objlist.asm"
+.include "enemy1.asm"
 .include "collision.asm"
 .include "scroll.asm"
 .include "art.asm"
