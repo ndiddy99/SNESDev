@@ -21,20 +21,6 @@ PLAYER_WIDTH = $10
 PLAYER_HEIGHT = $20
 PLAYER_TOP = $9 ;offset from y pos to top of sprite
 
-;playerState
-.enum
-STATE_DECEL
-STATE_RIGHT_HELD 
-STATE_LEFT_HELD
-.endenum
-;moveState
-.enum
-MOVE_STATE_NORMAL
-MOVE_STATE_JUMPING
-MOVE_STATE_FALLING ;like jumping but without the jumping frame
-MOVE_STATE_SLOPE ;when player is on slope
-.endenum
-
 .enum
 ANIM_MODE_ADD
 ANIM_MODE_SUBTRACT

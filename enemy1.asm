@@ -3,12 +3,13 @@
 ENEMY1_ACCEL = $5000
 ENEMY1_MAXSPEED = $5
 Enemy1Handler:
+	.scope
 	lda collisionX+2
 	cmp playerX+2
 	bcs OnLeft
 		lda collisionXSpeed+2
 		cmp #ENEMY1_MAXSPEED
-		beq Done
+		beq DoneX
 			lda collisionXSpeed
 			clc
 			adc #ENEMY1_ACCEL
@@ -16,11 +17,11 @@ Enemy1Handler:
 			lda collisionXSpeed+2
 			adc #$0
 			sta collisionXSpeed+2
-			bra Done
+			bra DoneX
 	OnLeft:
 		lda collisionXSpeed+2
 		cmp #-(ENEMY1_MAXSPEED)
-		beq Done
+		beq DoneX
 			lda collisionXSpeed
 			sec
 			sbc #ENEMY1_ACCEL
@@ -28,7 +29,7 @@ Enemy1Handler:
 			lda collisionXSpeed+2
 			sbc #$0
 			sta collisionXSpeed+2
-	Done:
+	DoneX:
 	lda collisionX
 	clc
 	adc collisionXSpeed
@@ -37,4 +38,19 @@ Enemy1Handler:
 	adc collisionXSpeed+2
 	sta collisionX+2
 	
+	lda movementState
+	cmp #MOVE_STATE_JUMPING
+	beq DontJump
+	cmp #MOVE_STATE_FALLING
+	beq DontJump
+	lda collisionY+2
+	cmp playerY+2
+	beq DontJump
+	bcc DontJump
+		lda #$fff9
+		sta collisionYSpeed+2
+		lda #MOVE_STATE_JUMPING
+		sta movementState
+	DontJump:
+	.endscope
 	rts

@@ -1,3 +1,16 @@
+;playerState
+.enum
+STATE_DECEL
+STATE_RIGHT_HELD 
+STATE_LEFT_HELD
+.endenum
+;moveState
+.enum
+MOVE_STATE_NORMAL
+MOVE_STATE_JUMPING
+MOVE_STATE_FALLING ;like jumping but without the jumping frame
+MOVE_STATE_SLOPE ;when player is on slope
+.endenum
 
 ;object list format (18 bytes or 12 hex per object):
 ; x pos (4 bytes)
@@ -20,3 +33,4 @@
 ; address to write to (word)
 ; text tile data
 ; zero terminator (word)
+

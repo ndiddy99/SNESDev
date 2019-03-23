@@ -110,8 +110,8 @@ MainLoop:
 	DrawWord scrollScreenNum, #$5, #$a
 	DrawWord playerX+2, #$5, #$9
 	DrawWord playerY+2, #$5, #$a
-	DrawWord playerXSpeed, #$9, #$b
-	DrawWord playerXSpeed+2, #$5, #$b
+	DrawWord collisionXSpeed, #$9, #$b
+	DrawWord collisionXSpeed+2, #$5, #$b
 	; DrawWord playerX, #$9, #$9
 	a8
 	stz frameStatus
