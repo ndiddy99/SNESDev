@@ -28,7 +28,7 @@ BGRightLim:
 	.word $600 ;player X to lock at
 
 BGTilemap: 
-	.incbin ".\tools\snesconv\out.bin"
+	.incbin ".\art\out.bin"
 	
 BG2Tilemap:
 	.word $0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0,$0

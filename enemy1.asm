@@ -1,7 +1,7 @@
 .segment "CODE"
 
-ENEMY1_ACCEL = $5000
-ENEMY1_MAXSPEED = $5
+ENEMY1_ACCEL = $4000
+ENEMY1_MAXSPEED = $3
 Enemy1Handler:
 	.scope
 	lda collisionX+2
@@ -38,11 +38,12 @@ Enemy1Handler:
 	adc collisionXSpeed+2
 	sta collisionX+2
 	
-	lda movementState
-	cmp #MOVE_STATE_JUMPING
-	beq DontJump
-	cmp #MOVE_STATE_FALLING
-	beq DontJump
+	lda movementState ;if enemy is on ground and player is on ground, and if player is heigher
+	cmp #MOVE_STATE_NORMAL ;than enemy, jump
+	bne DontJump
+	lda playerMove
+	cmp #MOVE_STATE_NORMAL
+	bne DontJump
 	lda collisionY+2
 	cmp playerY+2
 	beq DontJump

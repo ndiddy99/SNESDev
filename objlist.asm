@@ -30,7 +30,25 @@ ProcessObjects:
 	ProcessLoop:
 	lda objectCursor
 	cmp numObjects
-	beq DoneProcess
+	bne Process
+	jmp DoneProcess
+	Process:
+		ldx objectIndex
+		inx
+		inx
+		lda ObjectList, x
+		sec
+		sbc scrollX
+		cmp #$100
+		bcc Draw ;don't move sprite if it's offscreen
+			lda objectCursor
+			clc
+			adc #$2
+			sta $a
+			LoadSprite $a, #$40, #$110, #$0, #%00110010
+			jmp DoneSprite
+		Draw:
+		
 		lda #ObjectList
 		clc
 		adc objectIndex
@@ -41,7 +59,6 @@ ProcessObjects:
 		mvn $0, $0
 		lda ObjectList+20
 		jsr FunctionLauncher
-		; jsr Enemy1Handler
 		jsr HandleCollision
 		ldx #collisionX ;source
 		ply ;destination
@@ -77,11 +94,11 @@ ProcessObjects:
 		clc
 		adc #OBJ_ENTRY_SIZE
 		sta objectIndex
-		bra ProcessLoop
+		jmp ProcessLoop
 	DoneProcess:
 	plp
 	rts
 	
 FunctionLauncher:
-	pha
-	rts
+	pha ;function pointer on stack
+	rts ;"return" to function

@@ -39,10 +39,9 @@ HandleScroll:
 		adc #$80
 		sta playerSpriteX
 		
-		lda rScrollLim ;scrollX + rScrollLim - #$80 & #$3ff
+		lda rScrollLim ;scrollX + rScrollLim - #$80
 		sec
 		sbc #$80
-		and #$3ff
 		sta scrollX
 		jmp EndHandleScroll ;since we're locked, don't need to scroll further
 	NoLockR:

@@ -7,9 +7,9 @@ STATE_LEFT_HELD
 ;moveState
 .enum
 MOVE_STATE_NORMAL
+MOVE_STATE_SLOPE ;when player is on slope
 MOVE_STATE_JUMPING
 MOVE_STATE_FALLING ;like jumping but without the jumping frame
-MOVE_STATE_SLOPE ;when player is on slope
 .endenum
 
 ;object list format (18 bytes or 12 hex per object):

@@ -81,7 +81,7 @@ MainLoop:
 	ldx #playerX ;source
 	ldy #collisionX ;destination
 	lda #$11 ;number of bytes to copy - 1
-	mvn $0, $0
+	mvn $0, $0 ;source: bank 0 dest: bank 0
 	
 	jsr HandleCollision
 	
@@ -110,8 +110,8 @@ MainLoop:
 	DrawWord scrollScreenNum, #$5, #$a
 	DrawWord playerX+2, #$5, #$9
 	DrawWord playerY+2, #$5, #$a
-	DrawWord collisionXSpeed, #$9, #$b
-	DrawWord collisionXSpeed+2, #$5, #$b
+	DrawWord collisionYSpeed, #$9, #$b
+	DrawWord collisionYSpeed+2, #$5, #$b
 	; DrawWord playerX, #$9, #$9
 	a8
 	stz frameStatus
