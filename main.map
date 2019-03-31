@@ -1,7 +1,7 @@
 Modules list:
 -------------
 main.o:
-    CODE              Offs=000000  Size=001017  Align=00001  Fill=0000
+    CODE              Offs=000000  Size=00102B  Align=00001  Fill=0000
     ZEROPAGE          Offs=000000  Size=00005E  Align=00001  Fill=0000
     HEADER            Offs=000000  Size=000015  Align=00001  Fill=0000
     ROMINFO           Offs=000000  Size=00000B  Align=00001  Fill=0000
@@ -15,7 +15,7 @@ Segment list:
 Name                   Start     End    Size  Align
 ----------------------------------------------------
 ZEROPAGE              000000  00005D  00005E  00001
-CODE                  008000  009016  001017  00001
+CODE                  008000  00902A  00102B  00001
 HEADER                00FFC0  00FFD4  000015  00001
 ROMINFO               00FFD5  00FFDF  00000B  00001
 VECTORS               00FFE0  00FFFF  000020  00001

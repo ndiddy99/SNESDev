@@ -37,16 +37,28 @@ ProcessObjects:
 		inx
 		inx
 		lda ObjectList, x
-		sec
-		sbc scrollX
-		cmp #$100
-		bcc Draw ;don't move sprite if it's offscreen
-			lda objectCursor
-			clc
-			adc #$2
-			sta $a
-			LoadSprite $a, #$40, #$110, #$0, #%00110010
-			jmp DoneSprite
+		cmp playerX+2
+		bcs OnPlayerRight ;stop sprite position from "wrapping around"
+			lda playerX+2
+			sec
+			sbc ObjectList, x
+			cmp #$180
+			bcs DontDraw 
+			bra Draw
+		OnPlayerRight: ; if (spriteX > playerX && spriteX - playerX > #$180)
+			lda ObjectList, x
+			sec
+			sbc playerX+2
+			cmp #$180
+			bcc Draw
+		
+		DontDraw:
+		lda objectCursor
+		clc
+		adc #$2
+		sta $a
+		LoadSprite $a, #$40, #$110, #$0, #%00110010
+		jmp DoneSprite
 		Draw:
 		
 		lda #ObjectList
